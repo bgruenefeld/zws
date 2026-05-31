@@ -40,6 +40,24 @@
         font-size: 24px;
         font-weight: 600;
       }
+
+      .header-links {
+        margin-top: 8px;
+        display: flex;
+        gap: 14px;
+        justify-content: center;
+        font-size: 13px;
+      }
+
+      .header-links a {
+        color: #4a90e2;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .header-links a:hover {
+        text-decoration: underline;
+      }
       
       /* Search Section */
       .search-section {
@@ -705,6 +723,10 @@
     <header>
       <div class="container">
         <h1>Suchergebnisse</h1>
+        <div class="header-links">
+          <a href="/">Neue Suche</a>
+          <a href="/info">Informationen zur Zuchtwertschätzung</a>
+        </div>
       </div>
     </header>
 

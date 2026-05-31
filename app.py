@@ -337,6 +337,11 @@ def home():
     )
 
 
+@app.route("/info")
+def info():
+    return render_template("info.html")
+
+
 @app.route("/search", methods=["GET"])
 def search_results():
     """Search results page."""

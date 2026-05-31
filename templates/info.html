@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zuchtwertschätzung für Ellbogendysplasie beim Labrador Retriever</title>
+  <style>
+    :root {
+      --zws-bg: #f7f8fa;
+      --zws-card-bg: #ffffff;
+      --zws-text: #1f2933;
+      --zws-muted: #5f6b7a;
+      --zws-border: #d8dee6;
+      --zws-accent: #2563eb;
+      --zws-accent-soft: #e8f0ff;
+      --zws-heading: #111827;
+      --zws-table-head: #eef2f7;
+      --zws-note-bg: #f1f7f4;
+      --zws-note-border: #7bbf9e;
+      --zws-warning-bg: #fff8e6;
+      --zws-warning-border: #e0b34f;
+    }
+
+    body {
+      margin: 0;
+      background: var(--zws-bg);
+      color: var(--zws-text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.65;
+    }
+
+    .zws-article {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .zws-topnav {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .zws-topnav a {
+      color: var(--zws-accent);
+      font-weight: 650;
+      text-decoration: none;
+    }
+
+    .zws-topnav a:hover {
+      text-decoration: underline;
+    }
+
+    .zws-article__card {
+      background: var(--zws-card-bg);
+      border: 1px solid var(--zws-border);
+      border-radius: 18px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      padding: clamp(1.25rem, 2.5vw, 2.75rem);
+    }
+
+    .zws-article header {
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--zws-border);
+    }
+
+    .zws-kicker {
+      display: inline-block;
+      margin-bottom: 0.75rem;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      background: var(--zws-accent-soft);
+      color: var(--zws-accent);
+      font-size: 0.9rem;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+    }
+
+    .zws-article h1,
+    .zws-article h2,
+    .zws-article h3 {
+      color: var(--zws-heading);
+      line-height: 1.25;
+      margin-top: 2.2rem;
+      margin-bottom: 0.8rem;
+    }
+
+    .zws-article h1 {
+      margin-top: 0;
+      font-size: clamp(2rem, 4vw, 3rem);
+    }
+
+    .zws-article h2 {
+      font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+      padding-top: 0.25rem;
+    }
+
+    .zws-article h3 {
+      font-size: 1.15rem;
+    }
+
+    .zws-subtitle {
+      margin-top: 0.9rem;
+      color: var(--zws-muted);
+      font-size: 1.15rem;
+      max-width: 760px;
+    }
+
+    .zws-article p {
+      margin: 0.85rem 0;
+    }
+
+    .zws-article ul,
+    .zws-article ol {
+      padding-left: 1.4rem;
+      margin: 0.8rem 0 1.1rem;
+    }
+
+    .zws-article li {
+      margin: 0.3rem 0;
+    }
+
+    .zws-infobox,
+    .zws-warningbox {
+      margin: 1.4rem 0;
+      padding: 1rem 1.15rem;
+      border-radius: 14px;
+    }
+
+    .zws-infobox {
+      background: var(--zws-note-bg);
+      border-left: 5px solid var(--zws-note-border);
+    }
+
+    .zws-warningbox {
+      background: var(--zws-warning-bg);
+      border-left: 5px solid var(--zws-warning-border);
+    }
+
+    .zws-infobox strong,
+    .zws-warningbox strong {
+      color: var(--zws-heading);
+    }
+
+    .zws-quote {
+      margin: 1.5rem 0;
+      padding: 1.1rem 1.3rem;
+      border-left: 5px solid var(--zws-accent);
+      background: var(--zws-accent-soft);
+      border-radius: 14px;
+      font-size: 1.05rem;
+      color: var(--zws-heading);
+    }
+
+    .zws-table-wrap {
+      overflow-x: auto;
+      margin: 1.2rem 0 1.6rem;
+      border: 1px solid var(--zws-border);
+      border-radius: 14px;
+    }
+
+    .zws-article table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 420px;
+      background: #fff;
+    }
+
+    .zws-article th,
+    .zws-article td {
+      padding: 0.7rem 0.85rem;
+      border-bottom: 1px solid var(--zws-border);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    .zws-article th {
+      background: var(--zws-table-head);
+      color: var(--zws-heading);
+      font-weight: 700;
+    }
+
+    .zws-article tr:last-child td {
+      border-bottom: none;
+    }
+
+    .zws-article td:last-child,
+    .zws-article th:last-child {
+      text-align: right;
+    }
+
+    .zws-article .zws-left td:last-child,
+    .zws-article .zws-left th:last-child {
+      text-align: left;
+    }
+
+    .zws-divider {
+      height: 1px;
+      background: var(--zws-border);
+      margin: 2rem 0;
+    }
+
+    .zws-small {
+      color: var(--zws-muted);
+      font-size: 0.95rem;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .zws-article {
+        max-width: none;
+        padding: 0;
+      }
+
+      .zws-article__card {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+      }
+
+      .zws-article h2,
+      .zws-article h3 {
+        break-after: avoid;
+      }
+
+      .zws-table-wrap,
+      .zws-infobox,
+      .zws-warningbox,
+      .zws-quote {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="zws-article">
+    <nav class="zws-topnav" aria-label="Seitennavigation">
+      <a href="/">Zur Suche</a>
+      <a href="/">Zur Datenbank</a>
+    </nav>
+    <article class="zws-article__card">
+      <header>
+        <span class="zws-kicker">Zuchtwertschätzung ED</span>
+        <h1>Zuchtwertschätzung für Ellbogendysplasie beim Labrador Retriever</h1>
+        <p class="zws-subtitle">
+          Einordnung, Aussagekraft und praktische Nutzung einer BLUP-basierten Zuchtwertschätzung für erfahrene Züchterinnen und Züchter.
+        </p>
+      </header>
+
+      <section>
+        <p>
+          Die Ellbogendysplasie ist beim Labrador Retriever ein züchterisch relevantes Merkmal, weil sie sowohl die Lebensqualität einzelner Hunde als auch die langfristige gesundheitliche Entwicklung der Population betrifft. Gleichzeitig ist ED kein einfaches Ein-Gen-Merkmal, sondern ein komplexes, multifaktorielles Merkmal: Genetische Veranlagung, Wachstum, Fütterung, Bewegung, Aufzuchtbedingungen, Geschlecht, Zufallseinflüsse und diagnostische Unterschiede können zusammenwirken.
+        </p>
+
+        <p>
+          Aus diesem Grund reicht es züchterisch nicht aus, nur den ED-Befund eines einzelnen Hundes zu betrachten. Ein Hund mit ED-freiem Befund kann genetisch ungünstige Anlagen tragen, während ein Hund mit auffälligem Befund nicht zwingend ein besonders hohes genetisches Risiko weitergibt. Entscheidend ist daher nicht allein der individuelle Phänotyp, sondern die bestmögliche Schätzung des genetischen Beitrags eines Hundes zum Merkmal ED.
+        </p>
+
+        <p>
+          Genau hier setzt die von uns entwickelte Zuchtwertschätzung an.
+        </p>
+      </section>
+
+      <section>
+        <h2>Warum eine Zuchtwertschätzung notwendig wird</h2>
+
+        <p>
+          Die Einführung systematischer Röntgenuntersuchungen war ein wichtiger Fortschritt in der züchterischen Bekämpfung der Ellbogendysplasie. In vielen Ländern konnte die Häufigkeit klinisch und röntgenologisch auffälliger ED-Befunde durch konsequente Untersuchung und phänotypische Selektion bereits deutlich reduziert werden. Züchterinnen und Züchter konnten betroffene Hunde erkennen, auffällige Linien vorsichtiger einsetzen und Paarungen gezielter planen.
+        </p>
+
+        <p>
+          Allerdings zeigt sich in vielen Populationen mittlerweile, dass diese Entwicklung nicht beliebig weitergeht. Nach einer ersten deutlichen Verbesserung stagnieren die Zahlen häufig auf einem gewissen Niveau. Das ist aus genetischer Sicht nicht überraschend. Bei einem komplexen Merkmal wie ED reicht die Betrachtung des eigenen Röntgenbefundes allein nur begrenzt aus. Ein ED-freier Hund kann dennoch ungünstige genetische Anlagen tragen, während ein auffälliger Befund nicht ausschließlich genetisch verursacht sein muss.
+        </p>
+
+        <p>
+          Hier setzt die Zuchtwertschätzung an. Sie erweitert die reine Phänotypselektion um eine populationsgenetische Betrachtung. Nicht nur der einzelne Befund eines Hundes wird berücksichtigt, sondern auch die Informationen aus seiner Verwandtschaft: Eltern, Geschwister, Halbgeschwister, Nachkommen und weitere verwandte Hunde fließen – je nach Verwandtschaftsgrad und Datenlage – in die Schätzung ein. Dadurch wird sichtbar, was der eigene Befund allein nicht zeigen kann: die wahrscheinliche erbliche Veranlagung eines Hundes im Kontext seiner Familie und der Gesamtpopulation.
+        </p>
+
+        <div class="zws-infobox">
+          <strong>Anschaulich gesagt:</strong> Eine gute Zuchtwertschätzung ähnelt einem sehr erfahrenen Züchter, der über Jahrzehnte viele Linien beobachtet hat, Krankheitshäufigkeiten kennt, Nachzucht beurteilen kann und aus diesem Erfahrungswissen wertvolle Hinweise für eine Paarungsplanung gibt.
+        </div>
+
+        <p>
+          Der entscheidende Unterschied ist: Eine Zuchtwertschätzung macht dieses Wissen systematisch, nachvollziehbar und für alle verfügbar. Sie ist nicht an einzelne Personen gebunden, sondern kann jede Züchterin und jeden Züchter bei der Planung gesünderer Verpaarungen unterstützen.
+        </p>
+
+        <p>
+          Damit ist die ZWS kein Ersatz für züchterische Erfahrung, sondern eine fachliche Ergänzung. Sie macht familiäre und populationsbezogene Informationen nutzbar, die dem einzelnen Züchter aus eigener Beobachtung oft nur teilweise zugänglich wären.
+        </p>
+      </section>
+
+      <section>
+        <h2>Was leistet die Zuchtwertschätzung?</h2>
+
+        <p>
+          Die Zuchtwertschätzung soll für jeden Hund möglichst objektiv einschätzen, welchen erblichen Einfluss er auf das ED-Risiko seiner Nachkommen erwarten lässt. Sie nutzt dazu nicht nur den eigenen ED-Befund, sondern auch Informationen aus der Verwandtschaft: Eltern, Geschwister, Halbgeschwister, Nachkommen und weitere verwandte Hunde tragen – abhängig vom Verwandtschaftsgrad – zur Schätzung bei.
+        </p>
+
+        <p>
+          Damit unterscheidet sich die Zuchtwertschätzung grundlegend von einer einfachen Befundliste. Eine Befundliste sagt: „Dieser Hund wurde mit ED frei, ED I, ED II oder ED III ausgewertet.“ Eine Zuchtwertschätzung fragt dagegen: „Was lässt sich aus dem eigenen Befund und aus den Befunden verwandter Hunde über die genetische Veranlagung dieses Hundes ableiten?“
+        </p>
+
+        <p>
+          Das Ergebnis ist ein Zuchtwert, der nicht als Diagnose des einzelnen Hundes zu verstehen ist, sondern als populationsbezogene Risikoeinschätzung für die züchterische Nutzung.
+        </p>
+      </section>
+
+      <section>
+        <h2>Datengrundlage und Merkmalserfassung</h2>
+
+        <p>
+          Für die Schätzung werden ED-Befunde der Hunde zusammen mit Abstammungsinformationen ausgewertet. Liegen Befunde für beide Ellbogen vor, wird der schlechtere der beiden Befunde als maßgeblicher ED-Wert verwendet. Dieses Vorgehen ist züchterisch sinnvoll, weil bereits ein auffälliger Ellbogen Hinweise auf eine ungünstigere Veranlagung geben kann.
+        </p>
+
+        <p>
+          Die ED-Befunde werden für die Modellrechnung in eine geordnete Skala überführt, beispielsweise:
+        </p>
+
+        <div class="zws-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Befund</th>
+                <th>Modellwert</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>ED frei</td>
+                <td>0</td>
+              </tr>
+              <tr>
+                <td>ED I</td>
+                <td>1</td>
+              </tr>
+              <tr>
+                <td>ED II</td>
+                <td>2</td>
+              </tr>
+              <tr>
+                <td>ED III</td>
+                <td>3</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Diese Kodierung bedeutet nicht, dass die biologischen Abstände zwischen den Klassen exakt gleich groß sind. Sie ist eine pragmatische Modellannahme, um ein ordinales Merkmal in einem linearen Modell auswertbar zu machen. Das ist bei züchterischen Auswertungen nicht ungewöhnlich, muss aber bei der Interpretation berücksichtigt werden.
+        </p>
+      </section>
+
+      <section>
+        <h2>Methodischer Kern: BLUP-Tiermodell</h2>
+
+        <p>
+          Die entwickelte ZWS basiert auf einem BLUP-Ansatz, genauer gesagt auf einem Tiermodell. BLUP steht für „Best Linear Unbiased Prediction“ und ist in der Nutztierzucht seit langem ein Standardverfahren zur Schätzung genetischer Effekte.
+        </p>
+
+        <p>
+          Das Modell versucht, die beobachteten ED-Befunde in verschiedene Einflussanteile zu zerlegen. Vereinfacht gesagt:
+        </p>
+
+        <div class="zws-quote">
+          Beobachteter ED-Befund = systematische Einflüsse + genetischer Anteil des Hundes + nicht-genetische Restabweichung
+        </div>
+
+        <p>
+          Der zentrale Punkt ist der genetische Anteil. Dieser wird nicht isoliert aus dem Einzeltier geschätzt, sondern unter Berücksichtigung der verwandtschaftlichen Struktur der Population. Die Abstammung verbindet die Hunde miteinander. Dadurch können auch Hunde ohne eigenen ED-Befund einen Zuchtwert erhalten, sofern ausreichend Informationen aus ihrer Verwandtschaft vorliegen.
+        </p>
+
+        <p>
+          Ein Hund ohne eigenen Befund kann daher durchaus einen brauchbaren Zuchtwert haben, wenn beispielsweise viele Nachkommen, Geschwister oder Eltern mit Befunden vorhanden sind. Umgekehrt kann ein Hund mit eigenem Befund trotzdem nur eine begrenzte Sicherheit erreichen, wenn kaum Verwandtschaftsinformationen vorliegen.
+        </p>
+      </section>
+
+      <section>
+        <h2>Heritabilität und Varianzkomponenten</h2>
+
+        <p>
+          Im Modell werden genetische und nicht-genetische Varianzanteile geschätzt. In unserer aktuellen Auswertung ergaben sich beispielhaft folgende Modellwerte:
+        </p>
+
+        <div class="zws-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Komponente</th>
+                <th>Wert</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Additive genetische Varianz</td>
+                <td>0,050162</td>
+              </tr>
+              <tr>
+                <td>Residualvarianz</td>
+                <td>0,24287</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Daraus ergibt sich für dieses Modell eine Heritabilität von ungefähr 0,17.
+        </p>
+
+        <p>
+          Diese Zahl bedeutet: In dieser konkreten Auswertung wird etwa 17 % der beobachtbaren Variation im ED-Merkmal durch additive genetische Unterschiede zwischen den Hunden erklärt. Der größere Anteil entfällt auf nicht-additive genetische Effekte, Umwelt, Aufzucht, Zufall, Mess- und Klassifikationseinflüsse sowie weitere nicht im Modell enthaltene Faktoren.
+        </p>
+
+        <div class="zws-warningbox">
+          <strong>Wichtig:</strong> Diese Heritabilität ist keine unveränderliche biologische Naturkonstante. Sie hängt von der Population, der Datenqualität, dem Zeitraum, der Befundverteilung, der Röntgenquote, der Modellstruktur und der Erfassung des Merkmals ab.
+        </div>
+
+        <p>
+          Für die praktische Zuchtarbeit ist sie dennoch sehr wertvoll, weil sie zeigt: ED ist züchterisch beeinflussbar, aber nicht mit einfacher Selektion vollständig kontrollierbar.
+        </p>
+      </section>
+
+      <section>
+        <h2>Darstellung der Zuchtwerte</h2>
+
+        <p>
+          Die Roh-Zuchtwerte aus dem Modell werden für die praktische Nutzung in eine verständliche Skala transformiert. Ziel ist, dass Züchterinnen und Züchter nicht mit abstrakten Modellwerten arbeiten müssen, sondern mit einer gut interpretierbaren Risikokennzahl.
+        </p>
+
+        <div class="zws-quote">
+          Niedrigere Werte stehen für ein günstigeres ED-Risiko, höhere Werte für ein ungünstigeres ED-Risiko.
+        </div>
+
+        <p>
+          Je nach Darstellung kann die Skala beispielsweise so gestaltet werden, dass ein mittlerer Wert dem Populationsdurchschnitt entspricht und Abweichungen nach unten oder oben entsprechend günstiger oder ungünstiger interpretiert werden. Entscheidend ist nicht die absolute Zahl allein, sondern ihre Einordnung in die Population und im Vergleich möglicher Paarungspartner.
+        </p>
+
+        <p>
+          Ein Zuchtwert sollte daher nie isoliert gelesen werden, sondern immer zusammen mit:
+        </p>
+
+        <ol>
+          <li>dem eigenen ED-Befund,</li>
+          <li>der Sicherheit des Zuchtwertes,</li>
+          <li>der Verwandtschaftsstruktur,</li>
+          <li>der geplanten Paarung,</li>
+          <li>weiteren Gesundheits- und Selektionsmerkmalen.</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Sicherheit, Standardfehler und Reliability</h2>
+
+        <p>
+          Neben dem geschätzten Zuchtwert wird auch angegeben, wie sicher dieser Wert ist. Das ist für die praktische Nutzung mindestens ebenso wichtig wie der Zuchtwert selbst.
+        </p>
+
+        <p>
+          Ein Zuchtwert mit hoher Sicherheit beruht auf vielen und/oder aussagekräftigen Informationen. Dazu gehören insbesondere eigene Befunde, Befunde naher Verwandter und Nachkommen. Ein Zuchtwert mit niedriger Sicherheit ist stärker vom Populationsmittel und von begrenzten Informationen geprägt.
+        </p>
+
+        <p>
+          Für die Einordnung werden unter anderem Kennzahlen wie Standardfehler, PEV, Accuracy oder Reliability verwendet. Inhaltlich beschreiben sie unterschiedliche Aspekte derselben Grundfrage:
+        </p>
+
+        <div class="zws-quote">
+          Wie belastbar ist die Schätzung für diesen Hund?
+        </div>
+
+        <p>
+          Für die praktische Zuchtberatung ist es sinnvoll, die Sicherheit nicht nur als Zahl, sondern zusätzlich in Klassen darzustellen, etwa als niedrig, mittel oder hoch. So wird verhindert, dass scheinbar exakte Zuchtwerte überinterpretiert werden.
+        </p>
+
+        <p>
+          Ein Hund mit einem sehr günstigen, aber unsicheren Zuchtwert sollte anders bewertet werden als ein Hund mit einem ähnlich günstigen, aber gut abgesicherten Zuchtwert.
+        </p>
+      </section>
+
+      <section>
+        <h2>Wie kann die ZWS in der Zuchtplanung genutzt werden?</h2>
+
+        <p>
+          Die Zuchtwertschätzung ist kein Instrument, um Hunde pauschal „gut“ oder „schlecht“ zu machen. Sie ist ein Werkzeug zur besseren Risikosteuerung. Ihr Nutzen liegt vor allem darin, Paarungen fundierter zu planen.
+        </p>
+
+        <h3>1. Auswahl geeigneter Paarungspartner</h3>
+
+        <p>
+          Bei einer geplanten Verpaarung können die Zuchtwerte von Rüde und Hündin gemeinsam betrachtet werden. Dabei ist nicht nur der einzelne Zuchtwert wichtig, sondern vor allem die erwartete Kombination.
+        </p>
+
+        <p>
+          Wenn eine Hündin einen eher ungünstigen ED-Zuchtwert hat, sollte sie möglichst nicht mit einem Rüden verpaart werden, der ebenfalls einen ungünstigen ED-Zuchtwert besitzt. Umgekehrt kann ein genetisch günstiger Partner helfen, das erwartete Risiko der Nachkommen zu senken.
+        </p>
+
+        <p>
+          Das bedeutet nicht, dass ein einzelner ungünstiger Zuchtwert automatisch zum Zuchtausschluss führen muss. Gerade bei komplexen Merkmalen ist eine differenzierte Betrachtung sinnvoll. Entscheidend ist, ob die geplante Paarung aus populationsgenetischer und gesundheitlicher Sicht vertretbar ist.
+        </p>
+
+        <h3>2. Erwartungswert für Nachkommen</h3>
+
+        <p>
+          Für eine geplante Verpaarung kann ein erwarteter Nachkommen-Zuchtwert berechnet werden. Im einfachsten Fall entspricht dieser näherungsweise dem Mittelwert der beiden Elternzuchtwerte.
+        </p>
+
+        <p>
+          Dieser Wert ist keine Vorhersage für den einzelnen Welpen. Er beschreibt die erwartete durchschnittliche genetische Risikolage des Wurfes. Innerhalb eines Wurfes können die einzelnen Welpen aufgrund der Mendelschen Aufspaltung dennoch unterschiedlich veranlagt sein.
+        </p>
+
+        <p>
+          Die ZWS beantwortet also nicht die Frage:
+        </p>
+
+        <div class="zws-quote">
+          Wird dieser Welpe ED bekommen?
+        </div>
+
+        <p>
+          Sondern eher:
+        </p>
+
+        <div class="zws-quote">
+          Wie ist das durchschnittliche genetische ED-Risiko dieser geplanten Verpaarung im Vergleich zur Population einzuschätzen?
+        </div>
+
+        <h3>3. Vermeidung ungünstiger Risikokombinationen</h3>
+
+        <p>
+          Ein besonders wichtiger Nutzen liegt in der Vermeidung von Paarungen, bei denen beide Eltern aus Sicht der ZWS ungünstig liegen. Solche Kombinationen erhöhen das erwartete genetische Risiko des Wurfes.
+        </p>
+
+        <p>
+          Dabei kann eine Ampel- oder Klassendarstellung hilfreich sein:
+        </p>
+
+        <div class="zws-table-wrap">
+          <table class="zws-left">
+            <thead>
+              <tr>
+                <th>Paarungskategorie</th>
+                <th>Interpretation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>günstig</td>
+                <td>Beide Eltern beziehungsweise der erwartete Nachkommenwert liegen im günstigen Bereich.</td>
+              </tr>
+              <tr>
+                <td>durchschnittlich</td>
+                <td>Kein auffälliges erhöhtes Risiko erkennbar.</td>
+              </tr>
+              <tr>
+                <td>kritisch</td>
+                <td>Ein Elternteil oder die Kombination weist ein erhöhtes Risiko auf.</td>
+              </tr>
+              <tr>
+                <td>deutlich kritisch</td>
+                <td>Beide Eltern liegen ungünstig oder der erwartete Nachkommenwert ist klar erhöht.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Solche Kategorien sollten nicht mechanisch angewendet werden, sondern als Entscheidungshilfe dienen. Sie erleichtern die Vorauswahl, ersetzen aber nicht die züchterische Gesamtbewertung.
+        </p>
+      </section>
+
+      <section>
+        <h2>ZWS ersetzt keine Zuchtentscheidung</h2>
+
+        <p>
+          Eine gute Zuchtwertschätzung ist ein starkes Hilfsmittel, aber sie ist kein Automat. Sie sollte nicht dazu führen, dass Zuchtentscheidungen nur noch nach einer einzigen Zahl getroffen werden.
+        </p>
+
+        <p>
+          Gerade beim Labrador Retriever müssen weitere Aspekte berücksichtigt werden:
+        </p>
+
+        <ul>
+          <li>HD-Befunde,</li>
+          <li>ED-Befunde,</li>
+          <li>weitere orthopädische Merkmale,</li>
+          <li>Augenuntersuchungen,</li>
+          <li>bekannte monogene Erkrankungen,</li>
+          <li>genetische Diversität,</li>
+          <li>Inzuchtkoeffizient,</li>
+          <li>Ahnenverlust,</li>
+          <li>Verwandtschaftsgrad der Paarung,</li>
+          <li>Wesen,</li>
+          <li>Arbeitsanlagen,</li>
+          <li>Formwert und Funktionalität,</li>
+          <li>Fruchtbarkeit und Vitalität,</li>
+          <li>Populationsbeitrag einzelner Linien.</li>
+        </ul>
+
+        <p>
+          Eine ED-ZWS sollte daher immer Teil einer balancierten Zuchtplanung sein. Das Ziel ist nicht, ausschließlich den niedrigsten ED-Zuchtwert zu verfolgen. Das Ziel ist, das ED-Risiko zu senken, ohne dabei genetische Vielfalt, funktionale Qualität und andere Gesundheitsmerkmale zu vernachlässigen.
+        </p>
+      </section>
+
+      <section>
+        <h2>Gefahr einer zu engen Selektion</h2>
+
+        <p>
+          Ein häufiger Fehler bei der Einführung von Zuchtwertschätzungen besteht darin, die besten Werte zu stark zu bevorzugen. Wenn viele Züchter dieselben wenigen Rüden mit günstigen Zuchtwerten einsetzen, kann dies kurzfristig attraktiv erscheinen, langfristig aber problematisch werden.
+        </p>
+
+        <p>
+          Eine solche Entwicklung kann zu einer Verengung der genetischen Basis führen. Dadurch steigt das Risiko, andere unerwünschte Anlagen in der Population anzureichern oder seltene Linien zu verlieren.
+        </p>
+
+        <p>
+          Deshalb sollte eine ZWS nicht nur zur Auswahl einzelner „Top-Rüden“ verwendet werden, sondern vor allem zur intelligenten Paarungsplanung innerhalb einer breiten Population.
+        </p>
+
+        <p>
+          Ein Rüde mit günstigem ED-Zuchtwert ist züchterisch nicht automatisch wertvoller als ein etwas durchschnittlicherer Rüde aus einer seltener genutzten Linie. Die bessere Entscheidung hängt vom Gesamtbild ab.
+        </p>
+      </section>
+
+      <section>
+        <h2>Umgang mit Hunden ohne eigenen Zuchtwert</h2>
+
+        <p>
+          In der Praxis kann es vorkommen, dass einzelne Hunde keinen Zuchtwert erhalten. Gründe können unter anderem sein:
+        </p>
+
+        <ul>
+          <li>fehlende oder nicht eindeutig verknüpfbare Abstammungsdaten,</li>
+          <li>fehlende Verbindung zur auswertbaren Population,</li>
+          <li>unzureichende Identifikation über Zuchtbuchnummer oder Datenbank-ID,</li>
+          <li>fehlende Modellverknüpfung trotz vorhandener Ahnentafel,</li>
+          <li>technische Filter in der Datenaufbereitung,</li>
+          <li>keine ausreichenden Informationen im verwendeten Datensatz.</li>
+        </ul>
+
+        <p>
+          Ein Hund kann also eine Ahnentafel und sogar Nachkommen haben, ohne automatisch einen Zuchtwert zu erhalten. Für eine belastbare Schätzung muss der Hund im Modell korrekt mit der Pedigree- und Befundstruktur verbunden sein. Solche Fälle sind weniger eine biologische Aussage über den Hund als ein Hinweis auf Datenstruktur oder Datenvollständigkeit.
+        </p>
+      </section>
+
+      <section>
+        <h2>Praktische Empfehlungen für Züchterinnen und Züchter</h2>
+
+        <h3>1. Zuchtwert und Sicherheit gemeinsam betrachten</h3>
+        <p>
+          Ein günstiger Zuchtwert mit niedriger Sicherheit sollte vorsichtiger interpretiert werden als ein günstiger Zuchtwert mit hoher Sicherheit. Umgekehrt sollte ein ungünstiger Zuchtwert mit hoher Sicherheit ernster genommen werden als ein unsicherer Wert.
+        </p>
+
+        <h3>2. Paarungen bewerten, nicht nur Einzelhunde</h3>
+        <p>
+          Die entscheidende Frage lautet nicht: „Ist dieser Rüde gut?“ Sondern: „Passt dieser Rüde zu dieser Hündin – unter Berücksichtigung von ED, HD, Diversität, Verwandtschaft und den weiteren Zuchtzielen?“
+        </p>
+
+        <h3>3. Extreme Kombinationen vermeiden</h3>
+        <p>
+          Besonders kritisch sind Paarungen, bei denen beide Elternteile ungünstige ED-Zuchtwerte haben. Solche Kombinationen sollten nur mit sehr guter Begründung in Betracht gezogen werden.
+        </p>
+
+        <h3>4. Keine einseitige Selektion</h3>
+        <p>
+          Die ZWS sollte zur Verbesserung der Population beitragen, nicht zur Verengung auf wenige populäre Hunde. Gesundheitsselektion und genetische Breite müssen zusammen gedacht werden.
+        </p>
+
+        <h3>5. ZWS als lernendes System verstehen</h3>
+        <p>
+          Eine Zuchtwertschätzung wird besser, wenn mehr vollständige, korrekt verknüpfte und repräsentative Daten einfließen. Je höher die Röntgenquote und je sauberer die Abstammungsdaten, desto belastbarer werden die Ergebnisse.
+        </p>
+      </section>
+
+      <section>
+        <h2>Grenzen der aktuellen ZWS</h2>
+
+        <p>
+          Die entwickelte ZWS ist ein solider und fachlich sinnvoller Ansatz, sie hat aber – wie jede Zuchtwertschätzung – Grenzen.
+        </p>
+
+        <p>
+          Erstens handelt es sich bei ED um ein komplexes Merkmal mit begrenzter Heritabilität. Auch bei guter Selektion wird es weiterhin ED-Fälle geben können.
+        </p>
+
+        <p>
+          Zweitens hängt die Schätzung stark von der Datenqualität ab. Selektive Röntgenpraxis, unvollständige Befunde oder Datenlücken können die Aussagekraft beeinflussen.
+        </p>
+
+        <p>
+          Drittens bildet ein lineares Modell ein ordinales Merkmal nur näherungsweise ab. Für ED ist dies ein pragmatischer und gut nutzbarer Ansatz, aber nicht die einzig denkbare Modellform.
+        </p>
+
+        <p>
+          Viertens können systematische Effekte wie Geschlecht, Geburtsjahr, Röntgenalter, Gutachtereffekte oder Linienstruktur je nach Datenlage unterschiedlich gut berücksichtigt werden. Solche Erweiterungen sollten geprüft werden, sobald die Datengrundlage dies belastbar erlaubt.
+        </p>
+      </section>
+
+      <section>
+        <h2>Mögliche Weiterentwicklungen</h2>
+
+        <p>
+          Die aktuelle ZWS kann in mehreren Richtungen weiterentwickelt werden.
+        </p>
+
+        <p>
+          Ein wichtiger Schritt wäre die Prüfung zusätzlicher fixer Effekte, etwa Geburtsjahr, Geschlecht oder weitere systematische Einflussgrößen. Besonders interessant ist die Frage, ob sich ED bei Rüden und Hündinnen genetisch oder phänotypisch unterschiedlich verhält. Solche Effekte sollten jedoch nicht nur aus Einzelfällen abgeleitet, sondern statistisch sauber geprüft werden.
+        </p>
+
+        <p>
+          Auch alternative Modellansätze können diskutiert werden, zum Beispiel Schwellenwertmodelle für ordinale Merkmale. Diese sind theoretisch näher an der Struktur von ED-Klassen, aber methodisch anspruchsvoller und nicht automatisch in jeder Datensituation überlegen.
+        </p>
+
+        <p>
+          Langfristig könnte außerdem eine genomische Zuchtwertschätzung interessant werden, sofern ausreichend viele Hunde mit hochwertigen SNP-Daten und verlässlichen ED-Befunden vorliegen. Für eine belastbare genomische ZWS braucht es jedoch eine große Referenzpopulation. DNA-Profile allein verbessern die ED-Selektion nicht automatisch; entscheidend ist die Verknüpfung von Genotypdaten mit aussagekräftigen Phänotypen.
+        </p>
+      </section>
+
+      <section>
+        <h2>Fazit</h2>
+
+        <p>
+          Die entwickelte ED-Zuchtwertschätzung stellt einen wichtigen Schritt von der reinen Befundbetrachtung hin zu einer populationsgenetisch fundierten Zuchtplanung dar. Sie nutzt die verfügbaren ED-Befunde und Abstammungsinformationen, um den erblichen Beitrag einzelner Hunde zum ED-Risiko besser einzuschätzen.
+        </p>
+
+        <p>
+          Ihr größter praktischer Nutzen liegt nicht in der Etikettierung einzelner Hunde, sondern in der besseren Planung von Verpaarungen. Sie hilft, ungünstige Risikokombinationen zu vermeiden, genetisch günstigere Paarungen zu erkennen und Entscheidungen transparenter zu begründen.
+        </p>
+
+        <p>
+          Richtig eingesetzt ist die ZWS kein starres Selektionsinstrument, sondern ein fachliches Steuerungswerkzeug. Sie kann dazu beitragen, das ED-Risiko in der Population langfristig zu senken – vorausgesetzt, sie wird mit Augenmaß genutzt und immer gemeinsam mit genetischer Vielfalt, Gesundheit, Wesen, Leistung und funktionalem Exterieur betrachtet.
+        </p>
+
+        <div class="zws-quote">
+          Die Zuchtwertschätzung ersetzt nicht die züchterische Verantwortung. Sie macht sie besser begründbar.
+        </div>
+      </section>
+
+      <p class="zws-small">
+        Hinweis: Die im Text genannten Varianzkomponenten und die daraus abgeleitete Heritabilität beziehen sich auf die aktuell beschriebene Modellauswertung. Sie sollten bei späteren Modellversionen entsprechend angepasst werden.
+      </p>
+    </article>
+  </main>
+</body>
+</html>
