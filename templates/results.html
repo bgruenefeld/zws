@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <title>Trefferliste</title>
+    <style>
+      body{font-family:Arial;max-width:1400px;margin:24px auto;padding:0 16px}
+      table{width:100%;border-collapse:collapse}
+      th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}
+      tr.selected-row{background:#eef4ff}
+      .button{background:#2563eb;color:#fff;padding:6px 8px;border-radius:4px;text-decoration:none;border:none;cursor:pointer}
+      .pager{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;font-size:14px;color:#282828}
+      .pager-links a{margin-right:8px}
+      .stats{margin:16px 0;padding:12px;border:1px solid #dde3eb;background:#f8fafc;border-radius:8px}
+      .stats h2{margin:0 0 8px;font-size:18px}
+      .stats-table{margin-top:10px;width:100%;border-collapse:collapse}
+      .stats-table th,.stats-table td{padding:6px 8px;border:1px solid #dde3eb;text-align:left;background:#fff}
+    </style>
+  </head>
+  <body>
+    <h1>Treffer für "{{ query }}"</h1>
+    <p><a href="/">Neue Suche</a></p>
+
+    {% if results %}
+      <div class="pager">
+        <div>Seite {{ page }} / {{ page_count }} — {{ total_matches }} Treffer</div>
+        <div class="pager-links">
+          {% if page > 1 %}
+            <a class="button" href="/?q={{ query_encoded }}&page={{ page - 1 }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">Zurück</a>
+          {% endif %}
+          {% if page < page_count %}
+            <a class="button" href="/?q={{ query_encoded }}&page={{ page + 1 }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">Weiter</a>
+          {% endif %}
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th><a href="/?q={{ query_encoded }}&sort_by=name&sort_dir={{ 'desc' if sort_by == 'name' and sort_dir == 'asc' else 'asc' }}">Name{% if sort_by == 'name' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+            <th><a href="/?q={{ query_encoded }}&sort_by=zbnr&sort_dir={{ 'desc' if sort_by == 'zbnr' and sort_dir == 'asc' else 'asc' }}">ZBNr{% if sort_by == 'zbnr' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+            <th><a href="/?q={{ query_encoded }}&sort_by=wurfdatum&sort_dir={{ 'desc' if sort_by == 'wurfdatum' and sort_dir == 'asc' else 'asc' }}">Wurfdatum{% if sort_by == 'wurfdatum' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+            <th><a href="/?q={{ query_encoded }}&sort_by=hd&sort_dir={{ 'desc' if sort_by == 'hd' and sort_dir == 'asc' else 'asc' }}">HD{% if sort_by == 'hd' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+            <th><a href="/?q={{ query_encoded }}&sort_by=ed&sort_dir={{ 'desc' if sort_by == 'ed' and sort_dir == 'asc' else 'asc' }}">ED{% if sort_by == 'ed' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+            <th><a href="/?q={{ query_encoded }}&sort_by=zuchtwert&sort_dir={{ 'desc' if sort_by == 'zuchtwert' and sort_dir == 'asc' else 'asc' }}">Zuchtwert{% if sort_by == 'zuchtwert' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+            <th><a href="/?q={{ query_encoded }}&sort_by=konfidenz&sort_dir={{ 'desc' if sort_by == 'konfidenz' and sort_dir == 'asc' else 'asc' }}">Konfidenz [%]{% if sort_by == 'konfidenz' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in results %}
+            <tr data-zbnr="{{ r.zbnr }}">
+              <td>{{ r.Name }}</td>
+              <td>{{ r.zbnr or (r.ZBNr_norm or r.ZBNr) }}</td>
+              <td>{{ r.wurfdatum }}</td>              
+              <td>{{ r.hd or '-' }}</td>
+              <td>{{ r.ed or '-' }}</td>
+              <td>{{ r.zuchtwert if r.zuchtwert is not none else '-' }}</td>
+              <td>{{ r.konfidenz if r.konfidenz is not none else '-' }}</td>
+              <td>
+                {% if r.zbnr %}
+                  <button class="button show-pedigree" data-zbnr="{{ r.zbnr }}">Ahnentafel</button>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>Keine Treffer.</p>
+    {% endif %}
+
+    <hr />
+    <h2>Anzeige Ahnentafel</h2>
+    <div id="pedigree-area">Wähle einen Eintrag und klicke "Ahnentafel".</div>
+
+    <style>
+      .canvas-wrap{overflow:auto;border:1px solid #d9e2ec;background:#eef2f5;padding:8px;border-radius:8px;margin-top:12px;width:calc(100vw - 48px);max-width:none;margin-left:-16px}
+      .canvas{position:relative;background:#eef2f5}
+      .connections{position:absolute;inset:0;z-index:1}
+      .connections line{stroke:#c2ccd6;stroke-width:1.4;fill:none}
+      .node{position:absolute;z-index:2;box-sizing:border-box}
+      .card{width:100%;height:100%;box-sizing:border-box;background:#ffffff;border:1px solid #d6dee6;border-radius:6px;padding:7px 8px;box-shadow:0 1px 2px rgba(0,0,0,0.05);overflow:hidden}
+      .card.missing{background:#fafafa;border-style:dashed;opacity:0.75}
+      .name{font-size:12px;font-weight:700;line-height:1.15;margin-bottom:4px;color:#243447;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+      .subline{font-size:10px;line-height:1.25;color:#52606d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .zws-line{margin-top:4px;padding:2px 4px;border-radius:4px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:10px;line-height:1.25;font-weight:600;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    </style>
+
+    <script>
+      function escapeHtml(s) {
+        if (s === null || s === undefined) return '';
+        return String(s).replace(/[&<>"']/g, function (c) {
+          return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+          }[c];
+        });
+      }
+
+      async function loadPedigree(zbnr){
+        const htmlUrl = '/pedigree_fragment?zbnr=' + encodeURIComponent(zbnr) + '&gens=5';
+        const area = document.getElementById('pedigree-area');
+        area.innerHTML = 'Lade Ahnentafel...';
+
+        try{
+          const resp = await fetch(htmlUrl);
+          const html = await resp.text();
+          if(!resp.ok) throw new Error(html || ('HTTP ' + resp.status));
+          area.innerHTML = html;
+        }catch(err){
+          area.innerHTML = '<p style="color:red">Fehler: '+escapeHtml(err.message)+'</p>';
+        }
+      }
+
+      document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.show-pedigree');
+        if (!btn) return;
+
+        const z = btn.getAttribute('data-zbnr');
+        const row = btn.closest('tr');
+        if (row) {
+          document.querySelectorAll('tr.selected-row').forEach((tr) => tr.classList.remove('selected-row'));
+          row.classList.add('selected-row');
+        }
+
+        if (z) loadPedigree(z);
+      });
+    </script>
+  </body>
+</html>

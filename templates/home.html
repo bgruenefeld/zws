@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ED-Zuchtwertschätzung Labrador Retriever</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #f5f5f5;
+        color: #333;
+      }
+      
+      .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+      
+      /* Header */
+      header {
+        background: #fff;
+        border-bottom: 1px solid #e0e0e0;
+        padding: 40px 0;
+        text-align: center;
+        margin-bottom: 40px;
+      }
+      
+      header h1 {
+        margin: 0 0 8px 0;
+        font-size: 32px;
+        font-weight: 600;
+        color: #1a1a1a;
+      }
+      
+      header p {
+        margin: 0;
+        font-size: 16px;
+        color: #666;
+        line-height: 1.5;
+      }
+      
+      /* Search Card */
+      .search-card {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 40px;
+        margin-bottom: 40px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      }
+      
+      .search-card input {
+        width: 100%;
+        padding: 14px 16px;
+        font-size: 16px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        margin-bottom: 16px;
+        font-family: inherit;
+      }
+      
+      .search-card input:focus {
+        outline: none;
+        border-color: #4a90e2;
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+      }
+      
+      .search-card button {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 16px;
+        background: #4a90e2;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background 0.2s;
+      }
+      
+      .search-card button:hover {
+        background: #3a7bc8;
+      }
+      
+      .search-help {
+        margin-top: 12px;
+        font-size: 13px;
+        color: #999;
+        text-align: center;
+      }
+      
+      /* Stats Cards */
+      .stats-section {
+        margin-bottom: 40px;
+      }
+      
+      .stats-section h2 {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 20px 0;
+        color: #1a1a1a;
+      }
+      
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+      
+      .stat-card {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 24px;
+        text-align: center;
+      }
+      
+      .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #4a90e2;
+        margin: 8px 0;
+      }
+      
+      .stat-label {
+        font-size: 13px;
+        color: #999;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .info-box {
+        background: #f9f9f9;
+        border-left: 4px solid #4a90e2;
+        padding: 16px;
+        border-radius: 4px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #555;
+      }
+      
+      /* Chart Section */
+      .chart-section {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 30px;
+        margin-bottom: 40px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      }
+      
+      .chart-section h2 {
+        margin: 0 0 20px 0;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      
+      .chart-container {
+        margin: 20px 0;
+        height: 350px;
+        position: relative;
+      }
+      
+      .chart-container canvas {
+        max-width: 100%;
+      }
+      
+      .chart-interpretation {
+        background: #f9f9f9;
+        padding: 16px;
+        border-radius: 6px;
+        margin-top: 16px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #555;
+      }
+      
+      .methodical-details {
+        margin-top: 12px;
+        padding: 12px;
+        background: #f0f4f8;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #666;
+      }
+      
+      .methodical-details summary {
+        cursor: pointer;
+        font-weight: 500;
+        user-select: none;
+      }
+      
+      .methodical-details-content {
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid #ddd;
+      }
+      
+      footer {
+        text-align: center;
+        padding: 40px 0;
+        font-size: 12px;
+        color: #999;
+      }
+      
+      @media (max-width: 768px) {
+        header h1 {
+          font-size: 24px;
+        }
+        
+        .search-card {
+          padding: 24px;
+        }
+        
+        .stats-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+        
+        .chart-container {
+          height: 300px;
+        }
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1>ED-Zuchtwertschätzung Labrador Retriever</h1>
+        <p>Suche nach Hundename oder Zuchtbuchnummer und zeige Ahnentafel, ED-Befunde und Zuchtwerte an.</p>
+      </div>
+    </header>
+
+    <div class="container">
+      <!-- Search Card -->
+      <div class="search-card">
+        <form method="get" action="/search">
+          <input name="q" type="text" placeholder="Hundename oder Zuchtbuchnummer eingeben" autofocus />
+          <button type="submit">Suchen</button>
+          <div class="search-help">
+            Sie können nach vollständigem Namen, Namensbestandteilen oder Zuchtbuchnummer suchen.
+          </div>
+        </form>
+      </div>
+
+      <!-- Population Statistics -->
+      <div class="stats-section">
+        <h2>Datenbasis</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Hunde gesamt</div>
+            <div class="stat-value">{{ "{:,}".format(stats_total).replace(",", ".") }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Mit ED-Befund</div>
+            <div class="stat-value">{{ "{:,}".format(stats_ed_evaluated).replace(",", ".") }}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Röntgenquote</div>
+            <div class="stat-value">{{ "%.1f"|format(roentgen_quote) }} %</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Heritabilität ED</div>
+            <div class="stat-value">0,17</div>
+          </div>
+        </div>
+        <div class="info-box">
+          <strong>Hinweis:</strong> Die Heritabilität beschreibt den genetisch erklärbaren Anteil der Unterschiede zwischen Hunden innerhalb der Population. Sie bedeutet nicht, dass ein einzelner ED-Befund zu 17 % erblich verursacht ist.
+        </div>
+      </div>
+
+      <!-- Population Chart -->
+      {% if stats_ed_distribution %}
+        <div class="chart-section">
+          <h2>ED-Befunde und Röntgenquote nach Geburtsjahr</h2>
+          <div class="chart-container">
+            <canvas id="edChart"></canvas>
+          </div>
+          <div class="chart-interpretation">
+            Der Anteil schwererer ED-Befunde zeigt im betrachteten Zeitraum <b>keinen statistisch gesicherten Trend</b>. Die Röntgenquote beeinflusst die Aussagekraft einzelner Jahrgangswerte. Dies bedeutet, dass die aktuelle Zuchtstrategie keinen Einfluss auf die Häufigkeit auf schweren ED Fällen hat.
+          </div>
+          {% if stats_ed23_analysis %}
+            <details class="methodical-details">
+              <summary>Methodische Details</summary>
+              <div class="methodical-details-content">
+                {% if stats_ed23_analysis.is_significant %}
+                  <strong>Trend ED II+III: statistisch signifikant</strong> (p = {{ "%.3f"|format(stats_ed23_analysis.p_value) }})
+                {% else %}
+                  <strong>Trend ED II+III: nicht signifikant</strong> (p = {{ "%.3f"|format(stats_ed23_analysis.p_value) }})
+                {% endif %}
+              </div>
+            </details>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+
+    <footer>
+      <div class="container">
+        Labrador Retriever Zuchtwert-Datenbank | Datenbasis: DRC & EBV Schätzungen
+      </div>
+    </footer>
+
+    {% if stats_ed_distribution %}
+      <script>
+        const chartData = {{ stats_ed_distribution | tojson }};
+        
+        // Pivot data by year
+        const dataByYear = {};
+        chartData.forEach(row => {
+          if (!dataByYear[row.birth_year]) {
+            dataByYear[row.birth_year] = { grades: {}, year_total: 0, year_population: 0 };
+          }
+          dataByYear[row.birth_year].grades[row.ED_ZWS] = {
+            count: row.count,
+            percent: row.percent
+          };
+          dataByYear[row.birth_year].year_total = row.year_total || dataByYear[row.birth_year].year_total;
+          dataByYear[row.birth_year].year_population = row.year_population || dataByYear[row.birth_year].year_population;
+        });
+
+        // Sort years ascending (oldest first)
+        const years = Object.keys(dataByYear).sort((a, b) => parseInt(a) - parseInt(b));
+        
+        // Get all unique ED grades
+        const allGrades = new Set();
+        chartData.forEach(row => allGrades.add(row.ED_ZWS));
+        const grades = Array.from(allGrades).sort();
+
+        function hexToRgba(hex, alpha = 0.15) {
+          const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+          hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+          return result
+            ? `rgba(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}, ${alpha})`
+            : 'rgba(0,0,0,' + alpha + ')';
+        }
+
+        // Prepare datasets
+        const leftAxisGrades = grades.filter(g => g === '0.0');
+        const rightAxisGrades = grades.filter(g => g !== '0.0');
+
+        // Left axis: Grade 0 + Röntgenquote
+        const leftDatasets = [];
+        leftAxisGrades.forEach(grade => {
+          const data = years.map(y => dataByYear[y].grades[grade]?.percent || 0);
+          leftDatasets.push({
+            label: 'ED Grade ' + grade + ' (%)',
+            data: data,
+            borderColor: '#d62728',
+            backgroundColor: hexToRgba('#d62728', 0.1),
+            tension: 0.3,
+            yAxisID: 'y',
+            pointRadius: 3
+          });
+        });
+
+        // Röntgenquote
+        const roentgenData = years.map(y => {
+          const yearTotal = dataByYear[y].year_total || 0;
+          const yearPop = dataByYear[y].year_population || 0;
+          return yearPop > 0 ? (yearTotal / yearPop * 100) : 0;
+        });
+        leftDatasets.push({
+          label: 'Röntgenquote (%)',
+          data: roentgenData,
+          borderColor: '#1f77b4',
+          backgroundColor: hexToRgba('#1f77b4', 0.1),
+          tension: 0.3,
+          yAxisID: 'y',
+          pointRadius: 3
+        });
+
+        // Right axis: other grades (initially hidden except Grade 1)
+        const palette = ['#2ca02c', '#ff7f0e', '#9467bd', '#8c564b', '#e377c2', '#17becf'];
+        const hiddenGrades = new Set(['0.5', '2.0', '3.0']);
+        
+        const rightDatasets = rightAxisGrades.map((grade, idx) => {
+          const color = palette[idx % palette.length];
+          const data = years.map(y => dataByYear[y].grades[grade]?.percent || 0);
+          return {
+            label: 'ED Grade ' + grade + ' (%)',
+            data: data,
+            borderColor: color,
+            backgroundColor: hexToRgba(color, 0.1),
+            tension: 0.3,
+            yAxisID: 'y1',
+            pointRadius: 3,
+            hidden: hiddenGrades.has(grade)
+          };
+        });
+
+        const allDatasets = [...leftDatasets, ...rightDatasets];
+
+        const ctx = document.getElementById('edChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: years,
+            datasets: allDatasets
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { display: true, position: 'top' }
+            },
+            scales: {
+              y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: { display: true, text: 'Grade 0 / Röntgenquote (%)' },
+                min: 0,
+                max: 100
+              },
+              y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: { display: true, text: 'Andere ED Grade (%)' },
+                min: 0,
+                max: (function(){
+                  try {
+                    const maxVal = rightDatasets.length ? Math.max(...rightDatasets.map(d=>Math.max(...d.data))) : 0;
+                    const suggested = Math.ceil(Math.max(5, maxVal * 1.3));
+                    return Math.min(30, suggested);
+                  } catch(e) { return 10; }
+                })(),
+                grid: { drawOnChartArea: false }
+              }
+            }
+          }
+        });
+      </script>
+    {% endif %}
+  </body>
+</html>

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <title>Pedigree Suche</title>
+    <style>
+      body{font-family:Arial;max-width:900px;margin:24px auto;padding:0 16px;}
+      input[type=text]{width:80%;padding:8px;font-size:16px}
+      button{padding:8px 12px}
+      .stats{margin:16px 0;padding:12px;border:1px solid #dde3eb;background:#f8fafc;border-radius:8px}
+      .stats h2{margin:0 0 8px;font-size:18px}
+      .chart-container{margin:20px 0;padding:12px;background:#fff;border:1px solid #dde3eb;border-radius:8px}
+      .chart-container canvas{max-width:100%;height:auto}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  </head>
+  <body>
+    <h1>Ahnentafel Suche</h1>
+
+    <div class="stats">
+      <div><strong>Grunddaten aller Hunde</strong></div>
+      <div>ED ausgewertet: {{ stats_ed_evaluated }} von {{ stats_total }} Hunden ({{ stats_ed_percent|round(1) }} %)</div>
+      {% if stats_ed23_analysis %}
+        <div>{{ stats_ed23_analysis }}</div>
+      {% endif %}
+      <div>ED Erblichkeit in der Population: 17%</div>
+    </div>
+
+    {% if stats_ed_distribution %}
+      <div class="chart-container">
+        <h2>Verteilung der ED Grade und Röntgenquote nach Jahrgang</h2>
+        <canvas id="edChart"></canvas>
+      </div>
+      <script>
+        const chartData = {{ stats_ed_distribution | tojson }};
+        
+        // Pivot data by year
+        const dataByYear = {};
+        chartData.forEach(row => {
+          if (!dataByYear[row.birth_year]) {
+            dataByYear[row.birth_year] = { grades: {}, year_total: 0, year_population: 0 };
+          }
+          dataByYear[row.birth_year].grades[row.ED_ZWS] = {
+            count: row.count,
+            percent: row.percent
+          };
+          dataByYear[row.birth_year].year_total = row.year_total || dataByYear[row.birth_year].year_total;
+          dataByYear[row.birth_year].year_population = row.year_population || dataByYear[row.birth_year].year_population;
+        });
+
+        // Calculate total evaluated dogs
+        let totalEvaluated = 0;
+        Object.values(dataByYear).forEach(y => { totalEvaluated += y.year_total; });
+
+        // Sort years ascending (oldest first)
+        const years = Object.keys(dataByYear).sort((a, b) => parseInt(a) - parseInt(b));
+        
+        // Get all unique ED grades
+        const allGrades = new Set();
+        chartData.forEach(row => allGrades.add(row.ED_ZWS));
+        const grades = Array.from(allGrades).sort();
+
+        function hexToRgba(hex, alpha = 0.15) {
+          const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+          hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+          return result
+            ? `rgba(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}, ${alpha})`
+            : 'rgba(0,0,0,' + alpha + ')';
+        }
+
+        function linearTrend(xs, ys) {
+          const xVals = xs.map(x => parseInt(x));
+          const yVals = ys;
+          const n = xVals.length;
+          if (n === 0) return [];
+          const xMean = xVals.reduce((a, b) => a + b, 0) / n;
+          const yMean = yVals.reduce((a, b) => a + b, 0) / n;
+          let num = 0;
+          let den = 0;
+          for (let i = 0; i < n; i++) {
+            num += (xVals[i] - xMean) * (yVals[i] - yMean);
+            den += (xVals[i] - xMean) ** 2;
+          }
+          const slope = den === 0 ? 0 : num / den;
+          const intercept = yMean - slope * xMean;
+          return xVals.map(x => intercept + slope * x);
+        }
+
+        // Separate axes: grade 0 and Röntgenquote on first, others on second
+        const leftAxisGrades = grades.filter(g => g === '0.0');
+        const rightAxisGrades = grades.filter(g => g !== '0.0');
+
+        // Prepare datasets for left axis (Grade 0 + Röntgenquote as %)
+        const leftDatasets = [];
+        leftAxisGrades.forEach(grade => {
+          const data = years.map(y => dataByYear[y].grades[grade]?.percent || 0);
+          leftDatasets.push({
+            label: 'ED Grade ' + grade + ' (%)',
+            data: data,
+            borderColor: '#d62728',
+            backgroundColor: hexToRgba('#d62728', 0.1),
+            tension: 0.3,
+            yAxisID: 'y',
+            pointRadius: 3
+          });
+        });
+
+        // Röntgenquote as percentage of that year's population (year_total / year_population * 100)
+        const roentgenData = years.map(y => {
+          const yearTotal = dataByYear[y].year_total || 0;
+          const yearPop = dataByYear[y].year_population || 0;
+          return yearPop > 0 ? (yearTotal / yearPop * 100) : 0;
+        });
+        leftDatasets.push({
+          label: 'Röntgenquote (%)',
+          data: roentgenData,
+          borderColor: '#1f77b4',
+          backgroundColor: hexToRgba('#1f77b4', 0.1),
+          tension: 0.3,
+          yAxisID: 'y',
+          pointRadius: 3
+        });
+
+        // Aggregate ED 2+3 on right axis
+        const ed23Data = years.map(y => {
+          const g2 = dataByYear[y].grades['2.0']?.percent || 0;
+          const g3 = dataByYear[y].grades['3.0']?.percent || 0;
+          return g2 + g3;
+        });
+        const ed23Trend = linearTrend(years, ed23Data);
+
+        // Prepare datasets for right axis (other grades as %)
+        const hiddenGrades = new Set(['0.5', '1.0', '2.0', '3.0']);
+        const palette = ['#2ca02c', '#ff7f0e', '#9467bd', '#8c564b', '#e377c2', '#17becf'];
+        const rightDatasets = rightAxisGrades.map((grade, idx) => {
+          const color = palette[idx % palette.length];
+          const data = years.map(y => dataByYear[y].grades[grade]?.percent || 0);
+          return {
+            label: 'ED Grade ' + grade + ' (%)',
+            data: data,
+            borderColor: color,
+            backgroundColor: hexToRgba(color, 0.1),
+            tension: 0.3,
+            yAxisID: 'y1',
+            pointRadius: 3,
+            hidden: hiddenGrades.has(grade)
+          };
+        });
+
+        rightDatasets.unshift({
+          label: 'ED Grade 2+3 gesamt (%)',
+          data: ed23Data,
+          borderColor: '#9467bd',
+          backgroundColor: hexToRgba('#9467bd', 0.15),
+          tension: 0.3,
+          yAxisID: 'y1',
+          borderWidth: 2,
+          pointRadius: 4
+        });
+
+        rightDatasets.push({
+          label: 'Trend ED 2+3',
+          data: ed23Trend,
+          borderColor: '#7f7f7f',
+          backgroundColor: hexToRgba('#7f7f7f', 0.1),
+          borderDash: [6, 4],
+          tension: 0,
+          yAxisID: 'y1',
+          pointRadius: 0,
+          borderWidth: 1.5
+        });
+
+        const allDatasets = [...leftDatasets, ...rightDatasets];
+
+        const ctx = document.getElementById('edChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: years,
+            datasets: allDatasets
+          },
+          options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              legend: { display: true, position: 'top' }
+            },
+            scales: {
+              y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: { display: true, text: 'Grade 0 / Röntgenquote (%)' },
+                min: 0,
+                max: 100
+              },
+                y1: {
+                  type: 'linear',
+                  display: true,
+                  position: 'right',
+                  title: { display: true, text: 'Andere ED Grade (%)' },
+                  min: 0,
+                  // dynamic max: base on observed max percent among other grades
+                  max: (function(){
+                    try {
+                      const maxVal = rightDatasets.length ? Math.max(...rightDatasets.map(d=>Math.max(...d.data))) : 0;
+                      const suggested = Math.ceil(Math.max(5, maxVal * 1.3));
+                      return Math.min(30, suggested);
+                    } catch(e) { return 10; }
+                  })(),
+                  grid: { drawOnChartArea: false }
+                }
+            }
+          }
+        });
+      </script>
+    {% endif %}
+
+    <form method="get" action="/">
+      <input name="q" type="text" placeholder="Hundename oder ZBNr suchen" autofocus />
+      <button type="submit">Suchen</button>
+    </form>
+
+    <p>Geben Sie einen Namen oder eine Zuchtbuchnummer ein und drücken Sie "Suchen".</p>
+  </body>
+</html>
