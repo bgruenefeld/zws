@@ -43,14 +43,14 @@
 
       .pairing-form {
         display: grid;
-        grid-template-columns: minmax(300px, 1fr) minmax(820px, 1.6fr) auto;
+        grid-template-columns: minmax(300px, 1fr) minmax(680px, 1.45fr) auto;
         gap: 14px;
         align-items: end;
       }
 
       .sire-filter {
         display: grid;
-        grid-template-columns: minmax(220px, 1fr) 90px 90px 130px 150px 130px;
+        grid-template-columns: minmax(220px, 1fr) 90px 90px 130px 150px;
         gap: 12px;
       }
 
@@ -400,11 +400,108 @@
         top: 0;
       }
 
+      .relative-sort {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-radius: 0;
+        color: inherit;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-weight: inherit;
+        gap: 4px;
+        padding: 0;
+        text-align: left;
+        white-space: nowrap;
+      }
+
+      .relative-sort:hover {
+        background: transparent;
+        color: #2563eb;
+        text-decoration: underline;
+      }
+
+      .relative-sort-indicator {
+        color: #2563eb;
+        font-size: 10px;
+      }
+
       .empty-state,
       .loading {
         color: #667085;
         font-size: 13px;
         padding: 14px;
+      }
+
+      .modal-backdrop {
+        align-items: center;
+        background: rgba(15, 23, 42, 0.48);
+        display: none;
+        inset: 0;
+        justify-content: center;
+        padding: 24px;
+        position: fixed;
+        z-index: 1000;
+      }
+
+      .modal-backdrop.open {
+        display: flex;
+      }
+
+      .modal-dialog {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+        max-height: min(840px, calc(100vh - 48px));
+        max-width: 1280px;
+        overflow: hidden;
+        width: min(100%, 1280px);
+      }
+
+      .modal-head {
+        align-items: flex-start;
+        border-bottom: 1px solid #e1e7ee;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        padding: 18px 20px;
+      }
+
+      .modal-head h2 {
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+
+      .modal-meta {
+        color: #667085;
+        font-size: 13px;
+      }
+
+      .modal-close {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #dbe2ea;
+        color: #243447;
+        display: inline-flex;
+        height: 34px;
+        justify-content: center;
+        padding: 0;
+        width: 34px;
+      }
+
+      .modal-close:hover {
+        background: #edf2f7;
+      }
+
+      .modal-body {
+        max-height: calc(min(840px, 100vh - 48px) - 72px);
+        overflow: auto;
+        padding: 20px;
+      }
+
+      body.modal-open {
+        overflow: hidden;
       }
 
       .hint {
@@ -427,6 +524,10 @@
           grid-template-columns: 1fr;
         }
 
+        .modal-backdrop {
+          padding: 12px;
+        }
+
         .sire-filter {
           grid-template-columns: 1fr;
         }
@@ -444,7 +545,7 @@
     <main class="container">
       {% macro sort_link(label, key) -%}
         {%- set next_dir = 'desc' if sire_sort_by == key and sire_sort_dir == 'asc' else 'asc' -%}
-        <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_sd_status=sire_sd_status, sire_search='1', sire_page=1, sire_sort_by=key, sire_sort_dir=next_dir) }}">
+        <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_search='1', sire_page=1, sire_sort_by=key, sire_sort_dir=next_dir) }}">
           {{ label }}{% if sire_sort_by == key %} {{ '▲' if sire_sort_dir == 'asc' else '▼' }}{% endif %}
         </a>
       {%- endmacro %}
@@ -473,29 +574,17 @@
             </label>
             <label>
               Max. ED-ZW
-              <input name="sire_max_ebv" value="{{ sire_max_ebv }}" type="number" min="0" step="1" placeholder="z. B. 95">
+              <input name="sire_max_ebv" value="{{ sire_max_ebv }}" type="number" min="-100" step="1" placeholder="z. B. -5">
             </label>
             <label>
               Mind. Nachkommen
               <input name="sire_min_offspring" value="{{ sire_min_offspring }}" type="number" min="0" step="1" placeholder="z. B. 5">
-            </label>
-            <label>
-              SD-Status
-              <select name="sire_sd_status">
-                <option value="" {% if not sire_sd_status %}selected{% endif %}>egal</option>
-                <option value="frei" {% if sire_sd_status == "frei" %}selected{% endif %}>frei</option>
-                <option value="traeger" {% if sire_sd_status == "traeger" %}selected{% endif %}>Träger</option>
-                <option value="betroffen" {% if sire_sd_status == "betroffen" %}selected{% endif %}>betroffen</option>
-              </select>
             </label>
           </div>
           <button type="submit">Rüden suchen</button>
         </form>
         <div class="hint">
           Wähle zuerst die Hündin aus, grenze die Rüden über Name, Zuchtbuchnummer oder Alter ein und starte dann die Suche. Ein Klick auf „Auswählen“ berechnet die Verpaarung.
-          {% if sire_sd_status and not sire_sd_filter_available %}
-            Für den SD-Status ist in den aktuell geladenen Daten noch keine Spalte vorhanden.
-          {% endif %}
         </div>
       </section>
 
@@ -506,7 +595,7 @@
       {% if sire_search == "1" %}
         <section class="panel" id="sireCandidatePanel">
           <div class="candidate-head">
-            <h2>Passende Rüden</h2>
+            <h2>Suchergebnisse Rüden</h2>
             <div class="candidate-count">
               {% if sire_total == 1 %}
                 1 Treffer
@@ -523,8 +612,7 @@
                   <th>{{ sort_link("Name", "name") }}</th>
                   <th>{{ sort_link("ZBNr", "zbnr") }}</th>
                   <th>{{ sort_link("Alter", "alter") }}</th>
-                  <th>ED</th>
-                  <th>SD</th>
+                  <th>ED</th>                   
                   <th>{{ sort_link("Nachkommen", "nachkommen") }}</th>
                   <th>{{ sort_link("ED-Zuchtwert", "zuchtwert") }}</th>
                   <th>{{ sort_link("Sicherheit", "konfidenz") }}</th>
@@ -537,13 +625,12 @@
                     <td>{{ dog.name or "unbekannt" }}</td>
                     <td>{{ dog.zbnr or "—" }}</td>
                     <td>{% if dog.alter is not none %}{{ dog.alter }} Jahre{% else %}—{% endif %}</td>
-                    <td>{{ dog.ed or "—" }}</td>
-                    <td>{{ dog.sd_status or "—" }}</td>
+                    <td>{{ dog.ed or "—" }}</td>                    
                     <td>{% if dog.anz_nachkommen is not none %}{{ dog.anz_nachkommen }}{% else %}—{% endif %}</td>
                     <td>{% if dog.zuchtwert is not none %}{{ dog.zuchtwert }}{% else %}—{% endif %}</td>
                     <td>{% if dog.konfidenz is not none %}{{ dog.konfidenz }} %{% else %}—{% endif %}</td>
                     <td>
-                      <a class="candidate-action" href="{{ url_for('pairing', sire=sire_input, selected_sire=dog.zbnr, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_sd_status=sire_sd_status, sire_search='1', sire_page=sire_page, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">
+                      <a class="candidate-action" href="{{ url_for('pairing', sire=sire_input, selected_sire=dog.zbnr, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_search='1', sire_page=sire_page, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">
                         Auswählen
                       </a>
                     </td>
@@ -555,7 +642,7 @@
             {% if sire_page_count > 1 %}
               <nav class="pager" aria-label="Rüden Trefferseiten">
                 {% if sire_page > 1 %}
-                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_sd_status=sire_sd_status, sire_search='1', sire_page=sire_page - 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Zurück</a>
+                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_search='1', sire_page=sire_page - 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Zurück</a>
                 {% else %}
                   <span class="disabled">Zurück</span>
                 {% endif %}
@@ -565,7 +652,7 @@
                     {% if page_no == sire_page %}
                       <span class="active">{{ page_no }}</span>
                     {% else %}
-                      <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_sd_status=sire_sd_status, sire_search='1', sire_page=page_no, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">{{ page_no }}</a>
+                      <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_search='1', sire_page=page_no, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">{{ page_no }}</a>
                     {% endif %}
                   {% elif page_no == 2 or page_no == sire_page_count - 1 %}
                     <span class="disabled">…</span>
@@ -573,7 +660,7 @@
                 {% endfor %}
 
                 {% if sire_page < sire_page_count %}
-                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_sd_status=sire_sd_status, sire_search='1', sire_page=sire_page + 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Weiter</a>
+                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_search='1', sire_page=sire_page + 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Weiter</a>
                 {% else %}
                   <span class="disabled">Weiter</span>
                 {% endif %}
@@ -681,8 +768,38 @@
       {% endif %}
     </main>
 
+    <div class="modal-backdrop" id="pairingRelativesModal" aria-hidden="true">
+      <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="pairingRelativesModalTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="pairingRelativesModalTitle">Verwandtschaft</h2>
+            <div class="modal-meta" id="pairingRelativesModalMeta"></div>
+          </div>
+          <button type="button" class="modal-close" id="pairingRelativesModalClose" aria-label="Popup schließen">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="relatives-grid">
+            <div class="relative-section">
+              <h3 id="pairingModalSiblingsTitle">Wurfgeschwister</h3>
+              <div class="relative-body" id="pairingModalSiblingsBody">
+                <div class="empty-state">Noch kein Hund ausgewählt.</div>
+              </div>
+            </div>
+            <div class="relative-section">
+              <h3 id="pairingModalOffspringTitle">Nachkommen</h3>
+              <div class="relative-body" id="pairingModalOffspringBody">
+                <div class="empty-state">Noch kein Hund ausgewählt.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
       let selectedPairingRelationZbnr = null;
+      let currentPairingOffspring = [];
+      let offspringSort = { column: null, direction: 'asc' };
 
       function escapeHtml(value) {
         return String(value ?? '')
@@ -693,11 +810,50 @@
           .replace(/'/g, '&#39;');
       }
 
-      function renderRelativeTable(dogs, emptyText) {
+      function sortValue(dog, column) {
+        if (column === 'zuchtwert' || column === 'konfidenz' || column === 'anz_nachkommen') {
+          const value = Number(dog[column]);
+          return Number.isFinite(value) ? value : null;
+        }
+        if (column === 'wurfdatum') {
+          const value = Date.parse(dog.wurfdatum || '');
+          return Number.isFinite(value) ? value : null;
+        }
+        return String(dog[column] ?? '').toLocaleLowerCase('de-DE');
+      }
+
+      function compareDogs(a, b, column, direction) {
+        const aValue = sortValue(a, column);
+        const bValue = sortValue(b, column);
+        if (aValue === null && bValue === null) return 0;
+        if (aValue === null) return 1;
+        if (bValue === null) return -1;
+        if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+        return String(a.name || '').localeCompare(String(b.name || ''), 'de-DE');
+      }
+
+      function relativeHeader(label, column, sortable) {
+        if (!sortable) return '<th>' + escapeHtml(label) + '</th>';
+        const active = offspringSort.column === column;
+        const indicator = active
+          ? '<span class="relative-sort-indicator">' + (offspringSort.direction === 'asc' ? '▲' : '▼') + '</span>'
+          : '';
+        return `
+          <th>
+            <button type="button" class="relative-sort" onclick="sortPairingOffspring('${column}')">
+              ${escapeHtml(label)}${indicator}
+            </button>
+          </th>
+        `;
+      }
+
+      function renderRelativeTable(dogs, emptyText, options = {}) {
         if (!dogs || dogs.length === 0) {
           return '<div class="empty-state">' + escapeHtml(emptyText) + '</div>';
         }
 
+        const sortable = Boolean(options.sortable);
         const rows = dogs.map(dog => `
           <tr>
             <td>${escapeHtml(dog.name || 'unbekannt')}</td>
@@ -705,6 +861,7 @@
             <td>${escapeHtml(dog.wurfdatum || '—')}</td>
             <td>${escapeHtml(dog.geschlecht || '—')}</td>
             <td>${escapeHtml(dog.ed || '—')}</td>
+            <td>${dog.anz_nachkommen != null ? escapeHtml(dog.anz_nachkommen) : '—'}</td>
             <td>${dog.zuchtwert != null ? escapeHtml(dog.zuchtwert) : '—'}</td>
             <td>${dog.konfidenz != null ? escapeHtml(dog.konfidenz + ' %') : '—'}</td>
           </tr>
@@ -714,18 +871,53 @@
           <table class="relative-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>ZBNr</th>
-                <th>Wurfdatum</th>
-                <th>Geschlecht</th>
-                <th>ED</th>
-                <th>ZW</th>
-                <th>Sicherheit</th>
+                ${relativeHeader('Name', 'name', sortable)}
+                ${relativeHeader('ZBNr', 'zbnr', sortable)}
+                ${relativeHeader('Wurfdatum', 'wurfdatum', sortable)}
+                ${relativeHeader('Geschlecht', 'geschlecht', sortable)}
+                ${relativeHeader('ED', 'ed', sortable)}
+                ${relativeHeader('Nachkommen', 'anz_nachkommen', sortable)}
+                ${relativeHeader('ZW', 'zuchtwert', sortable)}
+                ${relativeHeader('Sicherheit', 'konfidenz', sortable)}
               </tr>
             </thead>
             <tbody>${rows}</tbody>
           </table>
         `;
+      }
+
+      function renderPairingOffspring() {
+        const dogs = offspringSort.column
+          ? [...currentPairingOffspring].sort((a, b) => compareDogs(a, b, offspringSort.column, offspringSort.direction))
+          : currentPairingOffspring;
+        document.getElementById('pairingOffspringBody').innerHTML = renderRelativeTable(
+          dogs,
+          'Keine Nachkommen gefunden.',
+          { sortable: true }
+        );
+      }
+
+      function openRelativesModal() {
+        const modal = document.getElementById('pairingRelativesModal');
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+      }
+
+      function closeRelativesModal() {
+        const modal = document.getElementById('pairingRelativesModal');
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+      }
+
+      function sortPairingOffspring(column) {
+        if (offspringSort.column === column) {
+          offspringSort.direction = offspringSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          offspringSort = { column, direction: 'asc' };
+        }
+        renderPairingOffspring();
       }
 
       function setPairingRelativesLoading(zbnr) {
@@ -736,6 +928,13 @@
         document.getElementById('pairingOffspringTitle').textContent = 'Nachkommen';
         document.getElementById('pairingSiblingsBody').innerHTML = loading;
         document.getElementById('pairingOffspringBody').innerHTML = loading;
+        document.getElementById('pairingRelativesModalTitle').textContent = 'Verwandtschaft';
+        document.getElementById('pairingRelativesModalMeta').textContent = 'ZBNr ' + zbnr;
+        document.getElementById('pairingModalSiblingsTitle').textContent = 'Wurfgeschwister';
+        document.getElementById('pairingModalOffspringTitle').textContent = 'Nachkommen';
+        document.getElementById('pairingModalSiblingsBody').innerHTML = loading;
+        document.getElementById('pairingModalOffspringBody').innerHTML = loading;
+        openRelativesModal();
       }
 
       function loadPairingRelatives(zbnr) {
@@ -753,6 +952,8 @@
             const dog = data.dog || {};
             const siblings = data.littermates || [];
             const offspring = data.offspring || [];
+            currentPairingOffspring = offspring;
+            offspringSort = { column: null, direction: 'asc' };
             const title = dog.name || 'unbekannt';
             const meta = [
               dog.zbnr ? 'ZBNr ' + dog.zbnr : null,
@@ -765,16 +966,26 @@
             document.getElementById('pairingRelativesMeta').textContent = meta;
             document.getElementById('pairingSiblingsTitle').textContent = 'Wurfgeschwister von ' + title;
             document.getElementById('pairingOffspringTitle').textContent = 'Nachkommen von ' + title;
+            document.getElementById('pairingRelativesModalTitle').textContent = 'Ausgewählt: ' + title;
+            document.getElementById('pairingRelativesModalMeta').textContent = meta;
+            document.getElementById('pairingModalSiblingsTitle').textContent = 'Wurfgeschwister von ' + title;
+            document.getElementById('pairingModalOffspringTitle').textContent = 'Nachkommen von ' + title;
             document.getElementById('pairingSiblingsBody').innerHTML = data.message
               ? '<div class="empty-state">' + escapeHtml(data.message) + '</div>'
               : renderRelativeTable(siblings, 'Keine Wurfgeschwister gefunden.');
-            document.getElementById('pairingOffspringBody').innerHTML = renderRelativeTable(offspring, 'Keine Nachkommen gefunden.');
+            renderPairingOffspring();
+            document.getElementById('pairingModalSiblingsBody').innerHTML = data.message
+              ? '<div class="empty-state">' + escapeHtml(data.message) + '</div>'
+              : renderRelativeTable(siblings, 'Keine Wurfgeschwister gefunden.');
+            document.getElementById('pairingModalOffspringBody').innerHTML = renderRelativeTable(offspring, 'Keine Nachkommen gefunden.');
           })
           .catch(error => {
             if (selectedPairingRelationZbnr !== zbnr) return;
             const errorHtml = '<div class="empty-state">Fehler beim Laden: ' + escapeHtml(error.message) + '</div>';
             document.getElementById('pairingSiblingsBody').innerHTML = errorHtml;
             document.getElementById('pairingOffspringBody').innerHTML = errorHtml;
+            document.getElementById('pairingModalSiblingsBody').innerHTML = errorHtml;
+            document.getElementById('pairingModalOffspringBody').innerHTML = errorHtml;
           });
       }
 
@@ -818,6 +1029,14 @@
             .catch(() => {});
         });
       }
+
+      document.getElementById('pairingRelativesModalClose').addEventListener('click', closeRelativesModal);
+      document.getElementById('pairingRelativesModal').addEventListener('click', event => {
+        if (event.target.id === 'pairingRelativesModal') closeRelativesModal();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeRelativesModal();
+      });
 
       attachDamSuggest();
       attachPairingPedigreeClick();

@@ -158,7 +158,6 @@ def dog_summary(row):
         "geschlecht": clean_text(row.get("Geschlecht")) or clean_text(row.get("sex")),
         "hd": clean_text(row.get("HD_Grad")) or clean_text(row.get("HD")),
         "ed": ed,
-        "sd_status": dog_sd_status(row),
         "anz_nachkommen": dog_offspring_count(row),
         "zuchtwert": ebv,
         "zuchtwert_marker": zuchtwert_marker_position(ebv),
@@ -268,12 +267,6 @@ def ensure_pairing_search_columns():
     MERGED_DF["_confidence_numeric"] = pd.to_numeric(MERGED_DF.get("Confidenz"), errors="coerce")
     MERGED_DF["_offspring_numeric"] = pd.to_numeric(MERGED_DF.get("AnzNachkommen"), errors="coerce")
 
-    sd_col = sd_status_column()
-    if sd_col:
-        MERGED_DF["_sd_status_normalized"] = MERGED_DF[sd_col].map(normalize_sd_status)
-    elif "_sd_status_normalized" not in MERGED_DF.columns:
-        MERGED_DF["_sd_status_normalized"] = ""
-
     PAIRING_SEARCH_CACHE_DATE = today
 
 
@@ -339,65 +332,11 @@ def dog_matches_min_offspring(row, min_offspring=None):
     return count is not None and count >= min_offspring
 
 
-SD_STATUS_COLUMNS = [
-    "SD_Status",
-    "SD",
-    "sd_status",
-    "sd",
-    "Skelettdysplasie",
-    "Skelettdysplasie_Status",
-]
-
-
-def sd_status_column():
-    return next((col for col in SD_STATUS_COLUMNS if col in MERGED_DF.columns), None)
-
-
-def normalize_sd_status(value):
-    text = clean_text(value).lower()
-    if not text or text in {"-", "unbekannt", "unknown"}:
-        return ""
-    if text in {"frei", "free", "clear", "normal", "n/n", "n"}:
-        return "frei"
-    if text in {"träger", "traeger", "carrier", "n/sd", "sd/n", "heterozygot"}:
-        return "traeger"
-    if text in {"betroffen", "affected", "sd/sd", "homozygot"}:
-        return "betroffen"
-    return text
-
-
-def sd_status_label(value):
-    normalized = normalize_sd_status(value)
-    labels = {
-        "frei": "frei",
-        "traeger": "Träger",
-        "betroffen": "betroffen",
-    }
-    return labels.get(normalized, clean_text(value))
-
-
-def dog_sd_status(row):
-    for col in SD_STATUS_COLUMNS:
-        if col in row:
-            label = sd_status_label(row.get(col))
-            if label:
-                return label
-    return ""
-
-
-def dog_matches_sd_status(row, sd_status=""):
-    expected = normalize_sd_status(sd_status)
-    if not expected:
-        return True
-    return normalize_sd_status(dog_sd_status(row)) == expected
-
-
 def get_sire_candidates(
     min_age=None,
     max_age=None,
     max_ebv=None,
     min_offspring=None,
-    sd_status="",
     query="",
     sort_by="zuchtwert",
     sort_dir="asc",
@@ -420,9 +359,6 @@ def get_sire_candidates(
         candidates = candidates[
             candidates["_offspring_numeric"].notna() & (candidates["_offspring_numeric"] >= min_offspring)
         ]
-    normalized_sd_status = normalize_sd_status(sd_status)
-    if sd_status_column() and normalized_sd_status:
-        candidates = candidates[candidates["_sd_status_normalized"] == normalized_sd_status]
 
     sort_map = {
         "name": "_sort_name",
@@ -755,7 +691,6 @@ def pairing():
     sire_max_age = request.args.get("sire_max_age", "").strip()
     sire_max_ebv = request.args.get("sire_max_ebv", "").strip()
     sire_min_offspring = request.args.get("sire_min_offspring", "").strip()
-    sire_sd_status = request.args.get("sire_sd_status", "").strip()
     sire_search = request.args.get("sire_search", "").strip()
     sire_page = request.args.get("sire_page", "1").strip()
     sire_sort_by = request.args.get("sire_sort_by", "zuchtwert").strip().lower()
@@ -782,7 +717,6 @@ def pairing():
             max_age=max_age,
             max_ebv=max_ebv,
             min_offspring=min_offspring,
-            sd_status=sire_sd_status,
             query=sire_input,
             sort_by=sire_sort_by,
             sort_dir=sire_sort_dir,
@@ -805,8 +739,6 @@ def pairing():
         "sire_max_age": sire_max_age,
         "sire_max_ebv": sire_max_ebv,
         "sire_min_offspring": sire_min_offspring,
-        "sire_sd_status": sire_sd_status,
-        "sire_sd_filter_available": sd_status_column() is not None,
         "sire_search": sire_search,
         "sire_candidates": sire_candidates,
         "sire_total": sire_total,
@@ -838,9 +770,6 @@ def pairing():
                 return render_template("pairing.html", **context)
             if not dog_matches_min_offspring(sire, min_offspring=min_offspring):
                 context["error"] = "Der ausgewählte Rüde passt nicht zur angegebenen Mindestanzahl an Nachkommen."
-                return render_template("pairing.html", **context)
-            if sd_status_column() and not dog_matches_sd_status(sire, sire_sd_status):
-                context["error"] = "Der ausgewählte Rüde passt nicht zum angegebenen SD-Status."
                 return render_template("pairing.html", **context)
 
             planned_zbnr, pairing_index = make_pairing_index(sire, dam)
