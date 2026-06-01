@@ -1074,54 +1074,59 @@ def pedigree_metrics():
 
 @app.route("/littermates")
 def littermates():
-    zbnr = clean_text(request.args.get("zbnr"))
-    if not zbnr:
+    requested_zbnr = clean_text(request.args.get("zbnr"))
+    if not requested_zbnr:
         return jsonify({"error": "no zbnr provided"}), 400
 
-    dog = ZBNR_INDEX.get(zbnr)
+    zbnr = pt.normalize_zbnr(requested_zbnr) or requested_zbnr
+    dog = ZBNR_INDEX.get(zbnr) or ZBNR_INDEX.get(requested_zbnr)
     if dog is None:
         return jsonify({"error": "dog not found"}), 404
 
+    dog_zbnr = clean_text(dog.get("ZBNr_norm") or dog.get("ZBNr") or zbnr)
+    dog_zbnr = pt.normalize_zbnr(dog_zbnr) or dog_zbnr
     father = clean_text(dog.get("vater_zbnr_norm") or dog.get("vater_zbnr"))
     mother = clean_text(dog.get("mutter_zbnr_norm") or dog.get("mutter_zbnr"))
+    father = pt.normalize_zbnr(father) or father
+    mother = pt.normalize_zbnr(mother) or mother
     litter_date = clean_text(dog.get("Wurfdatum") or dog.get("geburt"))
 
-    if not father or not mother or not litter_date:
-        return jsonify(
-            {
-                "dog": dog_summary(dog),
-                "littermates": [],
-                "message": "Für diesen Hund fehlen Vater, Mutter oder Wurfdatum.",
-            }
-        )
+    def normalized_zbnr(value):
+        text = clean_text(value)
+        return pt.normalize_zbnr(text) or text
 
-    father_series = MERGED_DF.get("vater_zbnr_norm", pd.Series([""] * len(MERGED_DF))).map(clean_text)
-    mother_series = MERGED_DF.get("mutter_zbnr_norm", pd.Series([""] * len(MERGED_DF))).map(clean_text)
+    father_series = MERGED_DF.get("vater_zbnr_norm", pd.Series([""] * len(MERGED_DF))).map(normalized_zbnr)
+    mother_series = MERGED_DF.get("mutter_zbnr_norm", pd.Series([""] * len(MERGED_DF))).map(normalized_zbnr)
     date_series = MERGED_DF.get("Wurfdatum", pd.Series([""] * len(MERGED_DF))).map(clean_text)
     zbnr_series = (
-        MERGED_DF["ZBNr_norm"].map(clean_text)
+        MERGED_DF["ZBNr_norm"].map(normalized_zbnr)
         if "ZBNr_norm" in MERGED_DF.columns
-        else MERGED_DF["ZBNr"].map(clean_text)
+        else MERGED_DF["ZBNr"].map(normalized_zbnr)
     )
 
-    mask = (
-        (father_series == father)
-        & (mother_series == mother)
-        & (date_series == litter_date)
-        & (zbnr_series != zbnr)
-    )
-
-    siblings = [
-        dog_summary(row)
-        for row in MERGED_DF.loc[mask].sort_values(by="Name", na_position="last").to_dict(orient="records")
-    ]
-
-    offspring_mask = (father_series == zbnr) | (mother_series == zbnr)
+    offspring_mask = (father_series == dog_zbnr) | (mother_series == dog_zbnr)
     offspring = [
         dog_summary(row)
         for row in MERGED_DF.loc[offspring_mask]
         .sort_values(by=["Wurfdatum", "Name"], na_position="last")
         .to_dict(orient="records")
+    ]
+
+    message = None
+    if not father or not mother or not litter_date:
+        message = "Für diesen Hund fehlen Vater, Mutter oder Wurfdatum. Wurfgeschwister können deshalb nicht sicher ermittelt werden."
+        mask = pd.Series([False] * len(MERGED_DF), index=MERGED_DF.index)
+    else:
+        mask = (
+            (father_series == father)
+            & (mother_series == mother)
+            & (date_series == litter_date)
+            & (zbnr_series != dog_zbnr)
+        )
+
+    siblings = [
+        dog_summary(row)
+        for row in MERGED_DF.loc[mask].sort_values(by="Name", na_position="last").to_dict(orient="records")
     ]
 
     return jsonify(
@@ -1134,6 +1139,7 @@ def littermates():
             "litter_date": litter_date,
             "littermates": siblings,
             "offspring": offspring,
+            "message": message,
         }
     )
 
