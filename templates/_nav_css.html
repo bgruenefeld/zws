@@ -1,0 +1,58 @@
+.app-nav {
+  background: #ffffff;
+  border-bottom: 1px solid #dfe5ec;
+}
+
+.app-nav__inner {
+  max-width: 1760px;
+  margin: 0 auto;
+  padding: 0 20px;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.app-nav__brand {
+  color: #1f3a52;
+  font-size: 16px;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-nav__links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.app-nav__links a {
+  color: #52606d;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 10px;
+  text-decoration: none;
+}
+
+.app-nav__links a:hover {
+  background: #edf4fb;
+  color: #2563eb;
+}
+
+@media (max-width: 640px) {
+  .app-nav__inner {
+    align-items: flex-start;
+    flex-direction: column;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .app-nav__links {
+    justify-content: flex-start;
+  }
+}

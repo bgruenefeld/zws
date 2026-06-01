@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Zuchtwertschätzung für Ellbogendysplasie beim Labrador Retriever</title>
   <style>
+    {% include "_nav_css.html" %}
     :root {
       --zws-bg: #f7f8fa;
       --zws-card-bg: #ffffff;
@@ -25,7 +26,7 @@
       margin: 0;
       background: var(--zws-bg);
       color: var(--zws-text);
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       line-height: 1.65;
     }
 
@@ -33,23 +34,6 @@
       max-width: 980px;
       margin: 0 auto;
       padding: 2rem 1rem 4rem;
-    }
-
-    .zws-topnav {
-      display: flex;
-      justify-content: space-between;
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .zws-topnav a {
-      color: var(--zws-accent);
-      font-weight: 650;
-      text-decoration: none;
-    }
-
-    .zws-topnav a:hover {
-      text-decoration: underline;
     }
 
     .zws-article__card {
@@ -238,11 +222,8 @@
   </style>
 </head>
 <body>
+  {% include "_nav.html" %}
   <main class="zws-article">
-    <nav class="zws-topnav" aria-label="Seitennavigation">
-      <a href="/">Zur Suche</a>
-      <a href="/">Zur Datenbank</a>
-    </nav>
     <article class="zws-article__card">
       <header>
         <span class="zws-kicker">Zuchtwertschätzung ED</span>

@@ -1,6 +1,7 @@
 from pathlib import Path
 from urllib.parse import quote_plus
 import math
+from datetime import date
 
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify
 import re
@@ -134,6 +135,7 @@ def clean_text(value):
 
 
 def dog_summary(row):
+    age_years = calculate_age_years(row)
     ed = clean_text(row.get("ED_rechts")) or clean_text(row.get("ED_rechts_raw")) or clean_text(row.get("ED_links"))
     try:
         ebv_raw = row.get("EBV") or row.get("ed_zw_0_10_niedrig_gut")
@@ -151,12 +153,293 @@ def dog_summary(row):
         "name": clean_text(row.get("Name")) or "unbekannt",
         "zbnr": clean_text(row.get("ZBNr_norm")) or clean_text(row.get("ZBNr")),
         "wurfdatum": clean_text(row.get("Wurfdatum")) or clean_text(row.get("geburt")),
+        "alter": age_years,
         "geschlecht": clean_text(row.get("Geschlecht")) or clean_text(row.get("sex")),
         "hd": clean_text(row.get("HD_Grad")) or clean_text(row.get("HD")),
         "ed": ed,
+        "sd_status": dog_sd_status(row),
+        "anz_nachkommen": dog_offspring_count(row),
         "zuchtwert": ebv,
+        "zuchtwert_marker": zuchtwert_marker_position(ebv),
         "konfidenz": confidence,
     }
+
+
+def parse_int_filter(value):
+    text = clean_text(value)
+    if not text:
+        return None
+    try:
+        return int(text)
+    except Exception:
+        return None
+
+
+def zuchtwert_marker_position(value):
+    if value is None:
+        return None
+    try:
+        numeric = float(value)
+    except Exception:
+        return None
+    lower = -20
+    upper = 20
+    clamped = max(lower, min(upper, numeric))
+    return (clamped - lower) / (upper - lower) * 100
+
+
+def calculate_age_years(row, today=None):
+    today = today or date.today()
+    birth = clean_text(row.get("Wurfdatum") or row.get("geburt"))
+    if birth:
+        birth_date = pd.to_datetime(birth, errors="coerce")
+        if pd.notna(birth_date):
+            bdate = birth_date.date()
+            return today.year - bdate.year - ((today.month, today.day) < (bdate.month, bdate.day))
+
+    birth_year_raw = clean_text(row.get("geburtsjahr") or row.get("birthyear_clean"))
+    try:
+        return today.year - int(float(birth_year_raw))
+    except Exception:
+        return None
+
+
+def apply_age_filter(df, min_age=None, max_age=None):
+    if min_age is None and max_age is None:
+        return df
+
+    ages = df.apply(calculate_age_years, axis=1)
+    mask = pd.Series([True] * len(df), index=df.index)
+    if min_age is not None:
+        mask &= ages.notna() & (ages >= min_age)
+    if max_age is not None:
+        mask &= ages.notna() & (ages <= max_age)
+    return df.loc[mask]
+
+
+def dog_matches_age(row, min_age=None, max_age=None):
+    age = calculate_age_years(row)
+    if min_age is not None and (age is None or age < min_age):
+        return False
+    if max_age is not None and (age is None or age > max_age):
+        return False
+    return True
+
+
+def dog_ebv_value(row):
+    return pt.to_float_or_none(row.get("EBV") or row.get("ed_zw_0_10_niedrig_gut"))
+
+
+def dog_offspring_count(row):
+    value = clean_text(row.get("AnzNachkommen"))
+    if not value:
+        return None
+    try:
+        return int(float(value))
+    except Exception:
+        return None
+
+
+def dog_matches_max_ebv(row, max_ebv=None):
+    if max_ebv is None:
+        return True
+    ebv = dog_ebv_value(row)
+    return ebv is not None and ebv <= max_ebv
+
+
+def dog_matches_min_offspring(row, min_offspring=None):
+    if min_offspring is None:
+        return True
+    count = dog_offspring_count(row)
+    return count is not None and count >= min_offspring
+
+
+SD_STATUS_COLUMNS = [
+    "SD_Status",
+    "SD",
+    "sd_status",
+    "sd",
+    "Skelettdysplasie",
+    "Skelettdysplasie_Status",
+]
+
+
+def sd_status_column():
+    return next((col for col in SD_STATUS_COLUMNS if col in MERGED_DF.columns), None)
+
+
+def normalize_sd_status(value):
+    text = clean_text(value).lower()
+    if not text or text in {"-", "unbekannt", "unknown"}:
+        return ""
+    if text in {"frei", "free", "clear", "normal", "n/n", "n"}:
+        return "frei"
+    if text in {"träger", "traeger", "carrier", "n/sd", "sd/n", "heterozygot"}:
+        return "traeger"
+    if text in {"betroffen", "affected", "sd/sd", "homozygot"}:
+        return "betroffen"
+    return text
+
+
+def sd_status_label(value):
+    normalized = normalize_sd_status(value)
+    labels = {
+        "frei": "frei",
+        "traeger": "Träger",
+        "betroffen": "betroffen",
+    }
+    return labels.get(normalized, clean_text(value))
+
+
+def dog_sd_status(row):
+    for col in SD_STATUS_COLUMNS:
+        if col in row:
+            label = sd_status_label(row.get(col))
+            if label:
+                return label
+    return ""
+
+
+def dog_matches_sd_status(row, sd_status=""):
+    expected = normalize_sd_status(sd_status)
+    if not expected:
+        return True
+    return normalize_sd_status(dog_sd_status(row)) == expected
+
+
+def get_sire_candidates(
+    min_age=None,
+    max_age=None,
+    max_ebv=None,
+    min_offspring=None,
+    sd_status="",
+    query="",
+    sort_by="zuchtwert",
+    sort_dir="asc",
+):
+    candidates = MERGED_DF[
+        MERGED_DF["Geschlecht"].fillna("").astype(str).str.strip() == "R"
+    ].copy()
+
+    q = clean_text(query).lower()
+    if q:
+        candidates = candidates[
+            candidates["Name"].fillna("").str.lower().str.contains(q, na=False, regex=False)
+            | candidates["ZBNr"].fillna("").str.lower().str.contains(q, na=False, regex=False)
+            | candidates["ZBNr_norm"].fillna("").str.lower().str.contains(q, na=False, regex=False)
+        ].copy()
+
+    candidates = apply_age_filter(candidates, min_age=min_age, max_age=max_age)
+    candidates = candidates.assign(
+        sort_name=candidates["Name"].fillna("").astype(str).str.lower(),
+        sort_zbnr=candidates["ZBNr_norm"].fillna(candidates["ZBNr"]).fillna("").astype(str),
+        sort_age=candidates.apply(calculate_age_years, axis=1),
+        sort_ebv=pd.to_numeric(candidates.get("EBV"), errors="coerce"),
+        sort_confidence=pd.to_numeric(candidates.get("Confidenz"), errors="coerce"),
+        sort_offspring=pd.to_numeric(candidates.get("AnzNachkommen"), errors="coerce"),
+    )
+    if max_ebv is not None:
+        candidates = candidates[candidates["sort_ebv"].notna() & (candidates["sort_ebv"] <= max_ebv)].copy()
+    if min_offspring is not None:
+        candidates = candidates[
+            candidates["sort_offspring"].notna() & (candidates["sort_offspring"] >= min_offspring)
+        ].copy()
+    sd_col = sd_status_column()
+    normalized_sd_status = normalize_sd_status(sd_status)
+    if sd_col and normalized_sd_status:
+        candidates = candidates[
+            candidates[sd_col].map(normalize_sd_status) == normalized_sd_status
+        ].copy()
+
+    sort_map = {
+        "name": "sort_name",
+        "zbnr": "sort_zbnr",
+        "alter": "sort_age",
+        "zuchtwert": "sort_ebv",
+        "konfidenz": "sort_confidence",
+        "nachkommen": "sort_offspring",
+    }
+    sort_col = sort_map.get(sort_by, "sort_ebv")
+    ascending = sort_dir != "desc"
+    candidates = candidates.sort_values(by=[sort_col, "sort_name"], ascending=[ascending, True], na_position="last")
+
+    return candidates
+
+
+def parse_selected_zbnr(value):
+    text = clean_text(value)
+    if "|" in text:
+        text = text.rsplit("|", 1)[1].strip()
+    return pt.normalize_zbnr(text) or text
+
+
+def resolve_dog(value, required_sex=None):
+    query = clean_text(value)
+    if not query:
+        return None
+
+    zbnr = parse_selected_zbnr(query)
+    dog = ZBNR_INDEX.get(zbnr)
+    if dog is not None:
+        if required_sex and clean_text(dog.get("Geschlecht")) != required_sex:
+            return None
+        return dog
+
+    q = query.lower()
+    matches = MERGED_DF[
+        MERGED_DF["Name"].fillna("").str.lower().str.contains(q, na=False)
+        | MERGED_DF["ZBNr"].fillna("").str.lower().str.contains(q, na=False)
+        | MERGED_DF["ZBNr_norm"].fillna("").str.lower().str.contains(q, na=False)
+    ].copy()
+
+    if required_sex:
+        matches = matches[matches["Geschlecht"].fillna("").astype(str).str.strip() == required_sex]
+
+    if matches.empty:
+        return None
+
+    row = matches.iloc[0].to_dict()
+    resolved_zbnr = clean_text(row.get("ZBNr_norm")) or clean_text(row.get("ZBNr"))
+    return ZBNR_INDEX.get(resolved_zbnr) or row
+
+
+def make_pairing_index(sire, dam):
+    planned_zbnr = "__PLANNED_PAIRING__"
+    sire_zbnr = clean_text(sire.get("ZBNr_norm") or sire.get("ZBNr"))
+    dam_zbnr = clean_text(dam.get("ZBNr_norm") or dam.get("ZBNr"))
+
+    pairing_index = dict(ZBNR_INDEX)
+    pairing_index[planned_zbnr] = {
+        "ZBNr": planned_zbnr,
+        "ZBNr_norm": planned_zbnr,
+        "Name": "Geplanter Wurf",
+        "Geschlecht": "",
+        "Wurfdatum": "",
+        "vater_zbnr": sire_zbnr,
+        "vater_zbnr_norm": sire_zbnr,
+        "mutter_zbnr": dam_zbnr,
+        "mutter_zbnr_norm": dam_zbnr,
+        "pedigree_status": "ok",
+        "father_found": True,
+        "mother_found": True,
+    }
+    return planned_zbnr, pairing_index
+
+
+def format_percent_or_dash(value):
+    if value is None:
+        return "—"
+    try:
+        return f"{float(value):.2f} %".replace(".", ",")
+    except Exception:
+        return "—"
+
+
+def extract_embeddable_html(html):
+    styles = "".join(re.findall(r"<style[^>]*>.*?</style>", html, re.S | re.I))
+    m = re.search(r"<body[^>]*>(.*?)</body>", html, re.S | re.I)
+    body = m.group(1) if m else html
+    return styles + body
 
 
 def _regularized_incomplete_beta(x, a, b, max_iter=200, eps=1e-12):
@@ -340,6 +623,199 @@ def home():
 @app.route("/info")
 def info():
     return render_template("info.html")
+
+
+@app.route("/dog_suggest")
+def dog_suggest():
+    query = request.args.get("q", "").strip()
+    sex = request.args.get("sex", "").strip()
+    min_age = parse_int_filter(request.args.get("min_age"))
+    max_age = parse_int_filter(request.args.get("max_age"))
+    has_age_filter = min_age is not None or max_age is not None
+    if len(query) < 2 and not has_age_filter:
+        return jsonify([])
+
+    q = query.lower()
+    if len(query) >= 2:
+        matches = MERGED_DF[
+            MERGED_DF["Name"].fillna("").str.lower().str.contains(q, na=False)
+            | MERGED_DF["ZBNr"].fillna("").str.lower().str.contains(q, na=False)
+            | MERGED_DF["ZBNr_norm"].fillna("").str.lower().str.contains(q, na=False)
+        ].copy()
+    else:
+        matches = MERGED_DF.copy()
+
+    if sex in {"H", "R"}:
+        matches = matches[matches["Geschlecht"].fillna("").astype(str).str.strip() == sex]
+
+    if sex == "R":
+        matches = apply_age_filter(matches, min_age=min_age, max_age=max_age)
+
+    suggestions = []
+    for row in matches.head(20).to_dict(orient="records"):
+        name = clean_text(row.get("Name")) or "unbekannt"
+        zbnr = clean_text(row.get("ZBNr_norm")) or clean_text(row.get("ZBNr"))
+        age = calculate_age_years(row)
+        if not zbnr:
+            continue
+        age_label = f" · {age} Jahre" if age is not None else ""
+        suggestions.append(
+            {
+                "label": f"{name}{age_label} | {zbnr}",
+                "name": name,
+                "zbnr": zbnr,
+                "sex": clean_text(row.get("Geschlecht")),
+                "age": age,
+            }
+        )
+
+    return jsonify(suggestions)
+
+
+@app.route("/pairing")
+def pairing():
+    sire_input = request.args.get("sire", "").strip()
+    selected_sire = request.args.get("selected_sire", "").strip()
+    dam_input = request.args.get("dam", "").strip()
+    sire_min_age = request.args.get("sire_min_age", "").strip()
+    sire_max_age = request.args.get("sire_max_age", "").strip()
+    sire_max_ebv = request.args.get("sire_max_ebv", "").strip()
+    sire_min_offspring = request.args.get("sire_min_offspring", "").strip()
+    sire_sd_status = request.args.get("sire_sd_status", "").strip()
+    sire_search = request.args.get("sire_search", "").strip()
+    sire_page = request.args.get("sire_page", "1").strip()
+    sire_sort_by = request.args.get("sire_sort_by", "zuchtwert").strip().lower()
+    sire_sort_dir = request.args.get("sire_sort_dir", "asc").strip().lower()
+    min_age = parse_int_filter(sire_min_age)
+    max_age = parse_int_filter(sire_max_age)
+    max_ebv = parse_int_filter(sire_max_ebv)
+    min_offspring = parse_int_filter(sire_min_offspring)
+    try:
+        sire_page = max(1, int(sire_page))
+    except Exception:
+        sire_page = 1
+    if sire_sort_dir not in {"asc", "desc"}:
+        sire_sort_dir = "asc"
+
+    show_sire_results = sire_search == "1"
+    sire_page_size = 15
+    sire_candidates = []
+    sire_total = 0
+    sire_page_count = 0
+    if show_sire_results:
+        sire_df = get_sire_candidates(
+            min_age=min_age,
+            max_age=max_age,
+            max_ebv=max_ebv,
+            min_offspring=min_offspring,
+            sd_status=sire_sd_status,
+            query=sire_input,
+            sort_by=sire_sort_by,
+            sort_dir=sire_sort_dir,
+        )
+        sire_total = int(sire_df.shape[0])
+        sire_page_count = max(1, math.ceil(sire_total / sire_page_size)) if sire_total else 0
+        if sire_page_count and sire_page > sire_page_count:
+            sire_page = sire_page_count
+        start = (sire_page - 1) * sire_page_size
+        sire_candidates = [
+            dog_summary(row)
+            for row in sire_df.iloc[start : start + sire_page_size].to_dict(orient="records")
+        ]
+
+    context = {
+        "sire_input": sire_input,
+        "selected_sire": selected_sire,
+        "dam_input": dam_input,
+        "sire_min_age": sire_min_age,
+        "sire_max_age": sire_max_age,
+        "sire_max_ebv": sire_max_ebv,
+        "sire_min_offspring": sire_min_offspring,
+        "sire_sd_status": sire_sd_status,
+        "sire_sd_filter_available": sd_status_column() is not None,
+        "sire_search": sire_search,
+        "sire_candidates": sire_candidates,
+        "sire_total": sire_total,
+        "sire_page": sire_page,
+        "sire_page_count": sire_page_count,
+        "sire_sort_by": sire_sort_by,
+        "sire_sort_dir": sire_sort_dir,
+        "result": None,
+        "error": None,
+    }
+
+    if selected_sire or dam_input:
+        sire = resolve_dog(selected_sire, required_sex="R") if selected_sire else None
+        dam = resolve_dog(dam_input, required_sex="H")
+
+        if sire is None or dam is None:
+            if dam_input and dam is None:
+                context["error"] = "Hündin nicht gefunden oder falsches Geschlecht."
+            elif selected_sire and not dam_input:
+                context["error"] = "Bitte zuerst eine Hündin auswählen."
+            elif selected_sire and sire is None:
+                context["error"] = "Rüde nicht gefunden oder falsches Geschlecht."
+        else:
+            if not dog_matches_age(sire, min_age=min_age, max_age=max_age):
+                context["error"] = "Der ausgewählte Rüde passt nicht zum angegebenen Altersfilter."
+                return render_template("pairing.html", **context)
+            if not dog_matches_max_ebv(sire, max_ebv=max_ebv):
+                context["error"] = "Der ausgewählte Rüde passt nicht zum angegebenen maximalen ED-Zuchtwert."
+                return render_template("pairing.html", **context)
+            if not dog_matches_min_offspring(sire, min_offspring=min_offspring):
+                context["error"] = "Der ausgewählte Rüde passt nicht zur angegebenen Mindestanzahl an Nachkommen."
+                return render_template("pairing.html", **context)
+            if sd_status_column() and not dog_matches_sd_status(sire, sire_sd_status):
+                context["error"] = "Der ausgewählte Rüde passt nicht zum angegebenen SD-Status."
+                return render_template("pairing.html", **context)
+
+            planned_zbnr, pairing_index = make_pairing_index(sire, dam)
+            max_gen = 5
+
+            sire_ebv = dog_ebv_value(sire)
+            dam_ebv = dog_ebv_value(dam)
+            planned_ebv = (
+                (sire_ebv + dam_ebv) / 2
+                if sire_ebv is not None and dam_ebv is not None
+                else None
+            )
+
+            coi = pt.calculate_coi_for_zbnr(
+                pairing_index,
+                planned_zbnr,
+                max_generations=max_gen,
+            )
+            avk = pt.calculate_avk_for_zbnr(
+                pairing_index,
+                planned_zbnr,
+                max_generations=max_gen,
+            )
+            pedigree = pt.create_pedigree_html_for_zbnr(
+                df_or_index=pairing_index,
+                start_zbnr=planned_zbnr,
+                max_generations=max_gen,
+                include_coi=False,
+                include_avk=False,
+            )
+
+            context["result"] = {
+                "sire": dog_summary(sire),
+                "dam": dog_summary(dam),
+                "planned_ebv": planned_ebv,
+                "planned_ebv_display": (
+                    f"{planned_ebv:.1f}".replace(".", ",")
+                    if planned_ebv is not None
+                    else "—"
+                ),
+                "coi_percent": coi.get("coi_percent"),
+                "coi_display": format_percent_or_dash(coi.get("coi_percent")),
+                "avk_percent": avk.get("avk_known_percent"),
+                "avk_display": format_percent_or_dash(avk.get("avk_known_percent")),
+                "complete_generation": avk.get("deepest_complete_generation_in_data"),
+                "pedigree_html": extract_embeddable_html(pedigree.get("html", "")),
+            }
+
+    return render_template("pairing.html", **context)
 
 
 @app.route("/search", methods=["GET"])

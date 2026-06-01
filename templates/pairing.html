@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Verpaarung planen</title>
+    <style>
+      {% include "_nav_css.html" %}
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: #f5f6f8;
+        color: #243447;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      .container {
+        max-width: 1760px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+
+      header {
+        background: #fff;
+        border-bottom: 1px solid #e0e5eb;
+        padding: 22px 0;
+        margin-bottom: 24px;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 650;
+      }
+
+      .panel {
+        background: #fff;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .pairing-form {
+        display: grid;
+        grid-template-columns: minmax(300px, 1fr) minmax(820px, 1.6fr) auto;
+        gap: 14px;
+        align-items: end;
+      }
+
+      .sire-filter {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) 90px 90px 130px 150px 130px;
+        gap: 12px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: #52606d;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      input,
+      select {
+        width: 100%;
+        border: 1px solid #cfd8e3;
+        border-radius: 6px;
+        color: #243447;
+        font: inherit;
+        padding: 10px 12px;
+        background: #fff;
+      }
+
+      input:focus,
+      select:focus {
+        border-color: #4a90e2;
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.12);
+        outline: none;
+      }
+
+      button {
+        border: none;
+        border-radius: 6px;
+        background: #4a90e2;
+        color: #fff;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 600;
+        padding: 11px 18px;
+        white-space: nowrap;
+      }
+
+      button:hover { background: #3a7bc8; }
+
+      .error {
+        border-left: 4px solid #d04646;
+        background: #fff1f1;
+        color: #8a1f1f;
+        padding: 12px 14px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .metric {
+        border: 1px solid #e1e7ee;
+        border-radius: 8px;
+        background: #f8fafc;
+        padding: 14px;
+      }
+
+      .metric-label {
+        color: #667085;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+      }
+
+      .metric-value {
+        color: #1f3a52;
+        font-size: 22px;
+        font-weight: 750;
+      }
+
+      .parents {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .parent-card {
+        border: 1px solid #e1e7ee;
+        border-radius: 8px;
+        padding: 14px;
+      }
+
+      .parent-card h3 {
+        margin: 0 0 6px;
+        font-size: 16px;
+      }
+
+      .parent-meta {
+        color: #667085;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .parent-zw {
+        margin-top: 12px;
+        max-width: 320px;
+      }
+
+      .parent-zw-head {
+        margin-bottom: 6px;
+      }
+
+      .parent-zw-label {
+        color: #667085;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .parent-zw-values {
+        color: #52606d;
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 12px;
+        gap: 6px 12px;
+        margin-top: 7px;
+      }
+
+      .parent-zw-value {
+        color: #1f3a52;
+        font-size: 13px;
+        font-weight: 750;
+      }
+
+      .parent-zw-bar {
+        background: linear-gradient(90deg, #2d7d2d 0%, #f6d644 50%, #d04646 100%);
+        border-radius: 999px;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+        height: 10px;
+        overflow: visible;
+        position: relative;
+      }
+
+      .parent-zw-bar::before {
+        background: linear-gradient(90deg, rgba(255,255,255,0.27), rgba(255,255,255,0.04));
+        border-radius: inherit;
+        content: '';
+        inset: 0;
+        position: absolute;
+      }
+
+      .parent-zw-zero {
+        background: rgba(43, 58, 69, 0.45);
+        height: 100%;
+        position: absolute;
+        top: 0;
+        width: 2px;
+      }
+
+      .parent-zw-marker {
+        background: #fff;
+        border: 2px solid #2b3a45;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        height: 16px;
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 16px;
+      }
+
+      .candidate-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      .candidate-table th,
+      .candidate-table td {
+        border-bottom: 1px solid #edf1f5;
+        padding: 9px 8px;
+        text-align: left;
+      }
+
+      .candidate-table th {
+        background: #f8fafc;
+        color: #667085;
+        font-weight: 700;
+      }
+
+      .candidate-table th a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .candidate-table th a:hover {
+        color: #2563eb;
+        text-decoration: underline;
+      }
+
+      .candidate-action {
+        color: #2563eb;
+        font-weight: 700;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .candidate-action:hover {
+        text-decoration: underline;
+      }
+
+      .candidate-head {
+        align-items: center;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .candidate-head h2 {
+        font-size: 18px;
+        margin: 0;
+      }
+
+      .candidate-count {
+        color: #667085;
+        font-size: 13px;
+      }
+
+      .pager {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 14px;
+      }
+
+      .pager a,
+      .pager span {
+        border: 1px solid #dbe2ea;
+        border-radius: 6px;
+        color: #243447;
+        font-size: 13px;
+        min-width: 34px;
+        padding: 7px 10px;
+        text-align: center;
+        text-decoration: none;
+      }
+
+      .pager a:hover {
+        border-color: #4a90e2;
+        color: #2563eb;
+      }
+
+      .pager .active {
+        background: #4a90e2;
+        border-color: #4a90e2;
+        color: #fff;
+        font-weight: 700;
+      }
+
+      .pager .disabled {
+        color: #98a2b3;
+      }
+
+      .pedigree-panel {
+        overflow: auto;
+        background: #fff;
+        border: 1px solid #d8dee6;
+        border-radius: 8px;
+      }
+
+      .hint {
+        color: #667085;
+        font-size: 13px;
+        line-height: 1.5;
+        margin-top: 10px;
+      }
+
+      @media (max-width: 1100px) {
+        .pairing-form {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .summary-grid,
+        .parents {
+          grid-template-columns: 1fr;
+        }
+
+        .sire-filter {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    {% include "_nav.html" %}
+    <header>
+      <div class="container">
+        <h1>Verpaarung planen</h1>
+      </div>
+    </header>
+
+    <main class="container">
+      {% macro sort_link(label, key) -%}
+        {%- set next_dir = 'desc' if sire_sort_by == key and sire_sort_dir == 'asc' else 'asc' -%}
+        <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_sd_status=sire_sd_status, sire_search='1', sire_page=1, sire_sort_by=key, sire_sort_dir=next_dir) }}">
+          {{ label }}{% if sire_sort_by == key %} {{ '▲' if sire_sort_dir == 'asc' else '▼' }}{% endif %}
+        </a>
+      {%- endmacro %}
+
+      <section class="panel">
+        <form class="pairing-form" id="pairingForm" method="get" action="/pairing">
+          <input type="hidden" name="sire_search" value="1">
+          <input type="hidden" name="sire_page" value="1">
+          <label>
+            Hündin zuerst auswählen
+            <input name="dam" value="{{ dam_input }}" list="damSuggestions" placeholder="Name oder ZBNr der Hündin" autocomplete="off" data-sex="H">
+            <datalist id="damSuggestions"></datalist>
+          </label>
+          <div class="sire-filter">
+            <label>
+              Rüde suchen
+              <input name="sire" value="{{ sire_input }}" placeholder="Name oder ZBNr optional" autocomplete="off" data-sex="R">
+            </label>
+            <label>
+              Alter von
+              <input name="sire_min_age" value="{{ sire_min_age }}" type="number" min="0" max="25" placeholder="Jahre">
+            </label>
+            <label>
+              Alter bis
+              <input name="sire_max_age" value="{{ sire_max_age }}" type="number" min="0" max="25" placeholder="Jahre">
+            </label>
+            <label>
+              Max. ED-ZW
+              <input name="sire_max_ebv" value="{{ sire_max_ebv }}" type="number" min="0" step="1" placeholder="z. B. 95">
+            </label>
+            <label>
+              Mind. Nachkommen
+              <input name="sire_min_offspring" value="{{ sire_min_offspring }}" type="number" min="0" step="1" placeholder="z. B. 5">
+            </label>
+            <label>
+              SD-Status
+              <select name="sire_sd_status">
+                <option value="" {% if not sire_sd_status %}selected{% endif %}>egal</option>
+                <option value="frei" {% if sire_sd_status == "frei" %}selected{% endif %}>frei</option>
+                <option value="traeger" {% if sire_sd_status == "traeger" %}selected{% endif %}>Träger</option>
+                <option value="betroffen" {% if sire_sd_status == "betroffen" %}selected{% endif %}>betroffen</option>
+              </select>
+            </label>
+          </div>
+          <button type="submit">Rüden suchen</button>
+        </form>
+        <div class="hint">
+          Wähle zuerst die Hündin aus, grenze die Rüden über Name, Zuchtbuchnummer oder Alter ein und starte dann die Suche. Ein Klick auf „Auswählen“ berechnet die Verpaarung.
+          {% if sire_sd_status and not sire_sd_filter_available %}
+            Für den SD-Status ist in den aktuell geladenen Daten noch keine Spalte vorhanden.
+          {% endif %}
+        </div>
+      </section>
+
+      {% if error %}
+        <div class="error">{{ error }}</div>
+      {% endif %}
+
+      {% if sire_search == "1" %}
+        <section class="panel" id="sireCandidatePanel">
+          <div class="candidate-head">
+            <h2>Passende Rüden</h2>
+            <div class="candidate-count">
+              {% if sire_total == 1 %}
+                1 Treffer
+              {% else %}
+                {{ sire_total }} Treffer
+              {% endif %}
+            </div>
+          </div>
+
+          {% if sire_candidates %}
+            <table class="candidate-table">
+              <thead>
+                <tr>
+                  <th>{{ sort_link("Name", "name") }}</th>
+                  <th>{{ sort_link("ZBNr", "zbnr") }}</th>
+                  <th>{{ sort_link("Alter", "alter") }}</th>
+                  <th>ED</th>
+                  <th>SD</th>
+                  <th>{{ sort_link("Nachkommen", "nachkommen") }}</th>
+                  <th>{{ sort_link("ED-Zuchtwert", "zuchtwert") }}</th>
+                  <th>{{ sort_link("Sicherheit", "konfidenz") }}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for dog in sire_candidates %}
+                  <tr>
+                    <td>{{ dog.name or "unbekannt" }}</td>
+                    <td>{{ dog.zbnr or "—" }}</td>
+                    <td>{% if dog.alter is not none %}{{ dog.alter }} Jahre{% else %}—{% endif %}</td>
+                    <td>{{ dog.ed or "—" }}</td>
+                    <td>{{ dog.sd_status or "—" }}</td>
+                    <td>{% if dog.anz_nachkommen is not none %}{{ dog.anz_nachkommen }}{% else %}—{% endif %}</td>
+                    <td>{% if dog.zuchtwert is not none %}{{ dog.zuchtwert }}{% else %}—{% endif %}</td>
+                    <td>{% if dog.konfidenz is not none %}{{ dog.konfidenz }} %{% else %}—{% endif %}</td>
+                    <td>
+                      <a class="candidate-action" href="{{ url_for('pairing', sire=sire_input, selected_sire=dog.zbnr, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_sd_status=sire_sd_status, sire_search='1', sire_page=sire_page, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">
+                        Auswählen
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+
+            {% if sire_page_count > 1 %}
+              <nav class="pager" aria-label="Rüden Trefferseiten">
+                {% if sire_page > 1 %}
+                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_sd_status=sire_sd_status, sire_search='1', sire_page=sire_page - 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Zurück</a>
+                {% else %}
+                  <span class="disabled">Zurück</span>
+                {% endif %}
+
+                {% for page_no in range(1, sire_page_count + 1) %}
+                  {% if page_no == 1 or page_no == sire_page_count or (page_no >= sire_page - 2 and page_no <= sire_page + 2) %}
+                    {% if page_no == sire_page %}
+                      <span class="active">{{ page_no }}</span>
+                    {% else %}
+                      <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_sd_status=sire_sd_status, sire_search='1', sire_page=page_no, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">{{ page_no }}</a>
+                    {% endif %}
+                  {% elif page_no == 2 or page_no == sire_page_count - 1 %}
+                    <span class="disabled">…</span>
+                  {% endif %}
+                {% endfor %}
+
+                {% if sire_page < sire_page_count %}
+                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_sd_status=sire_sd_status, sire_search='1', sire_page=sire_page + 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Weiter</a>
+                {% else %}
+                  <span class="disabled">Weiter</span>
+                {% endif %}
+              </nav>
+            {% endif %}
+          {% else %}
+            <div class="hint">Keine passenden Rüden gefunden.</div>
+          {% endif %}
+        </section>
+      {% endif %}
+
+      {% if result %}
+        <section class="panel">
+          <div class="summary-grid">
+            <div class="metric">
+              <div class="metric-label">Erwarteter ED-Zuchtwert</div>
+              <div class="metric-value">{{ result.planned_ebv_display }}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">COI</div>
+              <div class="metric-value">{{ result.coi_display }}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">AVK</div>
+              <div class="metric-value">{{ result.avk_display }}</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Vollständig bis</div>
+              <div class="metric-value">{% if result.complete_generation is not none %}Gen. {{ result.complete_generation }}{% else %}—{% endif %}</div>
+            </div>
+          </div>
+
+          <div class="parents">
+            <div class="parent-card">
+              <h3>{{ result.sire.name }}</h3>
+              <div class="parent-meta">
+                Rüde · ZBNr {{ result.sire.zbnr or "—" }} · Wurfdatum {{ result.sire.wurfdatum or "—" }} · Alter {% if result.sire.alter is not none %}{{ result.sire.alter }} Jahre{% else %}—{% endif %}<br>
+                ED {{ result.sire.ed or "—" }}
+              </div>
+              <div class="parent-zw">
+                <div class="parent-zw-head">
+                  <span class="parent-zw-label">ED-Zuchtwert</span>
+                </div>
+                <div class="parent-zw-bar" aria-label="ED-Zuchtwert-Skala">
+                  <span class="parent-zw-zero" style="left: 50%;"></span>
+                  {% if result.sire.zuchtwert_marker is not none %}
+                    <span class="parent-zw-marker" style="left: {{ result.sire.zuchtwert_marker }}%;"></span>
+                  {% endif %}
+                </div>
+                <div class="parent-zw-values">
+                  <span>ZW <span class="parent-zw-value">{{ result.sire.zuchtwert if result.sire.zuchtwert is not none else "—" }}</span></span>
+                  <span>Sicherheit <span class="parent-zw-value">{% if result.sire.konfidenz is not none %}{{ result.sire.konfidenz }} %{% else %}—{% endif %}</span></span>
+                </div>
+              </div>
+            </div>
+            <div class="parent-card">
+              <h3>{{ result.dam.name }}</h3>
+              <div class="parent-meta">
+                Hündin · ZBNr {{ result.dam.zbnr or "—" }} · Wurfdatum {{ result.dam.wurfdatum or "—" }} · Alter {% if result.dam.alter is not none %}{{ result.dam.alter }} Jahre{% else %}—{% endif %}<br>
+                ED {{ result.dam.ed or "—" }}
+              </div>
+              <div class="parent-zw">
+                <div class="parent-zw-head">
+                  <span class="parent-zw-label">ED-Zuchtwert</span>
+                </div>
+                <div class="parent-zw-bar" aria-label="ED-Zuchtwert-Skala">
+                  <span class="parent-zw-zero" style="left: 50%;"></span>
+                  {% if result.dam.zuchtwert_marker is not none %}
+                    <span class="parent-zw-marker" style="left: {{ result.dam.zuchtwert_marker }}%;"></span>
+                  {% endif %}
+                </div>
+                <div class="parent-zw-values">
+                  <span>ZW <span class="parent-zw-value">{{ result.dam.zuchtwert if result.dam.zuchtwert is not none else "—" }}</span></span>
+                  <span>Sicherheit <span class="parent-zw-value">{% if result.dam.konfidenz is not none %}{{ result.dam.konfidenz }} %{% else %}—{% endif %}</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="pedigree-panel">
+          {{ result.pedigree_html | safe }}
+        </section>
+      {% endif %}
+    </main>
+
+    <script>
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function attachDamSuggest() {
+        const input = document.querySelector('input[name="dam"]');
+        const datalist = document.getElementById('damSuggestions');
+        let controller = null;
+
+        input.addEventListener('input', () => {
+          const query = input.value.trim();
+          if (query.length < 2) {
+            datalist.innerHTML = '';
+            return;
+          }
+
+          if (controller) controller.abort();
+          controller = new AbortController();
+          const params = new URLSearchParams({ q: query, sex: 'H' });
+
+          fetch('/dog_suggest?' + params.toString(), { signal: controller.signal })
+            .then(r => r.json())
+            .then(items => {
+              datalist.innerHTML = items
+                .map(item => `<option value="${escapeHtml(item.label)}"></option>`)
+                .join('');
+            })
+            .catch(() => {});
+        });
+      }
+
+      attachDamSuggest();
+    </script>
+  </body>
+</html>

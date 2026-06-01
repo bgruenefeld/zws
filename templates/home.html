@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>ED-Zuchtwertschätzung Labrador Retriever</title>
     <style>
+      {% include "_nav_css.html" %}
       * { box-sizing: border-box; }
       body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -43,24 +44,6 @@
         line-height: 1.5;
       }
 
-      .top-links {
-        margin-top: 16px;
-        display: flex;
-        justify-content: center;
-        gap: 16px;
-        font-size: 14px;
-      }
-
-      .top-links a {
-        color: #4a90e2;
-        font-weight: 600;
-        text-decoration: none;
-      }
-
-      .top-links a:hover {
-        text-decoration: underline;
-      }
-      
       /* Search Card */
       .search-card {
         background: #fff;
@@ -247,13 +230,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   </head>
   <body>
+    {% include "_nav.html" %}
     <header>
       <div class="container">
         <h1>ED-Zuchtwertschätzung Labrador Retriever</h1>
         <p>Suche nach Hundename oder Zuchtbuchnummer und zeige Ahnentafel, ED-Befunde und Zuchtwerte an.</p>
-        <div class="top-links">
-          <a href="/info">Informationen zur Zuchtwertschätzung</a>
-        </div>
       </div>
     </header>
 
@@ -397,9 +378,9 @@
           pointRadius: 3
         });
 
-        // Right axis: other grades (initially hidden except Grade 1)
+        // Right axis: other grades (initially visible only ED 2 and ED 3)
         const palette = ['#2ca02c', '#ff7f0e', '#9467bd', '#8c564b', '#e377c2', '#17becf'];
-        const hiddenGrades = new Set(['0.5', '2.0', '3.0']);
+        const initiallyVisibleRightGrades = new Set(['2.0', '3.0']);
         
         const rightDatasets = rightAxisGrades.map((grade, idx) => {
           const color = palette[idx % palette.length];
@@ -412,7 +393,7 @@
             tension: 0.3,
             yAxisID: 'y1',
             pointRadius: 3,
-            hidden: hiddenGrades.has(grade)
+            hidden: !initiallyVisibleRightGrades.has(grade)
           };
         });
 
