@@ -326,6 +326,87 @@
         border-radius: 8px;
       }
 
+      .relatives-panel {
+        background: #fff;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        margin-top: 20px;
+        padding: 20px;
+      }
+
+      .relatives-head {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .relatives-head h2 {
+        font-size: 18px;
+        margin: 0;
+      }
+
+      .relatives-meta {
+        color: #667085;
+        font-size: 13px;
+      }
+
+      .relatives-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .relative-section {
+        border: 1px solid #e1e7ee;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .relative-section h3 {
+        background: #f8fafc;
+        border-bottom: 1px solid #e1e7ee;
+        font-size: 15px;
+        margin: 0;
+        padding: 11px 12px;
+      }
+
+      .relative-body {
+        max-height: 360px;
+        overflow: auto;
+      }
+
+      .relative-table {
+        border-collapse: collapse;
+        font-size: 12px;
+        width: 100%;
+      }
+
+      .relative-table th,
+      .relative-table td {
+        border-bottom: 1px solid #edf1f5;
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .relative-table th {
+        background: #fbfcfe;
+        color: #667085;
+        font-weight: 700;
+        position: sticky;
+        top: 0;
+      }
+
+      .empty-state,
+      .loading {
+        color: #667085;
+        font-size: 13px;
+        padding: 14px;
+      }
+
       .hint {
         color: #667085;
         font-size: 13px;
@@ -341,7 +422,8 @@
 
       @media (max-width: 900px) {
         .summary-grid,
-        .parents {
+        .parents,
+        .relatives-grid {
           grid-template-columns: 1fr;
         }
 
@@ -575,10 +657,33 @@
         <section class="pedigree-panel">
           {{ result.pedigree_html | safe }}
         </section>
+
+        <section class="relatives-panel" id="pairingRelativesPanel">
+          <div class="relatives-head">
+            <h2 id="pairingRelativesTitle">Verwandtschaft</h2>
+            <div class="relatives-meta" id="pairingRelativesMeta">Klicke einen Hund in der Ahnentafel an.</div>
+          </div>
+          <div class="relatives-grid">
+            <div class="relative-section">
+              <h3 id="pairingSiblingsTitle">Wurfgeschwister</h3>
+              <div class="relative-body" id="pairingSiblingsBody">
+                <div class="empty-state">Noch kein Hund ausgewählt.</div>
+              </div>
+            </div>
+            <div class="relative-section">
+              <h3 id="pairingOffspringTitle">Nachkommen</h3>
+              <div class="relative-body" id="pairingOffspringBody">
+                <div class="empty-state">Noch kein Hund ausgewählt.</div>
+              </div>
+            </div>
+          </div>
+        </section>
       {% endif %}
     </main>
 
     <script>
+      let selectedPairingRelationZbnr = null;
+
       function escapeHtml(value) {
         return String(value ?? '')
           .replace(/&/g, '&amp;')
@@ -586,6 +691,105 @@
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;');
+      }
+
+      function renderRelativeTable(dogs, emptyText) {
+        if (!dogs || dogs.length === 0) {
+          return '<div class="empty-state">' + escapeHtml(emptyText) + '</div>';
+        }
+
+        const rows = dogs.map(dog => `
+          <tr>
+            <td>${escapeHtml(dog.name || 'unbekannt')}</td>
+            <td>${escapeHtml(dog.zbnr || '—')}</td>
+            <td>${escapeHtml(dog.wurfdatum || '—')}</td>
+            <td>${escapeHtml(dog.geschlecht || '—')}</td>
+            <td>${escapeHtml(dog.ed || '—')}</td>
+            <td>${dog.zuchtwert != null ? escapeHtml(dog.zuchtwert) : '—'}</td>
+            <td>${dog.konfidenz != null ? escapeHtml(dog.konfidenz + ' %') : '—'}</td>
+          </tr>
+        `).join('');
+
+        return `
+          <table class="relative-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>ZBNr</th>
+                <th>Wurfdatum</th>
+                <th>Geschlecht</th>
+                <th>ED</th>
+                <th>ZW</th>
+                <th>Sicherheit</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      }
+
+      function setPairingRelativesLoading(zbnr) {
+        const loading = '<div class="loading">Wird geladen...</div>';
+        document.getElementById('pairingRelativesTitle').textContent = 'Verwandtschaft';
+        document.getElementById('pairingRelativesMeta').textContent = 'ZBNr ' + zbnr;
+        document.getElementById('pairingSiblingsTitle').textContent = 'Wurfgeschwister';
+        document.getElementById('pairingOffspringTitle').textContent = 'Nachkommen';
+        document.getElementById('pairingSiblingsBody').innerHTML = loading;
+        document.getElementById('pairingOffspringBody').innerHTML = loading;
+      }
+
+      function loadPairingRelatives(zbnr) {
+        selectedPairingRelationZbnr = zbnr;
+        setPairingRelativesLoading(zbnr);
+
+        fetch('/littermates?zbnr=' + encodeURIComponent(zbnr))
+          .then(response => response.json().then(data => {
+            if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+            return data;
+          }))
+          .then(data => {
+            if (selectedPairingRelationZbnr !== zbnr) return;
+
+            const dog = data.dog || {};
+            const siblings = data.littermates || [];
+            const offspring = data.offspring || [];
+            const title = dog.name || 'unbekannt';
+            const meta = [
+              dog.zbnr ? 'ZBNr ' + dog.zbnr : null,
+              data.litter_date ? 'Wurfdatum ' + data.litter_date : null,
+              siblings.length + ' Geschwister',
+              offspring.length + ' Nachkommen'
+            ].filter(Boolean).join(' · ');
+
+            document.getElementById('pairingRelativesTitle').textContent = 'Ausgewählt: ' + title;
+            document.getElementById('pairingRelativesMeta').textContent = meta;
+            document.getElementById('pairingSiblingsTitle').textContent = 'Wurfgeschwister von ' + title;
+            document.getElementById('pairingOffspringTitle').textContent = 'Nachkommen von ' + title;
+            document.getElementById('pairingSiblingsBody').innerHTML = data.message
+              ? '<div class="empty-state">' + escapeHtml(data.message) + '</div>'
+              : renderRelativeTable(siblings, 'Keine Wurfgeschwister gefunden.');
+            document.getElementById('pairingOffspringBody').innerHTML = renderRelativeTable(offspring, 'Keine Nachkommen gefunden.');
+          })
+          .catch(error => {
+            if (selectedPairingRelationZbnr !== zbnr) return;
+            const errorHtml = '<div class="empty-state">Fehler beim Laden: ' + escapeHtml(error.message) + '</div>';
+            document.getElementById('pairingSiblingsBody').innerHTML = errorHtml;
+            document.getElementById('pairingOffspringBody').innerHTML = errorHtml;
+          });
+      }
+
+      function attachPairingPedigreeClick() {
+        const panel = document.querySelector('.pedigree-panel');
+        if (!panel) return;
+
+        panel.addEventListener('click', event => {
+          const card = event.target.closest('.card[data-zbnr]');
+          if (!card || !panel.contains(card)) return;
+
+          const zbnr = card.getAttribute('data-zbnr');
+          if (!zbnr || zbnr.startsWith('__')) return;
+          loadPairingRelatives(zbnr);
+        });
       }
 
       function attachDamSuggest() {
@@ -616,6 +820,7 @@
       }
 
       attachDamSuggest();
+      attachPairingPedigreeClick();
     </script>
   </body>
 </html>

@@ -38,6 +38,7 @@ def load_data():
 
 # load at startup
 MERGED_DF, ZBNR_INDEX = load_data()
+PAIRING_SEARCH_CACHE_DATE = None
 
 
 # Helper functions for formatting and classification
@@ -190,6 +191,13 @@ def zuchtwert_marker_position(value):
 
 def calculate_age_years(row, today=None):
     today = today or date.today()
+    cached_age = row.get("_age_years") if hasattr(row, "get") else None
+    if cached_age is not None and not pd.isna(cached_age):
+        try:
+            return int(cached_age)
+        except Exception:
+            pass
+
     birth = clean_text(row.get("Wurfdatum") or row.get("geburt"))
     if birth:
         birth_date = pd.to_datetime(birth, errors="coerce")
@@ -204,11 +212,79 @@ def calculate_age_years(row, today=None):
         return None
 
 
+def _extract_birth_year_series(df):
+    if "geburtsjahr" in df.columns:
+        source = df["geburtsjahr"]
+    elif "birthyear_clean" in df.columns:
+        source = df["birthyear_clean"]
+    else:
+        source = df.get("Wurfdatum", pd.Series([pd.NA] * len(df), index=df.index))
+
+    return pd.to_numeric(
+        source.astype(str).str.extract(r"(\d{4})")[0],
+        errors="coerce",
+    )
+
+
+def ensure_pairing_search_columns():
+    global PAIRING_SEARCH_CACHE_DATE
+    today = date.today()
+    required_columns = {
+        "_sex_clean",
+        "_search_name",
+        "_search_zbnr",
+        "_search_zbnr_norm",
+        "_age_years",
+        "_ebv_numeric",
+        "_confidence_numeric",
+        "_offspring_numeric",
+        "_sort_name",
+        "_sort_zbnr",
+    }
+    if PAIRING_SEARCH_CACHE_DATE == today and required_columns.issubset(MERGED_DF.columns):
+        return
+
+    MERGED_DF["_sex_clean"] = MERGED_DF["Geschlecht"].fillna("").astype(str).str.strip()
+    MERGED_DF["_search_name"] = MERGED_DF["Name"].fillna("").astype(str).str.lower()
+    MERGED_DF["_search_zbnr"] = MERGED_DF["ZBNr"].fillna("").astype(str).str.lower()
+    MERGED_DF["_search_zbnr_norm"] = MERGED_DF["ZBNr_norm"].fillna("").astype(str).str.lower()
+    MERGED_DF["_sort_name"] = MERGED_DF["Name"].fillna("").astype(str).str.lower()
+    MERGED_DF["_sort_zbnr"] = MERGED_DF["ZBNr_norm"].fillna(MERGED_DF["ZBNr"]).fillna("").astype(str)
+
+    birth_dates = pd.to_datetime(
+        MERGED_DF.get("Wurfdatum", pd.Series([pd.NA] * len(MERGED_DF), index=MERGED_DF.index)),
+        errors="coerce",
+    )
+    ages = today.year - birth_dates.dt.year - (
+        (today.month < birth_dates.dt.month)
+        | ((today.month == birth_dates.dt.month) & (today.day < birth_dates.dt.day))
+    ).astype("int")
+    ages = ages.where(birth_dates.notna())
+
+    birth_years = _extract_birth_year_series(MERGED_DF)
+    fallback_ages = today.year - birth_years
+    MERGED_DF["_age_years"] = ages.fillna(fallback_ages)
+    MERGED_DF["_ebv_numeric"] = pd.to_numeric(MERGED_DF.get("EBV"), errors="coerce")
+    MERGED_DF["_confidence_numeric"] = pd.to_numeric(MERGED_DF.get("Confidenz"), errors="coerce")
+    MERGED_DF["_offspring_numeric"] = pd.to_numeric(MERGED_DF.get("AnzNachkommen"), errors="coerce")
+
+    sd_col = sd_status_column()
+    if sd_col:
+        MERGED_DF["_sd_status_normalized"] = MERGED_DF[sd_col].map(normalize_sd_status)
+    elif "_sd_status_normalized" not in MERGED_DF.columns:
+        MERGED_DF["_sd_status_normalized"] = ""
+
+    PAIRING_SEARCH_CACHE_DATE = today
+
+
 def apply_age_filter(df, min_age=None, max_age=None):
     if min_age is None and max_age is None:
         return df
 
-    ages = df.apply(calculate_age_years, axis=1)
+    if "_age_years" in df.columns:
+        ages = df["_age_years"]
+    else:
+        ages = df.apply(calculate_age_years, axis=1)
     mask = pd.Series([True] * len(df), index=df.index)
     if min_age is not None:
         mask &= ages.notna() & (ages >= min_age)
@@ -227,10 +303,19 @@ def dog_matches_age(row, min_age=None, max_age=None):
 
 
 def dog_ebv_value(row):
+    cached = row.get("_ebv_numeric") if hasattr(row, "get") else None
+    if cached is not None and not pd.isna(cached):
+        return float(cached)
     return pt.to_float_or_none(row.get("EBV") or row.get("ed_zw_0_10_niedrig_gut"))
 
 
 def dog_offspring_count(row):
+    cached = row.get("_offspring_numeric") if hasattr(row, "get") else None
+    if cached is not None and not pd.isna(cached):
+        try:
+            return int(cached)
+        except Exception:
+            pass
     value = clean_text(row.get("AnzNachkommen"))
     if not value:
         return None
@@ -317,51 +402,39 @@ def get_sire_candidates(
     sort_by="zuchtwert",
     sort_dir="asc",
 ):
-    candidates = MERGED_DF[
-        MERGED_DF["Geschlecht"].fillna("").astype(str).str.strip() == "R"
-    ].copy()
+    ensure_pairing_search_columns()
+    candidates = MERGED_DF.loc[MERGED_DF["_sex_clean"] == "R"]
 
     q = clean_text(query).lower()
     if q:
         candidates = candidates[
-            candidates["Name"].fillna("").str.lower().str.contains(q, na=False, regex=False)
-            | candidates["ZBNr"].fillna("").str.lower().str.contains(q, na=False, regex=False)
-            | candidates["ZBNr_norm"].fillna("").str.lower().str.contains(q, na=False, regex=False)
-        ].copy()
+            candidates["_search_name"].str.contains(q, na=False, regex=False)
+            | candidates["_search_zbnr"].str.contains(q, na=False, regex=False)
+            | candidates["_search_zbnr_norm"].str.contains(q, na=False, regex=False)
+        ]
 
     candidates = apply_age_filter(candidates, min_age=min_age, max_age=max_age)
-    candidates = candidates.assign(
-        sort_name=candidates["Name"].fillna("").astype(str).str.lower(),
-        sort_zbnr=candidates["ZBNr_norm"].fillna(candidates["ZBNr"]).fillna("").astype(str),
-        sort_age=candidates.apply(calculate_age_years, axis=1),
-        sort_ebv=pd.to_numeric(candidates.get("EBV"), errors="coerce"),
-        sort_confidence=pd.to_numeric(candidates.get("Confidenz"), errors="coerce"),
-        sort_offspring=pd.to_numeric(candidates.get("AnzNachkommen"), errors="coerce"),
-    )
     if max_ebv is not None:
-        candidates = candidates[candidates["sort_ebv"].notna() & (candidates["sort_ebv"] <= max_ebv)].copy()
+        candidates = candidates[candidates["_ebv_numeric"].notna() & (candidates["_ebv_numeric"] <= max_ebv)]
     if min_offspring is not None:
         candidates = candidates[
-            candidates["sort_offspring"].notna() & (candidates["sort_offspring"] >= min_offspring)
-        ].copy()
-    sd_col = sd_status_column()
+            candidates["_offspring_numeric"].notna() & (candidates["_offspring_numeric"] >= min_offspring)
+        ]
     normalized_sd_status = normalize_sd_status(sd_status)
-    if sd_col and normalized_sd_status:
-        candidates = candidates[
-            candidates[sd_col].map(normalize_sd_status) == normalized_sd_status
-        ].copy()
+    if sd_status_column() and normalized_sd_status:
+        candidates = candidates[candidates["_sd_status_normalized"] == normalized_sd_status]
 
     sort_map = {
-        "name": "sort_name",
-        "zbnr": "sort_zbnr",
-        "alter": "sort_age",
-        "zuchtwert": "sort_ebv",
-        "konfidenz": "sort_confidence",
-        "nachkommen": "sort_offspring",
+        "name": "_sort_name",
+        "zbnr": "_sort_zbnr",
+        "alter": "_age_years",
+        "zuchtwert": "_ebv_numeric",
+        "konfidenz": "_confidence_numeric",
+        "nachkommen": "_offspring_numeric",
     }
-    sort_col = sort_map.get(sort_by, "sort_ebv")
+    sort_col = sort_map.get(sort_by, "_ebv_numeric")
     ascending = sort_dir != "desc"
-    candidates = candidates.sort_values(by=[sort_col, "sort_name"], ascending=[ascending, True], na_position="last")
+    candidates = candidates.sort_values(by=[sort_col, "_sort_name"], ascending=[ascending, True], na_position="last")
 
     return candidates
 
@@ -627,6 +700,7 @@ def info():
 
 @app.route("/dog_suggest")
 def dog_suggest():
+    ensure_pairing_search_columns()
     query = request.args.get("q", "").strip()
     sex = request.args.get("sex", "").strip()
     min_age = parse_int_filter(request.args.get("min_age"))
@@ -638,15 +712,15 @@ def dog_suggest():
     q = query.lower()
     if len(query) >= 2:
         matches = MERGED_DF[
-            MERGED_DF["Name"].fillna("").str.lower().str.contains(q, na=False)
-            | MERGED_DF["ZBNr"].fillna("").str.lower().str.contains(q, na=False)
-            | MERGED_DF["ZBNr_norm"].fillna("").str.lower().str.contains(q, na=False)
-        ].copy()
+            MERGED_DF["_search_name"].str.contains(q, na=False, regex=False)
+            | MERGED_DF["_search_zbnr"].str.contains(q, na=False, regex=False)
+            | MERGED_DF["_search_zbnr_norm"].str.contains(q, na=False, regex=False)
+        ]
     else:
-        matches = MERGED_DF.copy()
+        matches = MERGED_DF
 
     if sex in {"H", "R"}:
-        matches = matches[matches["Geschlecht"].fillna("").astype(str).str.strip() == sex]
+        matches = matches[matches["_sex_clean"] == sex]
 
     if sex == "R":
         matches = apply_age_filter(matches, min_age=min_age, max_age=max_age)
