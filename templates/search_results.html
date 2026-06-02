@@ -756,6 +756,14 @@
                 {% set dogData = {
                   'name': result.name or 'unbekannt',
                   'zbnr': result.zbnr or '',
+                  'hd': result.hd or '',
+                  'prcd_pra': result.prcd_pra or '',
+                  'hnpk': result.hnpk or '',
+                  'sd2': result.sd2 or '',
+                  'cnm': result.cnm or '',
+                  'eic': result.eic or '',
+                  'zs': result.zs or '',
+                  'stgd_status': result.stgd_status or '',
                   'ed': result.ed or '',
                   'zuchtwert': result.zuchtwert or None,
                   'konfidenz': result.konfidenz or None,
@@ -866,6 +874,10 @@
             <div class="detail-section">
               <h4>ED-Informationen</h4>
               <div class="detail-row">
+                <div class="detail-label">HD-Grad</div>
+                <div class="detail-value" id="hdValue"></div>
+              </div>
+              <div class="detail-row">
                 <div class="detail-label">ED-Befund</div>
                 <div class="detail-value" id="edValue"></div>
               </div>
@@ -879,6 +891,37 @@
               </div>
               <div class="info-hint">
                 <strong>ED-Zuchtwert:</strong> Der ED-Zuchtwert beschreibt die genetische Einschätzung eines Hundes im Vergleich zur Population. Ein niedrigerer Wert ist günstiger.
+              </div>
+            </div>
+            <div class="detail-section">
+              <h4>Gentests</h4>
+              <div class="detail-row">
+                <div class="detail-label">prcd-PRA</div>
+                <div class="detail-value" id="prcdPraValue"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">HNPK</div>
+                <div class="detail-value" id="hnpkValue"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">SD2</div>
+                <div class="detail-value" id="sd2Value"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">CNM</div>
+                <div class="detail-value" id="cnmValue"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">EIC</div>
+                <div class="detail-value" id="eicValue"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">ZS</div>
+                <div class="detail-value" id="zsValue"></div>
+              </div>
+              <div class="detail-row">
+                <div class="detail-label">STGD</div>
+                <div class="detail-value" id="stgdValue"></div>
               </div>
             </div>
           </div>
@@ -989,6 +1032,15 @@
         ].filter(x => x).join(' · ');
         document.getElementById('dogMeta').textContent = metaParts;
         resetPedigreeMetrics();
+
+        document.getElementById('hdValue').textContent = dogData.hd || '—';
+        document.getElementById('prcdPraValue').textContent = dogData.prcd_pra || '—';
+        document.getElementById('hnpkValue').textContent = dogData.hnpk || '—';
+        document.getElementById('sd2Value').textContent = dogData.sd2 || '—';
+        document.getElementById('cnmValue').textContent = dogData.cnm || '—';
+        document.getElementById('eicValue').textContent = dogData.eic || '—';
+        document.getElementById('zsValue').textContent = dogData.zs || '—';
+        document.getElementById('stgdValue').textContent = dogData.stgd_status || '—';
 
         document.getElementById('edValue').innerHTML = dogData.ed 
           ? '<span class="ed-free">' + dogData.ed + '</span>'
@@ -1126,6 +1178,13 @@
             <td>${escapeHtml(dog.wurfdatum || '—')}</td>
             <td>${escapeHtml(dog.geschlecht || '—')}</td>
             <td>${escapeHtml(dog.hd || '—')}</td>
+            <td>${escapeHtml(dog.prcd_pra || '—')}</td>
+            <td>${escapeHtml(dog.hnpk || '—')}</td>
+            <td>${escapeHtml(dog.sd2 || '—')}</td>
+            <td>${escapeHtml(dog.cnm || '—')}</td>
+            <td>${escapeHtml(dog.eic || '—')}</td>
+            <td>${escapeHtml(dog.zs || '—')}</td>
+            <td>${escapeHtml(dog.stgd_status || '—')}</td>
             <td>${escapeHtml(dog.ed || '—')}</td>
             <td>${dog.zuchtwert != null ? escapeHtml(dog.zuchtwert) : '—'}</td>
             <td>${dog.konfidenz != null ? escapeHtml(dog.konfidenz + ' %') : '—'}</td>
@@ -1141,6 +1200,13 @@
                 <th>Wurfdatum</th>
                 <th>Geschlecht</th>
                 <th>HD</th>
+                <th>prcd-PRA</th>
+                <th>HNPK</th>
+                <th>SD2</th>
+                <th>CNM</th>
+                <th>EIC</th>
+                <th>ZS</th>
+                <th>STGD</th>
                 <th>ED</th>
                 <th>ED-Zuchtwert</th>
                 <th>Sicherheit</th>

@@ -11,7 +11,7 @@ import pandas as pd
 
 
 APP_DIR = Path(__file__).parent
-BASE_CSV = APP_DIR / "drc-Hunde-mit-eltern-rkey.csv"
+BASE_CSV = APP_DIR / "drc-Hunde-mit-eltern-rkey-gentest.csv"
 ZWS_CSV = APP_DIR / "ed_zws_results_all_animals.csv"
 
 
@@ -39,6 +39,15 @@ def load_data():
 # load at startup
 MERGED_DF, ZBNR_INDEX = load_data()
 PAIRING_SEARCH_CACHE_DATE = None
+GENETIC_TEST_FIELDS = [
+    ("prcd_pra", "prcd-PRA"),
+    ("hnpk", "HNPK"),
+    ("sd2", "SD2"),
+    ("cnm", "CNM"),
+    ("eic", "EIC"),
+    ("zs", "ZS"),
+    ("stgd_status", "STGD_Status"),
+]
 
 
 # Helper functions for formatting and classification
@@ -137,6 +146,8 @@ def clean_text(value):
 
 def dog_summary(row):
     age_years = calculate_age_years(row)
+    name = clean_text(row.get("Name")) or "unbekannt"
+    zbnr = clean_text(row.get("ZBNr_norm")) or clean_text(row.get("ZBNr"))
     ed = clean_text(row.get("ED_rechts")) or clean_text(row.get("ED_rechts_raw")) or clean_text(row.get("ED_links"))
     try:
         ebv_raw = row.get("EBV") or row.get("ed_zw_0_10_niedrig_gut")
@@ -150,19 +161,44 @@ def dog_summary(row):
     except Exception:
         confidence = None
 
+    kc_health_url = ""
+    if zbnr.upper().startswith("KC"):
+        kc_health_url = (
+            "https://www.royalkennelclub.com/search/health-test-results-finder/"
+            f"?Filter={quote_plus(name)}"
+        )
+
+    genetic_tests = {key: clean_text(row.get(column)) for key, column in GENETIC_TEST_FIELDS}
+
     return {
-        "name": clean_text(row.get("Name")) or "unbekannt",
-        "zbnr": clean_text(row.get("ZBNr_norm")) or clean_text(row.get("ZBNr")),
+        "name": name,
+        "zbnr": zbnr,
         "wurfdatum": clean_text(row.get("Wurfdatum")) or clean_text(row.get("geburt")),
         "alter": age_years,
         "geschlecht": clean_text(row.get("Geschlecht")) or clean_text(row.get("sex")),
         "hd": clean_text(row.get("HD_Grad")) or clean_text(row.get("HD")),
+        **genetic_tests,
         "ed": ed,
         "anz_nachkommen": dog_offspring_count(row),
         "zuchtwert": ebv,
         "zuchtwert_marker": zuchtwert_marker_position(ebv),
         "konfidenz": confidence,
+        "kc_health_url": kc_health_url,
     }
+
+
+def is_carrier_status(value):
+    return "träger".casefold() in clean_text(value).casefold()
+
+
+def carrier_conflicts_with_dam(sire_row, dam_row):
+    conflicts = []
+    if sire_row is None or dam_row is None:
+        return conflicts
+    for key, column in GENETIC_TEST_FIELDS:
+        if is_carrier_status(dam_row.get(column)) and is_carrier_status(sire_row.get(column)):
+            conflicts.append(column)
+    return conflicts
 
 
 def parse_int_filter(value):
@@ -337,6 +373,8 @@ def get_sire_candidates(
     max_age=None,
     max_ebv=None,
     min_offspring=None,
+    dam_row=None,
+    avoid_carrier_matches=False,
     query="",
     sort_by="zuchtwert",
     sort_dir="asc",
@@ -359,6 +397,10 @@ def get_sire_candidates(
         candidates = candidates[
             candidates["_offspring_numeric"].notna() & (candidates["_offspring_numeric"] >= min_offspring)
         ]
+    if avoid_carrier_matches and dam_row is not None:
+        for _key, column in GENETIC_TEST_FIELDS:
+            if column in candidates.columns and is_carrier_status(dam_row.get(column)):
+                candidates = candidates.loc[~candidates[column].map(is_carrier_status)]
 
     sort_map = {
         "name": "_sort_name",
@@ -537,20 +579,12 @@ def _compute_linear_trend_significance(years, values):
     }
 
 
-@app.route("/", methods=["GET", "POST"])
-def home():
-    """Home/landing page with search box."""
-    # If there's a query, redirect to /search
-    query = request.values.get("q", "").strip()
-    if query:
-        return redirect(url_for("search_results", q=query, page=1))
-    
-    # Render home page with population stats
+def population_stats_context():
     stats_total = int(MERGED_DF.shape[0])
     stats_ed_series = MERGED_DF.get("ED_ZWS")
     stats_ed_distribution = []
     stats_ed23_analysis = None
-    
+
     if stats_ed_series is not None:
         ed_clean = (
             stats_ed_series.astype(str)
@@ -559,11 +593,10 @@ def home():
         )
         stats_ed_evaluated = int(ed_clean.notna().sum())
         stats_ed_percent = float((stats_ed_evaluated / stats_total * 100) if stats_total else 0)
-        
-        # Calculate röntgenquote for display
+
         ed_count_evaluated = int(ed_clean.notna().sum())
         roentgen_quote = (ed_count_evaluated / stats_total * 100) if stats_total > 0 else 0.0
-        
+
         if "geburtsjahr" in MERGED_DF.columns:
             birth_year_source = MERGED_DF["geburtsjahr"]
         elif "birthyear_clean" in MERGED_DF.columns:
@@ -577,7 +610,6 @@ def home():
             .where(lambda s: s.str.fullmatch(r"\d{4}"), pd.NA)
         )
 
-        # build distribution of ED_ZWS per birth year (exclude 2025)
         dist_df = (
             MERGED_DF.loc[ed_clean.notna() & birth_year.notna(), ["ED_ZWS"]]
             .assign(birth_year=birth_year)
@@ -607,9 +639,8 @@ def home():
                 trend = _compute_linear_trend_significance(ed23_df["birth_year"].astype(int).tolist(), ed23_df["percent"].astype(float).tolist())
                 if trend:
                     p_value = trend["p_value"]
-                    is_significant = p_value < 0.05
                     stats_ed23_analysis = {
-                        "is_significant": is_significant,
+                        "is_significant": p_value < 0.05,
                         "p_value": p_value,
                         "interpretation": "Der Anteil schwererer ED-Befunde zeigt im betrachteten Zeitraum keinen statistisch gesicherten Trend."
                     }
@@ -617,21 +648,37 @@ def home():
         stats_ed_evaluated = 0
         stats_ed_percent = 0.0
         roentgen_quote = 0.0
-    
-    return render_template(
-        "home.html",
-        stats_total=stats_total,
-        stats_ed_evaluated=stats_ed_evaluated,
-        stats_ed_percent=stats_ed_percent,
-        roentgen_quote=roentgen_quote,
-        stats_ed_distribution=stats_ed_distribution,
-        stats_ed23_analysis=stats_ed23_analysis,
-    )
+
+    return {
+        "stats_total": stats_total,
+        "stats_ed_evaluated": stats_ed_evaluated,
+        "stats_ed_percent": stats_ed_percent,
+        "roentgen_quote": roentgen_quote,
+        "stats_ed_distribution": stats_ed_distribution,
+        "stats_ed23_analysis": stats_ed23_analysis,
+    }
+
+
+@app.route("/")
+def landing():
+    """Welcome page with entry points into the app."""
+    return render_template("landing.html")
+
+
+@app.route("/dogs", methods=["GET", "POST"])
+def dog_search_home():
+    """Dog search page with search box and population stats."""
+    # If there's a query, redirect to /search
+    query = request.values.get("q", "").strip()
+    if query:
+        return redirect(url_for("search_results", q=query, page=1))
+
+    return render_template("home.html", **population_stats_context())
 
 
 @app.route("/info")
 def info():
-    return render_template("info.html")
+    return render_template("info.html", **population_stats_context())
 
 
 @app.route("/dog_suggest")
@@ -691,6 +738,7 @@ def pairing():
     sire_max_age = request.args.get("sire_max_age", "").strip()
     sire_max_ebv = request.args.get("sire_max_ebv", "").strip()
     sire_min_offspring = request.args.get("sire_min_offspring", "").strip()
+    avoid_carrier_matches = request.args.get("avoid_carrier_matches", "").strip() == "1"
     sire_search = request.args.get("sire_search", "").strip()
     sire_page = request.args.get("sire_page", "1").strip()
     sire_sort_by = request.args.get("sire_sort_by", "zuchtwert").strip().lower()
@@ -711,12 +759,15 @@ def pairing():
     sire_candidates = []
     sire_total = 0
     sire_page_count = 0
+    dam_preview = resolve_dog(dam_input, required_sex="H") if dam_input else None
     if show_sire_results:
         sire_df = get_sire_candidates(
             min_age=min_age,
             max_age=max_age,
             max_ebv=max_ebv,
             min_offspring=min_offspring,
+            dam_row=dam_preview,
+            avoid_carrier_matches=avoid_carrier_matches,
             query=sire_input,
             sort_by=sire_sort_by,
             sort_dir=sire_sort_dir,
@@ -735,10 +786,12 @@ def pairing():
         "sire_input": sire_input,
         "selected_sire": selected_sire,
         "dam_input": dam_input,
+        "dam_summary": None,
         "sire_min_age": sire_min_age,
         "sire_max_age": sire_max_age,
         "sire_max_ebv": sire_max_ebv,
         "sire_min_offspring": sire_min_offspring,
+        "avoid_carrier_matches": avoid_carrier_matches,
         "sire_search": sire_search,
         "sire_candidates": sire_candidates,
         "sire_total": sire_total,
@@ -750,9 +803,12 @@ def pairing():
         "error": None,
     }
 
+    if dam_preview is not None:
+        context["dam_summary"] = dog_summary(dam_preview)
+
     if selected_sire or dam_input:
         sire = resolve_dog(selected_sire, required_sex="R") if selected_sire else None
-        dam = resolve_dog(dam_input, required_sex="H")
+        dam = dam_preview
 
         if sire is None or dam is None:
             if dam_input and dam is None:
@@ -770,6 +826,10 @@ def pairing():
                 return render_template("pairing.html", **context)
             if not dog_matches_min_offspring(sire, min_offspring=min_offspring):
                 context["error"] = "Der ausgewählte Rüde passt nicht zur angegebenen Mindestanzahl an Nachkommen."
+                return render_template("pairing.html", **context)
+            carrier_conflicts = carrier_conflicts_with_dam(sire, dam) if avoid_carrier_matches else []
+            if carrier_conflicts:
+                context["error"] = "Der ausgewählte Rüde passt nicht zur Gentest-Regel: Träger × Träger bei " + ", ".join(carrier_conflicts) + "."
                 return render_template("pairing.html", **context)
 
             planned_zbnr, pairing_index = make_pairing_index(sire, dam)
@@ -826,7 +886,7 @@ def search_results():
     """Search results page."""
     query = request.args.get("q", "").strip()
     if not query:
-        return redirect(url_for("home"))
+        return redirect(url_for("dog_search_home"))
     
     q = query.lower()
     df = MERGED_DF
@@ -964,6 +1024,8 @@ def search_results():
         res["zbnr_link"] = quote_plus(str(z)) if z else ""
         res["zbnr"] = z
         res["hd"] = hd
+        for key, column in GENETIC_TEST_FIELDS:
+            res[key] = clean_text(r.get(column))
         res["ed"] = ed
         res["konfidenz"] = konf
         res["zuchtwert"] = zucht

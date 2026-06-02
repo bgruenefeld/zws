@@ -20,17 +20,50 @@
         padding: 0 20px;
       }
 
+      main.container {
+        padding-top: 20px;
+      }
+
       header {
-        background: #fff;
+        background: #f8fafc;
         border-bottom: 1px solid #e0e5eb;
-        padding: 22px 0;
-        margin-bottom: 24px;
+        padding: 26px 0 18px;
+        margin-bottom: 0;
       }
 
       header h1 {
         margin: 0;
-        font-size: 24px;
-        font-weight: 650;
+        color: #12233a;
+        font-size: 28px;
+        font-weight: 800;
+      }
+
+      .page-head {
+        align-items: center;
+        display: flex;
+        gap: 18px;
+        justify-content: space-between;
+      }
+
+      .page-subtitle {
+        color: #667085;
+        font-size: 13px;
+        margin-top: 4px;
+      }
+
+      .reset-link {
+        border: 1px solid #b9c9dc;
+        border-radius: 8px;
+        color: #12233a;
+        font-size: 13px;
+        font-weight: 750;
+        padding: 9px 14px;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .reset-link:hover {
+        background: #edf4fb;
       }
 
       .panel {
@@ -43,15 +76,135 @@
 
       .pairing-form {
         display: grid;
-        grid-template-columns: minmax(300px, 1fr) minmax(680px, 1.45fr) auto;
         gap: 14px;
-        align-items: end;
       }
 
       .sire-filter {
         display: grid;
-        grid-template-columns: minmax(220px, 1fr) 90px 90px 130px 150px;
+        grid-template-columns: minmax(250px, 1.4fr) repeat(4, minmax(110px, 0.7fr));
         gap: 12px;
+      }
+
+      .checkbox-field {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        display: flex;
+        gap: 9px;
+        grid-column: 1 / -1;
+        padding: 10px 12px;
+      }
+
+      .checkbox-field input {
+        flex: 0 0 auto;
+        width: auto;
+      }
+
+      .planner-card {
+        background: #fff;
+        border: 1px solid #cfd8e3;
+        border-radius: 12px;
+        margin: 0 0 20px;
+        padding: 16px;
+      }
+
+      .planner-card-top {
+        align-items: center;
+        border-bottom: 1px dashed #b9c9dc;
+        display: grid;
+        gap: 16px;
+        grid-template-columns: minmax(300px, 1fr) auto;
+        padding-bottom: 14px;
+      }
+
+      .dam-summary {
+        align-items: center;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: auto minmax(0, 1fr);
+        min-width: 0;
+      }
+
+      .dam-avatar {
+        align-items: center;
+        background: #e8f2ff;
+        border: 1px solid #bad7fb;
+        border-radius: 999px;
+        color: #2563eb;
+        display: inline-flex;
+        font-weight: 800;
+        height: 42px;
+        justify-content: center;
+        width: 42px;
+      }
+
+      .dam-title {
+        color: #12233a;
+        font-size: 17px;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+
+      .dam-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 6px;
+      }
+
+      .dam-chip {
+        background: #f8fafc;
+        border: 1px solid #dbe2ea;
+        border-radius: 999px;
+        color: #52606d;
+        font-size: 12px;
+        padding: 4px 9px;
+      }
+
+      .dam-chip.good {
+        background: #eaf7ee;
+        border-color: #bde5c8;
+        color: #237a3b;
+      }
+
+      .planner-status {
+        align-items: center;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: auto auto auto;
+      }
+
+      .planner-stat {
+        border-left: 1px solid #dbe2ea;
+        padding-left: 14px;
+      }
+
+      .planner-stat-label {
+        color: #667085;
+        font-size: 11px;
+        font-weight: 750;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .planner-stat-value {
+        color: #12233a;
+        font-size: 16px;
+        font-weight: 800;
+        margin-top: 2px;
+      }
+
+      .planner-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .planner-fields {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.9fr);
+        margin-top: 14px;
       }
 
       label {
@@ -63,7 +216,8 @@
       }
 
       input,
-      select {
+      select,
+      textarea {
         width: 100%;
         border: 1px solid #cfd8e3;
         border-radius: 6px;
@@ -74,10 +228,16 @@
       }
 
       input:focus,
-      select:focus {
+      select:focus,
+      textarea:focus {
         border-color: #4a90e2;
         box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.12);
         outline: none;
+      }
+
+      textarea {
+        min-height: 72px;
+        resize: vertical;
       }
 
       button {
@@ -224,6 +384,48 @@
         width: 16px;
       }
 
+      .pairing-result-head {
+        align-items: center;
+        border-bottom: 1px solid #edf1f5;
+        display: flex;
+        gap: 14px;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        padding-bottom: 14px;
+      }
+
+      .pairing-result-head h2 {
+        color: #12233a;
+        font-size: 18px;
+        margin: 0;
+      }
+
+      .pairing-result-subtitle {
+        color: #667085;
+        font-size: 13px;
+        margin-top: 4px;
+      }
+
+      .save-modal-form {
+        display: grid;
+        gap: 14px;
+      }
+
+      .save-modal-actions {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 4px;
+      }
+
+      .save-status {
+        color: #237a3b;
+        font-size: 13px;
+        font-weight: 700;
+        margin-right: auto;
+      }
+
       .candidate-table {
         width: 100%;
         border-collapse: collapse;
@@ -261,6 +463,19 @@
       }
 
       .candidate-action:hover {
+        text-decoration: underline;
+      }
+
+      .external-health-link {
+        color: #2563eb;
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 650;
+        margin-top: 4px;
+        text-decoration: none;
+      }
+
+      .external-health-link:hover {
         text-decoration: underline;
       }
 
@@ -327,30 +542,7 @@
       }
 
       .relatives-panel {
-        background: #fff;
-        border: 1px solid #dbe2ea;
-        border-radius: 8px;
-        margin-top: 20px;
-        padding: 20px;
-      }
-
-      .relatives-head {
-        align-items: baseline;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px 14px;
-        justify-content: space-between;
-        margin-bottom: 14px;
-      }
-
-      .relatives-head h2 {
-        font-size: 18px;
-        margin: 0;
-      }
-
-      .relatives-meta {
-        color: #667085;
-        font-size: 13px;
+        display: none;
       }
 
       .relatives-grid {
@@ -511,9 +703,135 @@
         margin-top: 10px;
       }
 
+      .saved-pairings-head {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+      }
+
+      .saved-pairings-head h2 {
+        font-size: 18px;
+        margin: 0;
+      }
+
+      .saved-pairings-title {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+      }
+
+      .saved-count-badge {
+        align-items: center;
+        background: #e8f2ff;
+        border: 1px solid #bad7fb;
+        border-radius: 999px;
+        color: #2563eb;
+        display: inline-flex;
+        font-size: 13px;
+        font-weight: 800;
+        height: 26px;
+        justify-content: center;
+        min-width: 26px;
+        padding: 0 8px;
+      }
+
+      .saved-toggle {
+        background: transparent;
+        color: #52606d;
+        font-size: 13px;
+        font-weight: 800;
+        padding: 6px 0;
+      }
+
+      .saved-toggle:hover {
+        background: transparent;
+        color: #2563eb;
+      }
+
+      .saved-pairings-body {
+        margin-top: 14px;
+      }
+
+      .saved-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .saved-item {
+        align-items: start;
+        border: 1px solid #e1e7ee;
+        border-radius: 8px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 12px;
+      }
+
+      .saved-title {
+        color: #1f3a52;
+        font-weight: 750;
+        text-decoration: none;
+      }
+
+      .saved-title:hover {
+        color: #2563eb;
+        text-decoration: underline;
+      }
+
+      .saved-description,
+      .saved-meta {
+        color: #667085;
+        font-size: 13px;
+        line-height: 1.45;
+        margin-top: 4px;
+      }
+
+      .saved-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .secondary-button,
+      .danger-button {
+        border: 1px solid #dbe2ea;
+        color: #243447;
+        padding: 8px 11px;
+      }
+
+      .secondary-button {
+        background: #f8fafc;
+      }
+
+      .secondary-button:hover {
+        background: #edf2f7;
+      }
+
+      .danger-button {
+        background: #fff5f5;
+        border-color: #f0c8c8;
+        color: #9f1c1c;
+      }
+
+      .danger-button:hover {
+        background: #ffe8e8;
+      }
+
       @media (max-width: 1100px) {
-        .pairing-form {
+        .planner-card-top,
+        .planner-fields {
           grid-template-columns: 1fr;
+        }
+
+        .planner-status {
+          grid-template-columns: 1fr;
+        }
+
+        .planner-stat {
+          border-left: 0;
+          border-top: 1px solid #dbe2ea;
+          padding-left: 0;
+          padding-top: 10px;
         }
       }
 
@@ -528,6 +846,20 @@
           padding: 12px;
         }
 
+        .pairing-result-head,
+        .saved-item {
+          grid-template-columns: 1fr;
+        }
+
+        .pairing-result-head {
+          align-items: stretch;
+          display: grid;
+        }
+
+        #openSavePairingModalButton {
+          width: 100%;
+        }
+
         .sire-filter {
           grid-template-columns: 1fr;
         }
@@ -537,60 +869,146 @@
   <body>
     {% include "_nav.html" %}
     <header>
-      <div class="container">
-        <h1>Verpaarung planen</h1>
+      <div class="container page-head">
+        <div>
+          <h1>Verpaarung planen</h1>
+          <div class="page-subtitle">Rüden auswählen, Paarung bewerten, Kandidaten vergleichen und Details gezielt öffnen.</div>
+        </div>
+        <a class="reset-link" href="/pairing">Suche zurücksetzen</a>
       </div>
     </header>
 
     <main class="container">
       {% macro sort_link(label, key) -%}
         {%- set next_dir = 'desc' if sire_sort_by == key and sire_sort_dir == 'asc' else 'asc' -%}
-        <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_search='1', sire_page=1, sire_sort_by=key, sire_sort_dir=next_dir) }}">
+        <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', sire_search='1', sire_page=1, sire_sort_by=key, sire_sort_dir=next_dir) }}">
           {{ label }}{% if sire_sort_by == key %} {{ '▲' if sire_sort_dir == 'asc' else '▼' }}{% endif %}
         </a>
       {%- endmacro %}
 
-      <section class="panel">
+      <section class="planner-card">
         <form class="pairing-form" id="pairingForm" method="get" action="/pairing">
           <input type="hidden" name="sire_search" value="1">
           <input type="hidden" name="sire_page" value="1">
-          <label>
-            Hündin zuerst auswählen
-            <input name="dam" value="{{ dam_input }}" list="damSuggestions" placeholder="Name oder ZBNr der Hündin" autocomplete="off" data-sex="H">
-            <datalist id="damSuggestions"></datalist>
-          </label>
-          <div class="sire-filter">
-            <label>
-              Rüde suchen
-              <input name="sire" value="{{ sire_input }}" placeholder="Name oder ZBNr optional" autocomplete="off" data-sex="R">
-            </label>
-            <label>
-              Alter von
-              <input name="sire_min_age" value="{{ sire_min_age }}" type="number" min="0" max="25" placeholder="Jahre">
-            </label>
-            <label>
-              Alter bis
-              <input name="sire_max_age" value="{{ sire_max_age }}" type="number" min="0" max="25" placeholder="Jahre">
-            </label>
-            <label>
-              Max. ED-ZW
-              <input name="sire_max_ebv" value="{{ sire_max_ebv }}" type="number" min="-100" step="1" placeholder="z. B. -5">
-            </label>
-            <label>
-              Mind. Nachkommen
-              <input name="sire_min_offspring" value="{{ sire_min_offspring }}" type="number" min="0" step="1" placeholder="z. B. 5">
-            </label>
+
+          <div class="planner-card-top">
+            <div class="dam-summary">
+              <div class="dam-avatar">H</div>
+              <div>
+                <div class="dam-title">
+                  {% if result %}
+                    {{ result.dam.name }}
+                  {% elif dam_summary %}
+                    {{ dam_summary.name }}
+                  {% elif dam_input %}
+                    {{ dam_input }}
+                  {% else %}
+                    Hündin auswählen
+                  {% endif %}
+                </div>
+                <div class="dam-chips">
+                  {% if result %}
+                    <span class="dam-chip">ZBNr {{ result.dam.zbnr or "—" }}</span>
+                    <span class="dam-chip good">ED {{ result.dam.ed or "—" }}</span>
+                    <span class="dam-chip">ZW {{ result.dam.zuchtwert if result.dam.zuchtwert is not none else "—" }}</span>
+                    <span class="dam-chip">Gen. {{ result.complete_generation if result.complete_generation is not none else "—" }} vollständig</span>
+                    {% if result.dam.alter is not none %}<span class="dam-chip">{{ result.dam.alter }} Jahre</span>{% endif %}
+                  {% elif dam_summary %}
+                    <span class="dam-chip">ZBNr {{ dam_summary.zbnr or "—" }}</span>
+                    <span class="dam-chip good">ED {{ dam_summary.ed or "—" }}</span>
+                    <span class="dam-chip">ZW {{ dam_summary.zuchtwert if dam_summary.zuchtwert is not none else "—" }}</span>
+                    {% if dam_summary.alter is not none %}<span class="dam-chip">{{ dam_summary.alter }} Jahre</span>{% endif %}
+                  {% else %}
+                    <span class="dam-chip">Bitte zuerst eine Hündin wählen</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div class="planner-status">
+              <div class="planner-stat">
+                <div class="planner-stat-label">Aktive Filter</div>
+                <div class="planner-stat-value">
+                  {% set filters = [] %}
+                  {% if sire_max_age %}{% set _ = filters.append("Alter ≤ " ~ sire_max_age) %}{% endif %}
+                  {% if sire_min_age %}{% set _ = filters.append("Alter ≥ " ~ sire_min_age) %}{% endif %}
+                  {% if sire_max_ebv %}{% set _ = filters.append("ED-ZW ≤ " ~ sire_max_ebv) %}{% endif %}
+                  {% if sire_min_offspring %}{% set _ = filters.append("Nachk. ≥ " ~ sire_min_offspring) %}{% endif %}
+                  {% if avoid_carrier_matches %}{% set _ = filters.append("keine Träger × Träger") %}{% endif %}
+                  {{ filters | join(" · ") if filters else "keine" }}
+                </div>
+              </div>
+              <div class="planner-stat">
+                <div class="planner-stat-label">Treffer</div>
+                <div class="planner-stat-value">
+                  {% if sire_search == "1" %}{{ sire_total }} Rüden{% else %}—{% endif %}
+                </div>
+              </div>
+              <div class="planner-actions">
+                <button type="button" class="secondary-button" id="focusPairingFilters">Filter ändern</button>
+                <button type="submit">Rüden suchen</button>
+              </div>
+            </div>
           </div>
-          <button type="submit">Rüden suchen</button>
+
+          <div class="planner-fields">
+            <label>
+              Hündin auswählen
+              <input name="dam" value="{{ dam_input }}" list="damSuggestions" placeholder="Name oder ZBNr der Hündin" autocomplete="off" data-sex="H">
+              <datalist id="damSuggestions"></datalist>
+            </label>
+            <div class="sire-filter">
+              <label>
+                Rüde suchen
+                <input name="sire" value="{{ sire_input }}" placeholder="Name oder ZBNr optional" autocomplete="off" data-sex="R">
+              </label>
+              <label>
+                Alter von
+                <input name="sire_min_age" value="{{ sire_min_age }}" type="number" min="0" max="25" placeholder="Jahre">
+              </label>
+              <label>
+                Alter bis
+                <input name="sire_max_age" value="{{ sire_max_age }}" type="number" min="0" max="25" placeholder="Jahre">
+              </label>
+              <label>
+                Max. ED-ZW
+                <input name="sire_max_ebv" value="{{ sire_max_ebv }}" type="number" min="-100" step="1" placeholder="z. B. -5">
+              </label>
+              <label>
+                Mind. Nachkommen
+                <input name="sire_min_offspring" value="{{ sire_min_offspring }}" type="number" min="0" step="1" placeholder="z. B. 5">
+              </label>
+              <label class="checkbox-field">
+                <input name="avoid_carrier_matches" value="1" type="checkbox" {% if avoid_carrier_matches %}checked{% endif %}>
+                Träger × Träger bei Gentests ausschließen
+              </label>
+            </div>
+          </div>
         </form>
         <div class="hint">
-          Wähle zuerst die Hündin aus, grenze die Rüden über Name, Zuchtbuchnummer oder Alter ein und starte dann die Suche. Ein Klick auf „Auswählen“ berechnet die Verpaarung.
+          Hinweis: Die Filter können später um weitere Kriterien wie Land, Titel, Gesundheitsstatus oder Mindest-Sicherheit ergänzt werden.
         </div>
       </section>
 
       {% if error %}
         <div class="error">{{ error }}</div>
       {% endif %}
+
+      <section class="panel" id="savedPairingsPanel">
+        <div class="saved-pairings-head">
+          <div class="saved-pairings-title">
+            <h2>Gespeicherte Paarungen</h2>
+            <span class="saved-count-badge" id="savedPairingsCount">0</span>
+          </div>
+          <button type="button" class="saved-toggle" id="savedPairingsToggle" aria-expanded="false" aria-controls="savedPairingsBody">aufklappen</button>
+        </div>
+
+        <div class="saved-pairings-body" id="savedPairingsBody" hidden>
+          <div class="saved-list" id="savedPairingsList">
+            <div class="empty-state">Noch keine Verpaarung gespeichert.</div>
+          </div>
+        </div>
+      </section>
 
       {% if sire_search == "1" %}
         <section class="panel" id="sireCandidatePanel">
@@ -622,7 +1040,13 @@
               <tbody>
                 {% for dog in sire_candidates %}
                   <tr>
-                    <td>{{ dog.name or "unbekannt" }}</td>
+                    <td>
+                      {{ dog.name or "unbekannt" }}
+                      {% if dog.kc_health_url %}
+                        <br>
+                        <a class="external-health-link" href="{{ dog.kc_health_url }}" target="_blank" rel="noopener noreferrer">Royal Kennel Club</a>
+                      {% endif %}
+                    </td>
                     <td>{{ dog.zbnr or "—" }}</td>
                     <td>{% if dog.alter is not none %}{{ dog.alter }} Jahre{% else %}—{% endif %}</td>
                     <td>{{ dog.ed or "—" }}</td>                    
@@ -630,7 +1054,7 @@
                     <td>{% if dog.zuchtwert is not none %}{{ dog.zuchtwert }}{% else %}—{% endif %}</td>
                     <td>{% if dog.konfidenz is not none %}{{ dog.konfidenz }} %{% else %}—{% endif %}</td>
                     <td>
-                      <a class="candidate-action" href="{{ url_for('pairing', sire=sire_input, selected_sire=dog.zbnr, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_search='1', sire_page=sire_page, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">
+                      <a class="candidate-action" href="{{ url_for('pairing', sire=sire_input, selected_sire=dog.zbnr, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', sire_search='1', sire_page=sire_page, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">
                         Auswählen
                       </a>
                     </td>
@@ -642,7 +1066,7 @@
             {% if sire_page_count > 1 %}
               <nav class="pager" aria-label="Rüden Trefferseiten">
                 {% if sire_page > 1 %}
-                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_search='1', sire_page=sire_page - 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Zurück</a>
+                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', sire_search='1', sire_page=sire_page - 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Zurück</a>
                 {% else %}
                   <span class="disabled">Zurück</span>
                 {% endif %}
@@ -652,7 +1076,7 @@
                     {% if page_no == sire_page %}
                       <span class="active">{{ page_no }}</span>
                     {% else %}
-                      <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_search='1', sire_page=page_no, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">{{ page_no }}</a>
+                      <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', sire_search='1', sire_page=page_no, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">{{ page_no }}</a>
                     {% endif %}
                   {% elif page_no == 2 or page_no == sire_page_count - 1 %}
                     <span class="disabled">…</span>
@@ -660,7 +1084,7 @@
                 {% endfor %}
 
                 {% if sire_page < sire_page_count %}
-                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, sire_search='1', sire_page=sire_page + 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Weiter</a>
+                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', sire_search='1', sire_page=sire_page + 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Weiter</a>
                 {% else %}
                   <span class="disabled">Weiter</span>
                 {% endif %}
@@ -674,6 +1098,14 @@
 
       {% if result %}
         <section class="panel">
+          <div class="pairing-result-head">
+            <div>
+              <h2>{{ result.dam.name }} × {{ result.sire.name }}</h2>
+              <div class="pairing-result-subtitle">Ausgewählte Verpaarung mit berechneter Ahnentafel und Kennzahlen</div>
+            </div>
+            <button type="button" class="secondary-button" id="openSavePairingModalButton">Speichern</button>
+          </div>
+
           <div class="summary-grid">
             <div class="metric">
               <div class="metric-label">Erwarteter ED-Zuchtwert</div>
@@ -698,7 +1130,13 @@
               <h3>{{ result.sire.name }}</h3>
               <div class="parent-meta">
                 Rüde · ZBNr {{ result.sire.zbnr or "—" }} · Wurfdatum {{ result.sire.wurfdatum or "—" }} · Alter {% if result.sire.alter is not none %}{{ result.sire.alter }} Jahre{% else %}—{% endif %}<br>
-                ED {{ result.sire.ed or "—" }}
+                HD {{ result.sire.hd or "—" }} · ED {{ result.sire.ed or "—" }}<br>
+                prcd-PRA {{ result.sire.prcd_pra or "—" }} · HNPK {{ result.sire.hnpk or "—" }} · SD2 {{ result.sire.sd2 or "—" }}<br>
+                CNM {{ result.sire.cnm or "—" }} · EIC {{ result.sire.eic or "—" }} · ZS {{ result.sire.zs or "—" }} · STGD {{ result.sire.stgd_status or "—" }}
+                {% if result.sire.kc_health_url %}
+                  <br>
+                  <a class="external-health-link" href="{{ result.sire.kc_health_url }}" target="_blank" rel="noopener noreferrer">Royal Kennel Club Health Test Results</a>
+                {% endif %}
               </div>
               <div class="parent-zw">
                 <div class="parent-zw-head">
@@ -720,7 +1158,9 @@
               <h3>{{ result.dam.name }}</h3>
               <div class="parent-meta">
                 Hündin · ZBNr {{ result.dam.zbnr or "—" }} · Wurfdatum {{ result.dam.wurfdatum or "—" }} · Alter {% if result.dam.alter is not none %}{{ result.dam.alter }} Jahre{% else %}—{% endif %}<br>
-                ED {{ result.dam.ed or "—" }}
+                HD {{ result.dam.hd or "—" }} · ED {{ result.dam.ed or "—" }}<br>
+                prcd-PRA {{ result.dam.prcd_pra or "—" }} · HNPK {{ result.dam.hnpk or "—" }} · SD2 {{ result.dam.sd2 or "—" }}<br>
+                CNM {{ result.dam.cnm or "—" }} · EIC {{ result.dam.eic or "—" }} · ZS {{ result.dam.zs or "—" }} · STGD {{ result.dam.stgd_status or "—" }}
               </div>
               <div class="parent-zw">
                 <div class="parent-zw-head">
@@ -745,26 +1185,6 @@
           {{ result.pedigree_html | safe }}
         </section>
 
-        <section class="relatives-panel" id="pairingRelativesPanel">
-          <div class="relatives-head">
-            <h2 id="pairingRelativesTitle">Verwandtschaft</h2>
-            <div class="relatives-meta" id="pairingRelativesMeta">Klicke einen Hund in der Ahnentafel an.</div>
-          </div>
-          <div class="relatives-grid">
-            <div class="relative-section">
-              <h3 id="pairingSiblingsTitle">Wurfgeschwister</h3>
-              <div class="relative-body" id="pairingSiblingsBody">
-                <div class="empty-state">Noch kein Hund ausgewählt.</div>
-              </div>
-            </div>
-            <div class="relative-section">
-              <h3 id="pairingOffspringTitle">Nachkommen</h3>
-              <div class="relative-body" id="pairingOffspringBody">
-                <div class="empty-state">Noch kein Hund ausgewählt.</div>
-              </div>
-            </div>
-          </div>
-        </section>
       {% endif %}
     </main>
 
@@ -796,10 +1216,45 @@
       </div>
     </div>
 
+    {% if result %}
+      <div class="modal-backdrop" id="savePairingModal" aria-hidden="true">
+        <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="savePairingModalTitle">
+          <div class="modal-head">
+            <div>
+              <h2 id="savePairingModalTitle">Verpaarung speichern</h2>
+              <div class="modal-meta">{{ result.dam.name }} × {{ result.sire.name }}</div>
+            </div>
+            <button type="button" class="modal-close" id="savePairingModalClose" aria-label="Popup schließen">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="save-modal-form">
+              <label>
+                Name
+                <input id="savedPairingName" value="{{ result.dam.name }} × {{ result.sire.name }}" placeholder="Name der Verpaarung">
+              </label>
+              <label>
+                Bemerkung
+                <textarea id="savedPairingDescription" placeholder="Kurze Notiz zur Verpaarung"></textarea>
+              </label>
+              <div class="save-modal-actions">
+                <div class="save-status" id="savePairingStatus" aria-live="polite"></div>
+                <button type="button" class="secondary-button" id="cancelSavePairingButton">Abbrechen</button>
+                <button type="button" id="savePairingButton">Speichern</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
     <script>
       let selectedPairingRelationZbnr = null;
       let currentPairingOffspring = [];
       let offspringSort = { column: null, direction: 'asc' };
+      const savedPairingsKey = 'zws.savedPairings.v1';
+      const currentPairingData = {% if result %}{{ {
+        "defaultName": result.dam.name ~ " × " ~ result.sire.name
+      } | tojson }}{% else %}null{% endif %};
 
       function escapeHtml(value) {
         return String(value ?? '')
@@ -860,6 +1315,14 @@
             <td>${escapeHtml(dog.zbnr || '—')}</td>
             <td>${escapeHtml(dog.wurfdatum || '—')}</td>
             <td>${escapeHtml(dog.geschlecht || '—')}</td>
+            <td>${escapeHtml(dog.hd || '—')}</td>
+            <td>${escapeHtml(dog.prcd_pra || '—')}</td>
+            <td>${escapeHtml(dog.hnpk || '—')}</td>
+            <td>${escapeHtml(dog.sd2 || '—')}</td>
+            <td>${escapeHtml(dog.cnm || '—')}</td>
+            <td>${escapeHtml(dog.eic || '—')}</td>
+            <td>${escapeHtml(dog.zs || '—')}</td>
+            <td>${escapeHtml(dog.stgd_status || '—')}</td>
             <td>${escapeHtml(dog.ed || '—')}</td>
             <td>${dog.anz_nachkommen != null ? escapeHtml(dog.anz_nachkommen) : '—'}</td>
             <td>${dog.zuchtwert != null ? escapeHtml(dog.zuchtwert) : '—'}</td>
@@ -875,6 +1338,14 @@
                 ${relativeHeader('ZBNr', 'zbnr', sortable)}
                 ${relativeHeader('Wurfdatum', 'wurfdatum', sortable)}
                 ${relativeHeader('Geschlecht', 'geschlecht', sortable)}
+                ${relativeHeader('HD', 'hd', sortable)}
+                ${relativeHeader('prcd-PRA', 'prcd_pra', sortable)}
+                ${relativeHeader('HNPK', 'hnpk', sortable)}
+                ${relativeHeader('SD2', 'sd2', sortable)}
+                ${relativeHeader('CNM', 'cnm', sortable)}
+                ${relativeHeader('EIC', 'eic', sortable)}
+                ${relativeHeader('ZS', 'zs', sortable)}
+                ${relativeHeader('STGD', 'stgd_status', sortable)}
                 ${relativeHeader('ED', 'ed', sortable)}
                 ${relativeHeader('Nachkommen', 'anz_nachkommen', sortable)}
                 ${relativeHeader('ZW', 'zuchtwert', sortable)}
@@ -890,7 +1361,7 @@
         const dogs = offspringSort.column
           ? [...currentPairingOffspring].sort((a, b) => compareDogs(a, b, offspringSort.column, offspringSort.direction))
           : currentPairingOffspring;
-        document.getElementById('pairingOffspringBody').innerHTML = renderRelativeTable(
+        document.getElementById('pairingModalOffspringBody').innerHTML = renderRelativeTable(
           dogs,
           'Keine Nachkommen gefunden.',
           { sortable: true }
@@ -922,12 +1393,6 @@
 
       function setPairingRelativesLoading(zbnr) {
         const loading = '<div class="loading">Wird geladen...</div>';
-        document.getElementById('pairingRelativesTitle').textContent = 'Verwandtschaft';
-        document.getElementById('pairingRelativesMeta').textContent = 'ZBNr ' + zbnr;
-        document.getElementById('pairingSiblingsTitle').textContent = 'Wurfgeschwister';
-        document.getElementById('pairingOffspringTitle').textContent = 'Nachkommen';
-        document.getElementById('pairingSiblingsBody').innerHTML = loading;
-        document.getElementById('pairingOffspringBody').innerHTML = loading;
         document.getElementById('pairingRelativesModalTitle').textContent = 'Verwandtschaft';
         document.getElementById('pairingRelativesModalMeta').textContent = 'ZBNr ' + zbnr;
         document.getElementById('pairingModalSiblingsTitle').textContent = 'Wurfgeschwister';
@@ -962,28 +1427,18 @@
               offspring.length + ' Nachkommen'
             ].filter(Boolean).join(' · ');
 
-            document.getElementById('pairingRelativesTitle').textContent = 'Ausgewählt: ' + title;
-            document.getElementById('pairingRelativesMeta').textContent = meta;
-            document.getElementById('pairingSiblingsTitle').textContent = 'Wurfgeschwister von ' + title;
-            document.getElementById('pairingOffspringTitle').textContent = 'Nachkommen von ' + title;
             document.getElementById('pairingRelativesModalTitle').textContent = 'Ausgewählt: ' + title;
             document.getElementById('pairingRelativesModalMeta').textContent = meta;
             document.getElementById('pairingModalSiblingsTitle').textContent = 'Wurfgeschwister von ' + title;
             document.getElementById('pairingModalOffspringTitle').textContent = 'Nachkommen von ' + title;
-            document.getElementById('pairingSiblingsBody').innerHTML = data.message
-              ? '<div class="empty-state">' + escapeHtml(data.message) + '</div>'
-              : renderRelativeTable(siblings, 'Keine Wurfgeschwister gefunden.');
-            renderPairingOffspring();
             document.getElementById('pairingModalSiblingsBody').innerHTML = data.message
               ? '<div class="empty-state">' + escapeHtml(data.message) + '</div>'
               : renderRelativeTable(siblings, 'Keine Wurfgeschwister gefunden.');
-            document.getElementById('pairingModalOffspringBody').innerHTML = renderRelativeTable(offspring, 'Keine Nachkommen gefunden.');
+            renderPairingOffspring();
           })
           .catch(error => {
             if (selectedPairingRelationZbnr !== zbnr) return;
             const errorHtml = '<div class="empty-state">Fehler beim Laden: ' + escapeHtml(error.message) + '</div>';
-            document.getElementById('pairingSiblingsBody').innerHTML = errorHtml;
-            document.getElementById('pairingOffspringBody').innerHTML = errorHtml;
             document.getElementById('pairingModalSiblingsBody').innerHTML = errorHtml;
             document.getElementById('pairingModalOffspringBody').innerHTML = errorHtml;
           });
@@ -1001,6 +1456,130 @@
           if (!zbnr || zbnr.startsWith('__')) return;
           loadPairingRelatives(zbnr);
         });
+      }
+
+      function readSavedPairings() {
+        try {
+          const stored = JSON.parse(localStorage.getItem(savedPairingsKey) || '[]');
+          return Array.isArray(stored) ? stored : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function writeSavedPairings(items) {
+        localStorage.setItem(savedPairingsKey, JSON.stringify(items));
+      }
+
+      function currentPairingUrl() {
+        return window.location.pathname + window.location.search;
+      }
+
+      function setSavedPairingsExpanded(expanded) {
+        const body = document.getElementById('savedPairingsBody');
+        const toggle = document.getElementById('savedPairingsToggle');
+        if (!body || !toggle) return;
+
+        body.hidden = !expanded;
+        toggle.setAttribute('aria-expanded', String(expanded));
+        toggle.textContent = expanded ? 'einklappen' : 'aufklappen';
+      }
+
+      function openSavePairingModal() {
+        if (!currentPairingData) return;
+
+        const modal = document.getElementById('savePairingModal');
+        const nameInput = document.getElementById('savedPairingName');
+        const descriptionInput = document.getElementById('savedPairingDescription');
+        const status = document.getElementById('savePairingStatus');
+        if (!modal || !nameInput || !descriptionInput) return;
+
+        const existing = readSavedPairings().find(item => item.url === currentPairingUrl());
+        nameInput.value = existing?.name || currentPairingData.defaultName || '';
+        descriptionInput.value = existing?.description || '';
+        if (status) status.textContent = '';
+
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        nameInput.focus();
+      }
+
+      function closeSavePairingModal() {
+        const modal = document.getElementById('savePairingModal');
+        if (!modal) return;
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+      }
+
+      function renderSavedPairings() {
+        const list = document.getElementById('savedPairingsList');
+        const count = document.getElementById('savedPairingsCount');
+        if (!list || !count) return;
+
+        const items = readSavedPairings().sort((a, b) => String(b.savedAt || '').localeCompare(String(a.savedAt || '')));
+        count.textContent = String(items.length);
+
+        if (items.length === 0) {
+          list.innerHTML = '<div class="empty-state">Noch keine Verpaarung gespeichert.</div>';
+          return;
+        }
+
+        list.innerHTML = items.map(item => {
+          const date = item.savedAt ? new Date(item.savedAt).toLocaleString('de-DE') : '';
+          return `
+            <div class="saved-item">
+              <div>
+                <a class="saved-title" href="${escapeHtml(item.url || '#')}">${escapeHtml(item.name || 'Unbenannte Verpaarung')}</a>
+                ${item.description ? `<div class="saved-description">${escapeHtml(item.description)}</div>` : ''}
+                <div class="saved-meta">${escapeHtml(date)}</div>
+              </div>
+              <div class="saved-actions">
+                <button type="button" class="secondary-button saved-open" data-url="${escapeHtml(item.url || '#')}">Öffnen</button>
+                <button type="button" class="danger-button saved-delete" data-id="${escapeHtml(item.id)}">Löschen</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function saveCurrentPairing() {
+        if (!currentPairingData) return;
+
+        const nameInput = document.getElementById('savedPairingName');
+        const descriptionInput = document.getElementById('savedPairingDescription');
+        const name = (nameInput?.value || currentPairingData.defaultName || '').trim();
+        const description = (descriptionInput?.value || '').trim();
+        const url = currentPairingUrl();
+        const items = readSavedPairings();
+        const existingIndex = items.findIndex(item => item.url === url);
+        const item = {
+          id: existingIndex >= 0 ? items[existingIndex].id : String(Date.now()),
+          name: name || 'Unbenannte Verpaarung',
+          description,
+          url,
+          savedAt: new Date().toISOString()
+        };
+
+        if (existingIndex >= 0) {
+          items[existingIndex] = item;
+        } else {
+          items.push(item);
+        }
+
+        writeSavedPairings(items);
+        renderSavedPairings();
+
+        const status = document.getElementById('savePairingStatus');
+        if (status) status.textContent = 'Gespeichert.';
+        window.setTimeout(closeSavePairingModal, 450);
+      }
+
+      function deleteSavedPairing(id) {
+        const items = readSavedPairings().filter(item => item.id !== id);
+        writeSavedPairings(items);
+        renderSavedPairings();
       }
 
       function attachDamSuggest() {
@@ -1035,9 +1614,40 @@
         if (event.target.id === 'pairingRelativesModal') closeRelativesModal();
       });
       document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') closeRelativesModal();
+        if (event.key === 'Escape') {
+          closeRelativesModal();
+          closeSavePairingModal();
+        }
       });
 
+      const savePairingButton = document.getElementById('savePairingButton');
+      if (savePairingButton) savePairingButton.addEventListener('click', saveCurrentPairing);
+      document.getElementById('openSavePairingModalButton')?.addEventListener('click', openSavePairingModal);
+      document.getElementById('savePairingModalClose')?.addEventListener('click', closeSavePairingModal);
+      document.getElementById('cancelSavePairingButton')?.addEventListener('click', closeSavePairingModal);
+      document.getElementById('savePairingModal')?.addEventListener('click', event => {
+        if (event.target.id === 'savePairingModal') closeSavePairingModal();
+      });
+      document.getElementById('savedPairingsToggle')?.addEventListener('click', event => {
+        const expanded = event.currentTarget.getAttribute('aria-expanded') === 'true';
+        setSavedPairingsExpanded(!expanded);
+      });
+      document.getElementById('focusPairingFilters')?.addEventListener('click', () => {
+        document.querySelector('input[name="sire"]')?.focus();
+      });
+      document.getElementById('savedPairingsList').addEventListener('click', event => {
+        const openButton = event.target.closest('.saved-open');
+        if (openButton) {
+          window.location.href = openButton.dataset.url || '#';
+          return;
+        }
+
+        const deleteButton = event.target.closest('.saved-delete');
+        if (deleteButton) deleteSavedPairing(deleteButton.dataset.id);
+      });
+
+      renderSavedPairings();
+      setSavedPairingsExpanded(false);
       attachDamSuggest();
       attachPairingPedigreeClick();
     </script>
