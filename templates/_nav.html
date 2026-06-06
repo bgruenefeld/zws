@@ -1,10 +1,15 @@
 <nav class="app-nav" aria-label="Hauptnavigation">
   <div class="app-nav__inner">
-    <a class="app-nav__brand" href="/">Planer</a>
+    <a class="app-nav__brand" href="/" aria-label="Planer Startseite">
+      <img src="{{ url_for('static', filename='planer-logo.png') }}" alt="Planer">
+    </a>
     <div class="app-nav__links">
-      <a href="/dogs">Hundesuche</a>
+      <a href="/search">Hundesuche</a>
       <a href="/pairing">Verpaarungen planen</a>
       <a href="/info">Informationen zur Zuchtwertschätzung</a>
+      <form class="app-nav__logout" method="post" action="/logout">
+        <button type="submit">Abmelden</button>
+      </form>
     </div>
   </div>
 </nav>

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Anmelden - ED-Zuchtwert</title>
+    <style>
+      * { box-sizing: border-box; }
+
+      body {
+        align-items: center;
+        background: #f5f5f5;
+        color: #1f2937;
+        display: flex;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        justify-content: center;
+        margin: 0;
+        min-height: 100vh;
+        padding: 24px;
+      }
+
+      .login-card {
+        background: #fff;
+        border: 1px solid #dbe2ea;
+        border-radius: 10px;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+        max-width: 420px;
+        padding: 28px;
+        width: 100%;
+      }
+
+      .login-logo {
+        display: block;
+        height: auto;
+        margin: 0 0 24px;
+        max-width: 260px;
+        width: 72%;
+      }
+
+      h1 {
+        font-size: 24px;
+        margin: 0 0 6px;
+      }
+
+      p {
+        color: #667085;
+        font-size: 14px;
+        line-height: 1.5;
+        margin: 0 0 22px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 14px;
+      }
+
+      label {
+        color: #52606d;
+        font-size: 13px;
+        font-weight: 750;
+      }
+
+      input {
+        border: 1px solid #cfd8e3;
+        border-radius: 7px;
+        font: inherit;
+        padding: 11px 12px;
+        width: 100%;
+      }
+
+      input:focus {
+        border-color: #4a90e2;
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.12);
+        outline: none;
+      }
+
+      .error {
+        background: #fff5f5;
+        border: 1px solid #f2c7c7;
+        border-radius: 7px;
+        color: #a32020;
+        font-size: 13px;
+        margin-bottom: 14px;
+        padding: 10px 12px;
+      }
+
+      button {
+        background: #4a90e2;
+        border: 0;
+        border-radius: 7px;
+        color: #fff;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 800;
+        margin-top: 4px;
+        padding: 11px 14px;
+        width: 100%;
+      }
+
+      button:hover {
+        background: #3a7bc8;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="login-card">
+      <img class="login-logo" src="{{ url_for('static', filename='planer-logo.png') }}" alt="Planer - Zuchtplanung für Labrador Retriever">
+      <h1>Anmelden</h1>
+      <p>Bitte melde dich an, um die Anwendung zu öffnen.</p>
+
+      {% if error %}
+        <div class="error">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" action="/login">
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <div class="field">
+          <label for="username">Benutzername</label>
+          <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+        </div>
+        <div class="field">
+          <label for="password">Passwort</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit">Anmelden</button>
+      </form>
+    </main>
+  </body>
+</html>

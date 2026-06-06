@@ -800,9 +800,15 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
         ["ED_links", "ED_links_raw"],
     )
 
-    ebv = format_number(dog.get("EBV"), decimals=0)
+    ebv_value = to_float_or_none(dog.get("EBV"))
+    ebv = format_number(ebv_value, decimals=0)
     confidence = format_number(dog.get("Confidenz"), decimals=0)
     reliability_class = clean(dog.get("Verlässlichkeit"))
+    card_classes = f"card gen-{generation}"
+    warning_title = ""
+    if ebv_value is not None and ebv_value > 0:
+        card_classes += " ebv-unfavorable"
+        warning_title = " | Ungünstiger ED-EBV (> 0)"
 
     info_parts = []
 
@@ -839,7 +845,7 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
     zws_line = " · ".join(zws_parts)
 
     detail_lines = [name, info_line, health_line, zws_line]
-    title = html.escape(" | ".join(line for line in detail_lines if line), quote=True)
+    title = html.escape(" | ".join(line for line in detail_lines if line) + warning_title, quote=True)
 
     if generation >= 5:
         compact_parts = []
@@ -854,7 +860,7 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
         compact_html = f'<div class="subline">{compact_line}</div>' if compact_line else ""
 
         return f"""
-        <div class="card gen-{generation}" data-zbnr="{zbnr_attr}" title="{title}">
+        <div class="{card_classes}" data-zbnr="{zbnr_attr}" title="{title}">
             <div class="name">{html.escape(name)}</div>
             {compact_html}
         </div>
@@ -877,7 +883,7 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
         compact_html = f'<div class="subline">{compact_line}</div>' if compact_line else ""
 
         return f"""
-        <div class="card gen-{generation}" data-zbnr="{zbnr_attr}" title="{title}">
+        <div class="{card_classes}" data-zbnr="{zbnr_attr}" title="{title}">
             <div class="name">{html.escape(name)}</div>
             {compact_html}
         </div>
@@ -889,7 +895,7 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
         combined_html = f'<div class="zws-line">{combined_line}</div>' if combined_line else ""
 
         return f"""
-        <div class="card gen-{generation}" data-zbnr="{zbnr_attr}" title="{title}">
+        <div class="{card_classes}" data-zbnr="{zbnr_attr}" title="{title}">
             <div class="name">{html.escape(name)}</div>
             {info_html}
             {combined_html}
@@ -901,7 +907,7 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
     zws_html = f'<div class="zws-line">{zws_line}</div>' if zws_line else ""
 
     return f"""
-    <div class="card gen-{generation}" data-zbnr="{zbnr_attr}" title="{title}">
+    <div class="{card_classes}" data-zbnr="{zbnr_attr}" title="{title}">
         <div class="name">{html.escape(name)}</div>
         {info_html}
         {health_html}
@@ -926,88 +932,32 @@ def render_pedigree_html(
         max_generations=max_generations,
     )
 
-    generation_layout = get_generation_layout(max_generations)
-    col_gap = 28
+    leaf_count = 2 ** max_generations
+    row_height = 44
+    column_widths = [300, 300, 300, 315, 315]
+    active_widths = column_widths[:max_generations]
+    total_width = sum(active_widths)
+    total_height = leaf_count * row_height
 
-    positions, total_width, total_height = compute_compact_layout(
-        max_generations=max_generations,
-        generation_layout=generation_layout,
-        col_gap=col_gap,
-        leaf_slot_height=48,
-        margin_x=12,
-        margin_y=10,
-    )
-
-    cards_html = []
+    cells_html = []
 
     for slot, entry in slots.items():
-        pos = positions[slot]
         generation = entry["generation"]
-        card_width = generation_layout[generation]["width"]
-        card_height = generation_layout[generation]["height"]
+        if generation == 0:
+            continue
+        idx_in_generation = slot - 2 ** generation
+        row_span = 2 ** (max_generations - generation)
+        row_start = idx_in_generation * row_span + 1
+        row_end = row_start + row_span
 
-        cards_html.append(
+        cells_html.append(
             f"""
-            <div class="node"
-                 style="left:{pos['x']}px; top:{pos['y']}px; width:{card_width}px; height:{card_height}px;">
+            <div class="pedigree-cell"
+                 style="grid-column:{generation}; grid-row:{row_start} / {row_end};">
                 {render_card(entry, generation=generation)}
             </div>
             """
         )
-
-    lines_svg = []
-
-    for slot, entry in slots.items():
-        generation = entry["generation"]
-
-        if generation >= max_generations:
-            continue
-
-        parent_pos = positions[slot]
-        parent_width = generation_layout[generation]["width"]
-        x1 = parent_pos["x"] + parent_width
-        y1 = parent_pos["cy"]
-
-        child_slots = [c for c in (slot * 2, slot * 2 + 1) if c in slots]
-        if not child_slots:
-            continue
-
-        x_mid = x1 + col_gap / 2
-
-        if len(child_slots) == 1:
-            child_pos = positions[child_slots[0]]
-            x2 = child_pos["x"]
-            y2 = child_pos["cy"]
-
-            lines_svg.append(
-                f'<line x1="{x1}" y1="{y1}" x2="{x_mid}" y2="{y1}" />'
-            )
-            lines_svg.append(
-                f'<line x1="{x_mid}" y1="{y1}" x2="{x2}" y2="{y2}" />'
-            )
-
-        else:
-            father_pos = positions[child_slots[0]]
-            mother_pos = positions[child_slots[1]]
-
-            lines_svg.append(
-                f'<line x1="{x1}" y1="{y1}" x2="{x_mid}" y2="{y1}" />'
-            )
-
-            lines_svg.append(
-                f'<line x1="{x_mid}" y1="{father_pos["cy"]}" '
-                f'x2="{x_mid}" y2="{mother_pos["cy"]}" />'
-            )
-
-            lines_svg.append(
-                f'<line x1="{x_mid}" y1="{father_pos["cy"]}" '
-                f'x2="{father_pos["x"]}" y2="{father_pos["cy"]}" />'
-            )
-
-            lines_svg.append(
-                f'<line x1="{x_mid}" y1="{mother_pos["cy"]}" '
-                f'x2="{mother_pos["x"]}" y2="{mother_pos["cy"]}" />'
-            )
 
     title_text = f"Ahnentafel für {html.escape(str(start_zbnr))}"
 
@@ -1038,85 +988,88 @@ def render_pedigree_html(
     <title>{title_text}</title>
 
     <style>
-        body {{
-            margin: 0;
-            padding: 14px;
-            font-family: Arial, Helvetica, sans-serif;
-            background: #f3f5f7;
+        .pedigree-document {{
+            box-sizing: border-box;
+            font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+            background: #f5f7fa;
             color: #1f2937;
+            min-width: fit-content;
         }}
 
         .page-subtitle {{
             font-size: 12px;
-            color: #52606d;
+            color: #667085;
             margin: 0;
             padding: 14px 16px 10px;
         }}
 
         .canvas-wrap {{
             overflow: auto;
-            background: #eef2f5;
-            padding: 10px 12px 14px;
-            border-top: 1px solid #d9e2ec;
+            background: #f5f7fa;
+            padding: 18px;
         }}
 
         .canvas {{
-            position: relative;
+            display: grid;
+            grid-template-columns: {" ".join(f"{width}px" for width in active_widths)};
+            grid-template-rows: repeat({leaf_count}, {row_height}px);
             width: {total_width}px;
             height: {total_height}px;
-            min-width: 100%;
-            background: #eef2f5;
+            background: #ffffff;
+            border-left: 1px solid #d8dee6;
+            border-top: 1px solid #d8dee6;
         }}
 
-        .connections {{
-            position: absolute;
-            inset: 0;
-            z-index: 1;
-        }}
-
-        .connections line {{
-            stroke: #c2ccd6;
-            stroke-width: 1.4;
-            fill: none;
-        }}
-
-        .node {{
-            position: absolute;
-            z-index: 2;
+        .pedigree-cell {{
+            background: #fbfcfe;
+            border-bottom: 1px solid #d8dee6;
+            border-right: 1px solid #d8dee6;
             box-sizing: border-box;
+            min-height: 0;
         }}
 
         .card {{
-            width: 100%;
-            height: 100%;
+            align-content: center;
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
             box-sizing: border-box;
-            background: #ffffff;
-            border: 1px solid #d6dee6;
-            border-radius: 6px;
-            padding: 7px 8px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            overflow: hidden;
             cursor: pointer;
+            display: grid;
+            gap: 3px;
+            height: 100%;
+            overflow: hidden;
+            padding: 9px 12px;
+            width: 100%;
         }}
 
         .card:hover {{
-            border-color: #7ba7d9;
-            box-shadow: 0 2px 6px rgba(74, 144, 226, 0.18);
+            background: #f1f6fb;
+        }}
+
+        .card.ebv-unfavorable {{
+            box-shadow: inset 4px 0 0 #d46b08;
+        }}
+
+        .card.ebv-unfavorable .zws-line {{
+            color: #8a4b08;
+        }}
+
+        .card.ebv-unfavorable .subline {{
+            color: #8a4b08;
         }}
 
         .card.missing {{
-            background: #fafafa;
-            border-style: dashed;
+            color: #7f8b99;
             opacity: 0.75;
         }}
 
         .name {{
-            font-size: 12px;
-            font-weight: 700;
+            color: #1f3a52;
+            font-size: 13px;
+            font-weight: 800;
             line-height: 1.2;
-            margin-bottom: 4px;
-            color: #243447;
-
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
@@ -1124,95 +1077,84 @@ def render_pedigree_html(
         }}
 
         .subline {{
-            font-size: 10px;
+            color: #667085;
+            font-size: 11px;
             line-height: 1.25;
-            color: #52606d;
             white-space: normal;
             overflow: hidden;
             overflow-wrap: anywhere;
         }}
 
         .zws-line {{
-            margin-top: 5px;
-            padding: 3px 5px;
-            border-radius: 4px;
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
+            color: #334158;
             font-size: 10px;
             line-height: 1.2;
             font-weight: 600;
-            color: #374151;
             white-space: normal;
             overflow: hidden;
             overflow-wrap: anywhere;
         }}
 
         .card.gen-2 {{
-            padding: 6px 7px;
+            padding: 8px 11px;
         }}
 
         .card.gen-2 .name {{
-            font-size: 11px;
+            font-size: 12.5px;
             line-height: 1.15;
-            margin-bottom: 3px;
         }}
 
         .card.gen-2 .subline,
         .card.gen-2 .zws-line {{
-            font-size: 9px;
+            font-size: 10.5px;
             line-height: 1.15;
         }}
 
         .card.gen-3 {{
-            padding: 5px 6px;
+            padding: 7px 10px;
         }}
 
         .card.gen-3 .name {{
-            font-size: 10.5px;
+            font-size: 12px;
             line-height: 1.15;
-            margin-bottom: 3px;
             -webkit-line-clamp: 2;
         }}
 
         .card.gen-3 .subline,
         .card.gen-3 .zws-line {{
-            font-size: 9px;
+            font-size: 10px;
             line-height: 1.15;
-            margin-top: 2px;
-            padding: 2px 4px;
         }}
 
         .card.gen-4 {{
-            padding: 5px 7px;
+            padding: 6px 10px;
         }}
 
         .card.gen-4 .name {{
-            font-size: 10px;
+            font-size: 11.5px;
             line-height: 1.15;
-            margin-bottom: 2px;
             -webkit-line-clamp: 2;
         }}
 
         .card.gen-4 .subline {{
-            font-size: 8.5px;
+            font-size: 9.5px;
             line-height: 1.15;
             white-space: nowrap;
             text-overflow: ellipsis;
         }}
 
         .card.gen-5 {{
-            padding: 4px 6px;
+            padding: 5px 10px;
         }}
 
         .card.gen-5 .name {{
-            font-size: 9.5px;
+            font-size: 11px;
             line-height: 1.15;
-            margin-bottom: 2px;
             -webkit-line-clamp: 2;
         }}
 
         .card.gen-5 .subline {{
-            font-size: 8px;
+            font-size: 9px;
             line-height: 1.15;
             white-space: nowrap;
             text-overflow: ellipsis;
@@ -1221,15 +1163,13 @@ def render_pedigree_html(
 </head>
 
 <body>
-    {subtitle_html}
+    <div class="pedigree-document">
+        {subtitle_html}
 
-    <div class="canvas-wrap">
-        <div class="canvas">
-            <svg class="connections" width="{total_width}" height="{total_height}">
-                {"".join(lines_svg)}
-            </svg>
-
-            {"".join(cards_html)}
+        <div class="canvas-wrap">
+            <div class="canvas">
+                {"".join(cells_html)}
+            </div>
         </div>
     </div>
 </body>

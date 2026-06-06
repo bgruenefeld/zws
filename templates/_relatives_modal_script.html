@@ -1,0 +1,248 @@
+let activeRelativesZbnr = null;
+let relativesHistory = [];
+let currentRelativesOffspring = [];
+let relativesOffspringSort = { column: null, direction: 'asc' };
+
+function relativesSortValue(dog, column) {
+  if (column === 'zuchtwert' || column === 'konfidenz' || column === 'anz_nachkommen') {
+    const value = Number(dog[column]);
+    return Number.isFinite(value) ? value : null;
+  }
+  if (column === 'wurfdatum') {
+    const value = Date.parse(dog.wurfdatum || '');
+    return Number.isFinite(value) ? value : null;
+  }
+  return String(dog[column] ?? '').toLocaleLowerCase('de-DE');
+}
+
+function compareRelatives(a, b, column, direction) {
+  const aValue = relativesSortValue(a, column);
+  const bValue = relativesSortValue(b, column);
+  if (aValue === null && bValue === null) return 0;
+  if (aValue === null) return 1;
+  if (bValue === null) return -1;
+  if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+  if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+  return String(a.name || '').localeCompare(String(b.name || ''), 'de-DE');
+}
+
+function relativesHeader(label, column, sortable) {
+  if (!sortable) return '<th>' + escapeHtml(label) + '</th>';
+  const active = relativesOffspringSort.column === column;
+  const indicator = active
+    ? '<span class="relative-sort-indicator">' + (relativesOffspringSort.direction === 'asc' ? '▲' : '▼') + '</span>'
+    : '';
+  return `
+    <th>
+      <button type="button" class="relative-sort" onclick="sortRelativesOffspring('${column}')">
+        ${escapeHtml(label)}${indicator}
+      </button>
+    </th>
+  `;
+}
+
+function renderRelativesOffspringCount(dog) {
+  const count = Number(dog.anz_nachkommen);
+  if (Number.isFinite(count) && count > 0 && dog.zbnr) {
+    return `<button type="button" class="offspring-drilldown" data-zbnr="${escapeHtml(dog.zbnr)}">${escapeHtml(count)}</button>`;
+  }
+  return dog.anz_nachkommen != null ? escapeHtml(dog.anz_nachkommen) : '—';
+}
+
+function updateRelativesBackButton() {
+  const button = document.getElementById('relativesModalBack');
+  if (!button) return;
+  button.disabled = relativesHistory.length === 0;
+  button.textContent = relativesHistory.length > 0
+    ? 'Zurück (' + relativesHistory.length + ')'
+    : 'Zurück';
+}
+
+function renderRelativesTable(dogs, emptyText, options = {}) {
+  if (!dogs || dogs.length === 0) {
+    return '<div class="empty-state no-results"><p>' + escapeHtml(emptyText) + '</p></div>';
+  }
+
+  const sortable = Boolean(options.sortable);
+  const showOtherParent = Boolean(options.showOtherParent);
+  let currentOtherParent = null;
+  let otherParentGroup = 0;
+  const rows = dogs.map(dog => {
+    const otherParent = dog.other_parent || '';
+    if (showOtherParent && otherParent !== currentOtherParent) {
+      currentOtherParent = otherParent;
+      otherParentGroup += 1;
+    }
+    const rowClass = showOtherParent && otherParentGroup % 2 === 0
+      ? ' class="relative-parent-group-alt"'
+      : '';
+
+    return `
+    <tr${rowClass}>
+      <td>${escapeHtml(dog.name || 'unbekannt')}</td>
+      <td>${escapeHtml(dog.zbnr || '—')}</td>
+      <td>${escapeHtml(dog.wurfdatum || '—')}</td>
+      <td>${escapeHtml(dog.geschlecht || '—')}</td>
+      ${showOtherParent ? `<td>${escapeHtml(dog.other_parent || '—')}</td>` : ''}
+      <td>${escapeHtml(dog.ed || '—')}</td>
+      <td>${dog.zuchtwert != null ? escapeHtml(dog.zuchtwert) : '—'} ${dog.konfidenz != null ? escapeHtml('(' + dog.konfidenz + ' %)') : ''}</td>
+      <td>${escapeHtml(dog.hd || '—')}</td>
+      <td>${renderRelativesOffspringCount(dog)}</td>
+      <td>${escapeHtml(dog.prcd_pra || '—')}</td>
+      <td>${escapeHtml(dog.hnpk || '—')}</td>
+      <td>${escapeHtml(dog.sd2 || '—')}</td>
+      <td>${escapeHtml(dog.cnm || '—')}</td>
+      <td>${escapeHtml(dog.eic || '—')}</td>
+      <td>${escapeHtml(dog.zs || '—')}</td>
+      <td>${escapeHtml(dog.stgd_status || '—')}</td>
+    </tr>
+  `;
+  }).join('');
+
+  return `
+    <table class="relative-table sibling-table">
+      <thead>
+        <tr>
+          ${relativesHeader('Name', 'name', sortable)}
+          ${relativesHeader('ZBNr', 'zbnr', sortable)}
+          ${relativesHeader('Wurfdatum', 'wurfdatum', sortable)}
+          ${relativesHeader('Geschlecht', 'geschlecht', sortable)}
+          ${showOtherParent ? relativesHeader('Anderes Elternteil', 'other_parent', sortable) : ''}
+          ${relativesHeader('ED', 'ed', sortable)}
+          ${relativesHeader('ED-EBV/ C[%]', 'zuchtwert', sortable)}
+          ${relativesHeader('HD', 'hd', sortable)}
+          ${relativesHeader('Nachkommen', 'anz_nachkommen', sortable)}
+          ${relativesHeader('prcd-PRA', 'prcd_pra', sortable)}
+          ${relativesHeader('HNPK', 'hnpk', sortable)}
+          ${relativesHeader('SD2', 'sd2', sortable)}
+          ${relativesHeader('CNM', 'cnm', sortable)}
+          ${relativesHeader('EIC', 'eic', sortable)}
+          ${relativesHeader('ZS', 'zs', sortable)}
+          ${relativesHeader('STGD', 'stgd_status', sortable)}
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function renderRelativesOffspring() {
+  const dogs = relativesOffspringSort.column
+    ? [...currentRelativesOffspring].sort((a, b) => compareRelatives(a, b, relativesOffspringSort.column, relativesOffspringSort.direction))
+    : currentRelativesOffspring;
+  document.getElementById('relativesOffspringBody').innerHTML = renderRelativesTable(
+    dogs,
+    'Keine Nachkommen gefunden.',
+    { sortable: true, showOtherParent: true }
+  );
+}
+
+function openRelativesModal() {
+  const modal = document.getElementById('relativesModal');
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+  updateRelativesBackButton();
+}
+
+function closeRelativesModal() {
+  const modal = document.getElementById('relativesModal');
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('modal-open');
+}
+
+function sortRelativesOffspring(column) {
+  if (relativesOffspringSort.column === column) {
+    relativesOffspringSort.direction = relativesOffspringSort.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    relativesOffspringSort = { column, direction: 'asc' };
+  }
+  renderRelativesOffspring();
+}
+
+function setRelativesLoading(zbnr) {
+  const loading = '<div class="loading">Wird geladen...</div>';
+  const relationTitle = document.getElementById('relationTitle');
+  const relationMeta = document.getElementById('relationMeta');
+  if (relationTitle) relationTitle.textContent = 'Verwandtschaft';
+  if (relationMeta) relationMeta.textContent = 'ZBNr ' + zbnr + ' ausgewählt.';
+  document.getElementById('relativesModalTitle').textContent = 'Verwandtschaft';
+  document.getElementById('relativesModalMeta').textContent = 'ZBNr ' + zbnr;
+  document.getElementById('relativesSiblingsTitle').textContent = 'Wurfgeschwister';
+  document.getElementById('relativesOffspringTitle').textContent = 'Nachkommen';
+  document.getElementById('relativesSiblingsBody').innerHTML = loading;
+  document.getElementById('relativesOffspringBody').innerHTML = loading;
+  openRelativesModal();
+}
+
+function loadRelativesModal(zbnr, options = {}) {
+  if (options.resetHistory) {
+    relativesHistory = [];
+  }
+  if (options.pushCurrent && activeRelativesZbnr && activeRelativesZbnr !== zbnr) {
+    relativesHistory.push(activeRelativesZbnr);
+  }
+  activeRelativesZbnr = zbnr;
+  setRelativesLoading(zbnr);
+
+  fetch('/littermates?zbnr=' + encodeURIComponent(zbnr))
+    .then(response => response.json().then(data => {
+      if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+      return data;
+    }))
+    .then(data => {
+      if (activeRelativesZbnr !== zbnr) return;
+
+      const dog = data.dog || {};
+      const siblings = data.littermates || [];
+      const offspring = data.offspring || [];
+      currentRelativesOffspring = offspring;
+      relativesOffspringSort = { column: null, direction: 'asc' };
+      const title = dog.name || 'unbekannt';
+      const meta = [
+        dog.zbnr ? 'ZBNr ' + dog.zbnr : null,
+        data.litter_date ? 'Wurfdatum ' + data.litter_date : null,
+        siblings.length + ' Geschwister',
+        offspring.length + ' Nachkommen'
+      ].filter(Boolean).join(' · ');
+
+      const relationTitle = document.getElementById('relationTitle');
+      const relationMeta = document.getElementById('relationMeta');
+      if (relationTitle) relationTitle.textContent = 'Ausgewählt: ' + title;
+      if (relationMeta) relationMeta.textContent = meta;
+      document.getElementById('relativesModalTitle').textContent = 'Ausgewählt: ' + title;
+      document.getElementById('relativesModalMeta').textContent = meta;
+      document.getElementById('relativesSiblingsTitle').textContent = 'Wurfgeschwister von ' + title;
+      document.getElementById('relativesOffspringTitle').textContent = 'Nachkommen von ' + title;
+      document.getElementById('relativesSiblingsBody').innerHTML = data.message
+        ? '<div class="empty-state no-results"><p>' + escapeHtml(data.message) + '</p></div>'
+        : renderRelativesTable(siblings, 'Keine Wurfgeschwister gefunden.');
+      renderRelativesOffspring();
+    })
+    .catch(error => {
+      if (activeRelativesZbnr !== zbnr) return;
+      const errorHtml = '<div class="empty-state no-results"><p>Fehler beim Laden: ' + escapeHtml(error.message) + '</p></div>';
+      document.getElementById('relativesSiblingsBody').innerHTML = errorHtml;
+      document.getElementById('relativesOffspringBody').innerHTML = errorHtml;
+    });
+}
+
+function goBackRelativesModal() {
+  const previousZbnr = relativesHistory.pop();
+  if (!previousZbnr) return;
+  loadRelativesModal(previousZbnr);
+}
+
+function attachRelativesModalEvents() {
+  document.getElementById('relativesModalClose').addEventListener('click', closeRelativesModal);
+  document.getElementById('relativesModalBack').addEventListener('click', goBackRelativesModal);
+  document.getElementById('relativesModal').addEventListener('click', event => {
+    const offspringButton = event.target.closest('.offspring-drilldown');
+    if (offspringButton) {
+      loadRelativesModal(offspringButton.dataset.zbnr, { pushCurrent: true });
+      return;
+    }
+    if (event.target.id === 'relativesModal') closeRelativesModal();
+  });
+}

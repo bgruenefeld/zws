@@ -101,6 +101,62 @@
         width: auto;
       }
 
+      .excluded-ancestor-field {
+        background: #f8fafc;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        display: grid;
+        gap: 10px;
+        grid-column: 1 / -1;
+        padding: 12px;
+      }
+
+      .excluded-ancestor-controls {
+        align-items: end;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: minmax(240px, 1fr) auto;
+      }
+
+      .excluded-ancestor-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-height: 30px;
+      }
+
+      .excluded-ancestor-chip {
+        align-items: center;
+        background: #fff;
+        border: 1px solid #cfd8e3;
+        border-radius: 999px;
+        color: #243447;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 700;
+        gap: 6px;
+        min-height: 30px;
+        padding: 4px 7px 4px 10px;
+      }
+
+      .excluded-ancestor-remove {
+        align-items: center;
+        background: #eef2f7;
+        border: 0;
+        border-radius: 999px;
+        color: #52606d;
+        display: inline-flex;
+        height: 20px;
+        justify-content: center;
+        padding: 0;
+        width: 20px;
+      }
+
+      .excluded-ancestor-remove:hover {
+        background: #dbe2ea;
+        color: #12233a;
+      }
+
       .planner-card {
         background: #fff;
         border: 1px solid #cfd8e3;
@@ -547,8 +603,8 @@
 
       .relatives-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 16px;
+        grid-template-columns: 1fr;
       }
 
       .relative-section {
@@ -566,7 +622,6 @@
       }
 
       .relative-body {
-        max-height: 360px;
         overflow: auto;
       }
 
@@ -590,6 +645,10 @@
         font-weight: 700;
         position: sticky;
         top: 0;
+      }
+
+      .relative-table tr.relative-parent-group-alt td {
+        background: #f7fbff;
       }
 
       .relative-sort {
@@ -619,6 +678,22 @@
         font-size: 10px;
       }
 
+      .offspring-drilldown {
+        background: transparent;
+        border: 0;
+        color: #2563eb;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 750;
+        padding: 0;
+        text-decoration: underline;
+      }
+
+      .offspring-drilldown:hover {
+        background: transparent;
+        color: #1d4ed8;
+      }
+
       .empty-state,
       .loading {
         color: #667085;
@@ -645,7 +720,7 @@
         background: #fff;
         border-radius: 8px;
         box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
-        max-height: min(840px, calc(100vh - 48px));
+        max-height: min(960px, calc(100vh - 24px));
         max-width: 1280px;
         overflow: hidden;
         width: min(100%, 1280px);
@@ -670,6 +745,34 @@
         font-size: 13px;
       }
 
+      .modal-actions {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+      }
+
+      .relative-back-button {
+        background: #fff;
+        border: 1px solid #cbd7e4;
+        border-radius: 6px;
+        color: #243447;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 700;
+        min-height: 34px;
+        padding: 0 12px;
+      }
+
+      .relative-back-button:hover:not(:disabled) {
+        background: #f3f7fb;
+      }
+
+      .relative-back-button:disabled {
+        color: #98a2b3;
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
+
       .modal-close {
         align-items: center;
         background: #f8fafc;
@@ -687,7 +790,7 @@
       }
 
       .modal-body {
-        max-height: calc(min(840px, 100vh - 48px) - 72px);
+        max-height: calc(min(960px, 100vh - 24px) - 72px);
         overflow: auto;
         padding: 20px;
       }
@@ -873,18 +976,36 @@
         <div>
           <h1>Verpaarung planen</h1>
           <div class="page-subtitle">Rüden auswählen, Paarung bewerten, Kandidaten vergleichen und Details gezielt öffnen.</div>
-        </div>
-        <a class="reset-link" href="/pairing">Suche zurücksetzen</a>
+        </div>        
       </div>
     </header>
 
     <main class="container">
       {% macro sort_link(label, key) -%}
         {%- set next_dir = 'desc' if sire_sort_by == key and sire_sort_dir == 'asc' else 'asc' -%}
-        <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', sire_search='1', sire_page=1, sire_sort_by=key, sire_sort_dir=next_dir) }}">
+        <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', excluded_ancestor_zbnrs=excluded_ancestor_zbnrs, sire_search='1', sire_page=1, sire_sort_by=key, sire_sort_dir=next_dir) }}">
           {{ label }}{% if sire_sort_by == key %} {{ '▲' if sire_sort_dir == 'asc' else '▼' }}{% endif %}
         </a>
       {%- endmacro %}
+
+
+
+      <section class="panel" id="savedPairingsPanel">
+        <div class="saved-pairings-head">
+          <div class="saved-pairings-title">
+            <h2>Gespeicherte Verpaarungen  
+            </h2>
+            <span class="saved-count-badge" id="savedPairingsCount">0</span>
+          </div>
+          <button type="button" class="saved-toggle" id="savedPairingsToggle" aria-expanded="false" aria-controls="savedPairingsBody">aufklappen</button>
+        </div>
+
+        <div class="saved-pairings-body" id="savedPairingsBody" hidden>
+          <div class="saved-list" id="savedPairingsList">
+            <div class="empty-state">Noch keine Verpaarung gespeichert.</div>
+          </div>
+        </div>
+      </section>
 
       <section class="planner-card">
         <form class="pairing-form" id="pairingForm" method="get" action="/pairing">
@@ -935,6 +1056,7 @@
                   {% if sire_max_ebv %}{% set _ = filters.append("ED-ZW ≤ " ~ sire_max_ebv) %}{% endif %}
                   {% if sire_min_offspring %}{% set _ = filters.append("Nachk. ≥ " ~ sire_min_offspring) %}{% endif %}
                   {% if avoid_carrier_matches %}{% set _ = filters.append("keine Träger × Träger") %}{% endif %}
+                  {% if excluded_ancestors %}{% set _ = filters.append(excluded_ancestors|length ~ " Ahnen ausgeschlossen") %}{% endif %}
                   {{ filters | join(" · ") if filters else "keine" }}
                 </div>
               </div>
@@ -947,6 +1069,7 @@
               <div class="planner-actions">
                 <button type="button" class="secondary-button" id="focusPairingFilters">Filter ändern</button>
                 <button type="submit">Rüden suchen</button>
+                <a class="reset-link" href="/pairing">Suche zurücksetzen</a>
               </div>
             </div>
           </div>
@@ -982,6 +1105,25 @@
                 <input name="avoid_carrier_matches" value="1" type="checkbox" {% if avoid_carrier_matches %}checked{% endif %}>
                 Träger × Träger bei Gentests ausschließen
               </label>
+              <div class="excluded-ancestor-field">
+                <div class="excluded-ancestor-controls">
+                  <label>
+                    Unerwünschte Hunde in der Ahnentafel
+                    <input id="excludedAncestorSearch" list="excludedAncestorSuggestions" placeholder="Name oder ZBNr suchen" autocomplete="off">
+                    <datalist id="excludedAncestorSuggestions"></datalist>
+                  </label>
+                  <button type="button" class="secondary-button" id="addExcludedAncestorButton">Hinzufügen</button>
+                </div>
+                <div class="excluded-ancestor-list" id="excludedAncestorList">
+                  {% for dog in excluded_ancestors %}
+                    <span class="excluded-ancestor-chip" data-zbnr="{{ dog.zbnr }}" data-label="{{ dog.label }}">
+                      {{ dog.label }}
+                      <button type="button" class="excluded-ancestor-remove" aria-label="{{ dog.label }} entfernen">×</button>
+                      <input type="hidden" name="excluded_ancestor_zbnrs" value="{{ dog.zbnr }}">
+                    </span>
+                  {% endfor %}
+                </div>
+              </div>
             </div>
           </div>
         </form>
@@ -994,21 +1136,6 @@
         <div class="error">{{ error }}</div>
       {% endif %}
 
-      <section class="panel" id="savedPairingsPanel">
-        <div class="saved-pairings-head">
-          <div class="saved-pairings-title">
-            <h2>Gespeicherte Paarungen</h2>
-            <span class="saved-count-badge" id="savedPairingsCount">0</span>
-          </div>
-          <button type="button" class="saved-toggle" id="savedPairingsToggle" aria-expanded="false" aria-controls="savedPairingsBody">aufklappen</button>
-        </div>
-
-        <div class="saved-pairings-body" id="savedPairingsBody" hidden>
-          <div class="saved-list" id="savedPairingsList">
-            <div class="empty-state">Noch keine Verpaarung gespeichert.</div>
-          </div>
-        </div>
-      </section>
 
       {% if sire_search == "1" %}
         <section class="panel" id="sireCandidatePanel">
@@ -1032,8 +1159,7 @@
                   <th>{{ sort_link("Alter", "alter") }}</th>
                   <th>ED</th>                   
                   <th>{{ sort_link("Nachkommen", "nachkommen") }}</th>
-                  <th>{{ sort_link("ED-Zuchtwert", "zuchtwert") }}</th>
-                  <th>{{ sort_link("Sicherheit", "konfidenz") }}</th>
+                  <th>{{ sort_link("ED-EBV/ C[%]", "zuchtwert") }}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -1051,10 +1177,12 @@
                     <td>{% if dog.alter is not none %}{{ dog.alter }} Jahre{% else %}—{% endif %}</td>
                     <td>{{ dog.ed or "—" }}</td>                    
                     <td>{% if dog.anz_nachkommen is not none %}{{ dog.anz_nachkommen }}{% else %}—{% endif %}</td>
-                    <td>{% if dog.zuchtwert is not none %}{{ dog.zuchtwert }}{% else %}—{% endif %}</td>
-                    <td>{% if dog.konfidenz is not none %}{{ dog.konfidenz }} %{% else %}—{% endif %}</td>
                     <td>
-                      <a class="candidate-action" href="{{ url_for('pairing', sire=sire_input, selected_sire=dog.zbnr, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', sire_search='1', sire_page=sire_page, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">
+                      {% if dog.zuchtwert is not none %}{{ dog.zuchtwert }}{% else %}—{% endif %}
+                      {% if dog.konfidenz is not none %} ({{ dog.konfidenz }} %){% endif %}
+                    </td>
+                    <td>
+                      <a class="candidate-action" href="{{ url_for('pairing', sire=sire_input, selected_sire=dog.zbnr, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', excluded_ancestor_zbnrs=excluded_ancestor_zbnrs, sire_search='1', sire_page=sire_page, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">
                         Auswählen
                       </a>
                     </td>
@@ -1066,7 +1194,7 @@
             {% if sire_page_count > 1 %}
               <nav class="pager" aria-label="Rüden Trefferseiten">
                 {% if sire_page > 1 %}
-                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', sire_search='1', sire_page=sire_page - 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Zurück</a>
+                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', excluded_ancestor_zbnrs=excluded_ancestor_zbnrs, sire_search='1', sire_page=sire_page - 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Zurück</a>
                 {% else %}
                   <span class="disabled">Zurück</span>
                 {% endif %}
@@ -1076,7 +1204,7 @@
                     {% if page_no == sire_page %}
                       <span class="active">{{ page_no }}</span>
                     {% else %}
-                      <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', sire_search='1', sire_page=page_no, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">{{ page_no }}</a>
+                      <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', excluded_ancestor_zbnrs=excluded_ancestor_zbnrs, sire_search='1', sire_page=page_no, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">{{ page_no }}</a>
                     {% endif %}
                   {% elif page_no == 2 or page_no == sire_page_count - 1 %}
                     <span class="disabled">…</span>
@@ -1084,7 +1212,7 @@
                 {% endfor %}
 
                 {% if sire_page < sire_page_count %}
-                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', sire_search='1', sire_page=sire_page + 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Weiter</a>
+                  <a href="{{ url_for('pairing', sire=sire_input, selected_sire=selected_sire, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', excluded_ancestor_zbnrs=excluded_ancestor_zbnrs, sire_search='1', sire_page=sire_page + 1, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">Weiter</a>
                 {% else %}
                   <span class="disabled">Weiter</span>
                 {% endif %}
@@ -1188,33 +1316,7 @@
       {% endif %}
     </main>
 
-    <div class="modal-backdrop" id="pairingRelativesModal" aria-hidden="true">
-      <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="pairingRelativesModalTitle">
-        <div class="modal-head">
-          <div>
-            <h2 id="pairingRelativesModalTitle">Verwandtschaft</h2>
-            <div class="modal-meta" id="pairingRelativesModalMeta"></div>
-          </div>
-          <button type="button" class="modal-close" id="pairingRelativesModalClose" aria-label="Popup schließen">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="relatives-grid">
-            <div class="relative-section">
-              <h3 id="pairingModalSiblingsTitle">Wurfgeschwister</h3>
-              <div class="relative-body" id="pairingModalSiblingsBody">
-                <div class="empty-state">Noch kein Hund ausgewählt.</div>
-              </div>
-            </div>
-            <div class="relative-section">
-              <h3 id="pairingModalOffspringTitle">Nachkommen</h3>
-              <div class="relative-body" id="pairingModalOffspringBody">
-                <div class="empty-state">Noch kein Hund ausgewählt.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    {% include "_relatives_modal.html" %}
 
     {% if result %}
       <div class="modal-backdrop" id="savePairingModal" aria-hidden="true">
@@ -1248,9 +1350,6 @@
     {% endif %}
 
     <script>
-      let selectedPairingRelationZbnr = null;
-      let currentPairingOffspring = [];
-      let offspringSort = { column: null, direction: 'asc' };
       const savedPairingsKey = 'zws.savedPairings.v1';
       const currentPairingData = {% if result %}{{ {
         "defaultName": result.dam.name ~ " × " ~ result.sire.name
@@ -1265,184 +1364,7 @@
           .replace(/'/g, '&#39;');
       }
 
-      function sortValue(dog, column) {
-        if (column === 'zuchtwert' || column === 'konfidenz' || column === 'anz_nachkommen') {
-          const value = Number(dog[column]);
-          return Number.isFinite(value) ? value : null;
-        }
-        if (column === 'wurfdatum') {
-          const value = Date.parse(dog.wurfdatum || '');
-          return Number.isFinite(value) ? value : null;
-        }
-        return String(dog[column] ?? '').toLocaleLowerCase('de-DE');
-      }
-
-      function compareDogs(a, b, column, direction) {
-        const aValue = sortValue(a, column);
-        const bValue = sortValue(b, column);
-        if (aValue === null && bValue === null) return 0;
-        if (aValue === null) return 1;
-        if (bValue === null) return -1;
-        if (aValue < bValue) return direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return direction === 'asc' ? 1 : -1;
-        return String(a.name || '').localeCompare(String(b.name || ''), 'de-DE');
-      }
-
-      function relativeHeader(label, column, sortable) {
-        if (!sortable) return '<th>' + escapeHtml(label) + '</th>';
-        const active = offspringSort.column === column;
-        const indicator = active
-          ? '<span class="relative-sort-indicator">' + (offspringSort.direction === 'asc' ? '▲' : '▼') + '</span>'
-          : '';
-        return `
-          <th>
-            <button type="button" class="relative-sort" onclick="sortPairingOffspring('${column}')">
-              ${escapeHtml(label)}${indicator}
-            </button>
-          </th>
-        `;
-      }
-
-      function renderRelativeTable(dogs, emptyText, options = {}) {
-        if (!dogs || dogs.length === 0) {
-          return '<div class="empty-state">' + escapeHtml(emptyText) + '</div>';
-        }
-
-        const sortable = Boolean(options.sortable);
-        const rows = dogs.map(dog => `
-          <tr>
-            <td>${escapeHtml(dog.name || 'unbekannt')}</td>
-            <td>${escapeHtml(dog.zbnr || '—')}</td>
-            <td>${escapeHtml(dog.wurfdatum || '—')}</td>
-            <td>${escapeHtml(dog.geschlecht || '—')}</td>
-            <td>${escapeHtml(dog.hd || '—')}</td>
-            <td>${escapeHtml(dog.prcd_pra || '—')}</td>
-            <td>${escapeHtml(dog.hnpk || '—')}</td>
-            <td>${escapeHtml(dog.sd2 || '—')}</td>
-            <td>${escapeHtml(dog.cnm || '—')}</td>
-            <td>${escapeHtml(dog.eic || '—')}</td>
-            <td>${escapeHtml(dog.zs || '—')}</td>
-            <td>${escapeHtml(dog.stgd_status || '—')}</td>
-            <td>${escapeHtml(dog.ed || '—')}</td>
-            <td>${dog.anz_nachkommen != null ? escapeHtml(dog.anz_nachkommen) : '—'}</td>
-            <td>${dog.zuchtwert != null ? escapeHtml(dog.zuchtwert) : '—'}</td>
-            <td>${dog.konfidenz != null ? escapeHtml(dog.konfidenz + ' %') : '—'}</td>
-          </tr>
-        `).join('');
-
-        return `
-          <table class="relative-table">
-            <thead>
-              <tr>
-                ${relativeHeader('Name', 'name', sortable)}
-                ${relativeHeader('ZBNr', 'zbnr', sortable)}
-                ${relativeHeader('Wurfdatum', 'wurfdatum', sortable)}
-                ${relativeHeader('Geschlecht', 'geschlecht', sortable)}
-                ${relativeHeader('HD', 'hd', sortable)}
-                ${relativeHeader('prcd-PRA', 'prcd_pra', sortable)}
-                ${relativeHeader('HNPK', 'hnpk', sortable)}
-                ${relativeHeader('SD2', 'sd2', sortable)}
-                ${relativeHeader('CNM', 'cnm', sortable)}
-                ${relativeHeader('EIC', 'eic', sortable)}
-                ${relativeHeader('ZS', 'zs', sortable)}
-                ${relativeHeader('STGD', 'stgd_status', sortable)}
-                ${relativeHeader('ED', 'ed', sortable)}
-                ${relativeHeader('Nachkommen', 'anz_nachkommen', sortable)}
-                ${relativeHeader('ZW', 'zuchtwert', sortable)}
-                ${relativeHeader('Sicherheit', 'konfidenz', sortable)}
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        `;
-      }
-
-      function renderPairingOffspring() {
-        const dogs = offspringSort.column
-          ? [...currentPairingOffspring].sort((a, b) => compareDogs(a, b, offspringSort.column, offspringSort.direction))
-          : currentPairingOffspring;
-        document.getElementById('pairingModalOffspringBody').innerHTML = renderRelativeTable(
-          dogs,
-          'Keine Nachkommen gefunden.',
-          { sortable: true }
-        );
-      }
-
-      function openRelativesModal() {
-        const modal = document.getElementById('pairingRelativesModal');
-        modal.classList.add('open');
-        modal.setAttribute('aria-hidden', 'false');
-        document.body.classList.add('modal-open');
-      }
-
-      function closeRelativesModal() {
-        const modal = document.getElementById('pairingRelativesModal');
-        modal.classList.remove('open');
-        modal.setAttribute('aria-hidden', 'true');
-        document.body.classList.remove('modal-open');
-      }
-
-      function sortPairingOffspring(column) {
-        if (offspringSort.column === column) {
-          offspringSort.direction = offspringSort.direction === 'asc' ? 'desc' : 'asc';
-        } else {
-          offspringSort = { column, direction: 'asc' };
-        }
-        renderPairingOffspring();
-      }
-
-      function setPairingRelativesLoading(zbnr) {
-        const loading = '<div class="loading">Wird geladen...</div>';
-        document.getElementById('pairingRelativesModalTitle').textContent = 'Verwandtschaft';
-        document.getElementById('pairingRelativesModalMeta').textContent = 'ZBNr ' + zbnr;
-        document.getElementById('pairingModalSiblingsTitle').textContent = 'Wurfgeschwister';
-        document.getElementById('pairingModalOffspringTitle').textContent = 'Nachkommen';
-        document.getElementById('pairingModalSiblingsBody').innerHTML = loading;
-        document.getElementById('pairingModalOffspringBody').innerHTML = loading;
-        openRelativesModal();
-      }
-
-      function loadPairingRelatives(zbnr) {
-        selectedPairingRelationZbnr = zbnr;
-        setPairingRelativesLoading(zbnr);
-
-        fetch('/littermates?zbnr=' + encodeURIComponent(zbnr))
-          .then(response => response.json().then(data => {
-            if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
-            return data;
-          }))
-          .then(data => {
-            if (selectedPairingRelationZbnr !== zbnr) return;
-
-            const dog = data.dog || {};
-            const siblings = data.littermates || [];
-            const offspring = data.offspring || [];
-            currentPairingOffspring = offspring;
-            offspringSort = { column: null, direction: 'asc' };
-            const title = dog.name || 'unbekannt';
-            const meta = [
-              dog.zbnr ? 'ZBNr ' + dog.zbnr : null,
-              data.litter_date ? 'Wurfdatum ' + data.litter_date : null,
-              siblings.length + ' Geschwister',
-              offspring.length + ' Nachkommen'
-            ].filter(Boolean).join(' · ');
-
-            document.getElementById('pairingRelativesModalTitle').textContent = 'Ausgewählt: ' + title;
-            document.getElementById('pairingRelativesModalMeta').textContent = meta;
-            document.getElementById('pairingModalSiblingsTitle').textContent = 'Wurfgeschwister von ' + title;
-            document.getElementById('pairingModalOffspringTitle').textContent = 'Nachkommen von ' + title;
-            document.getElementById('pairingModalSiblingsBody').innerHTML = data.message
-              ? '<div class="empty-state">' + escapeHtml(data.message) + '</div>'
-              : renderRelativeTable(siblings, 'Keine Wurfgeschwister gefunden.');
-            renderPairingOffspring();
-          })
-          .catch(error => {
-            if (selectedPairingRelationZbnr !== zbnr) return;
-            const errorHtml = '<div class="empty-state">Fehler beim Laden: ' + escapeHtml(error.message) + '</div>';
-            document.getElementById('pairingModalSiblingsBody').innerHTML = errorHtml;
-            document.getElementById('pairingModalOffspringBody').innerHTML = errorHtml;
-          });
-      }
+      {% include "_relatives_modal_script.html" %}
 
       function attachPairingPedigreeClick() {
         const panel = document.querySelector('.pedigree-panel');
@@ -1454,7 +1376,7 @@
 
           const zbnr = card.getAttribute('data-zbnr');
           if (!zbnr || zbnr.startsWith('__')) return;
-          loadPairingRelatives(zbnr);
+          loadRelativesModal(zbnr, { resetHistory: true });
         });
       }
 
@@ -1585,6 +1507,7 @@
       function attachDamSuggest() {
         const input = document.querySelector('input[name="dam"]');
         const datalist = document.getElementById('damSuggestions');
+        if (!input || !datalist) return;
         let controller = null;
 
         input.addEventListener('input', () => {
@@ -1609,10 +1532,107 @@
         });
       }
 
-      document.getElementById('pairingRelativesModalClose').addEventListener('click', closeRelativesModal);
-      document.getElementById('pairingRelativesModal').addEventListener('click', event => {
-        if (event.target.id === 'pairingRelativesModal') closeRelativesModal();
-      });
+      function attachExcludedAncestorPicker() {
+        const input = document.getElementById('excludedAncestorSearch');
+        const datalist = document.getElementById('excludedAncestorSuggestions');
+        const list = document.getElementById('excludedAncestorList');
+        const addButton = document.getElementById('addExcludedAncestorButton');
+        if (!input || !datalist || !list || !addButton) return;
+
+        let controller = null;
+        let suggestions = [];
+
+        function selectedZbnrs() {
+          return new Set(
+            Array.from(list.querySelectorAll('input[name="excluded_ancestor_zbnrs"]'))
+              .map(item => item.value)
+              .filter(Boolean)
+          );
+        }
+
+        function parseZbnrFromLabel(label) {
+          if (!label.includes('|')) return '';
+          return label.split('|').pop().trim();
+        }
+
+        function addChip(label, zbnr) {
+          if (!zbnr || selectedZbnrs().has(zbnr)) return;
+
+          const chip = document.createElement('span');
+          chip.className = 'excluded-ancestor-chip';
+          chip.dataset.zbnr = zbnr;
+          chip.dataset.label = label;
+
+          const text = document.createTextNode(label + ' ');
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'excluded-ancestor-remove';
+          remove.setAttribute('aria-label', label + ' entfernen');
+          remove.textContent = '×';
+
+          const hidden = document.createElement('input');
+          hidden.type = 'hidden';
+          hidden.name = 'excluded_ancestor_zbnrs';
+          hidden.value = zbnr;
+
+          chip.append(text, remove, hidden);
+          list.appendChild(chip);
+        }
+
+        function addSelected() {
+          const value = input.value.trim();
+          if (!value) return;
+
+          const exact = suggestions.find(item => item.label === value);
+          const zbnr = exact?.zbnr || parseZbnrFromLabel(value);
+          const label = exact?.label || value;
+          if (!zbnr) return;
+
+          addChip(label, zbnr);
+          input.value = '';
+          datalist.innerHTML = '';
+          suggestions = [];
+        }
+
+        input.addEventListener('input', () => {
+          const query = input.value.trim();
+          if (query.length < 2) {
+            datalist.innerHTML = '';
+            suggestions = [];
+            return;
+          }
+
+          if (controller) controller.abort();
+          controller = new AbortController();
+          const params = new URLSearchParams({ q: query });
+
+          fetch('/dog_suggest?' + params.toString(), { signal: controller.signal })
+            .then(r => r.json())
+            .then(items => {
+              suggestions = items || [];
+              datalist.innerHTML = suggestions
+                .filter(item => item.zbnr && !selectedZbnrs().has(item.zbnr))
+                .map(item => `<option value="${escapeHtml(item.label)}"></option>`)
+                .join('');
+            })
+            .catch(() => {});
+        });
+
+        input.addEventListener('keydown', event => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            addSelected();
+          }
+        });
+
+        addButton.addEventListener('click', addSelected);
+        list.addEventListener('click', event => {
+          const remove = event.target.closest('.excluded-ancestor-remove');
+          if (remove) remove.closest('.excluded-ancestor-chip')?.remove();
+        });
+      }
+
+      attachRelativesModalEvents();
       document.addEventListener('keydown', event => {
         if (event.key === 'Escape') {
           closeRelativesModal();
@@ -1649,6 +1669,7 @@
       renderSavedPairings();
       setSavedPairingsExpanded(false);
       attachDamSuggest();
+      attachExcludedAncestorPicker();
       attachPairingPedigreeClick();
     </script>
   </body>

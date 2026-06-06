@@ -39,10 +39,9 @@
             <th><a href="/?q={{ query_encoded }}&sort_by=name&sort_dir={{ 'desc' if sort_by == 'name' and sort_dir == 'asc' else 'asc' }}">Name{% if sort_by == 'name' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
             <th><a href="/?q={{ query_encoded }}&sort_by=zbnr&sort_dir={{ 'desc' if sort_by == 'zbnr' and sort_dir == 'asc' else 'asc' }}">ZBNr{% if sort_by == 'zbnr' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
             <th><a href="/?q={{ query_encoded }}&sort_by=wurfdatum&sort_dir={{ 'desc' if sort_by == 'wurfdatum' and sort_dir == 'asc' else 'asc' }}">Wurfdatum{% if sort_by == 'wurfdatum' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
-            <th><a href="/?q={{ query_encoded }}&sort_by=hd&sort_dir={{ 'desc' if sort_by == 'hd' and sort_dir == 'asc' else 'asc' }}">HD{% if sort_by == 'hd' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
             <th><a href="/?q={{ query_encoded }}&sort_by=ed&sort_dir={{ 'desc' if sort_by == 'ed' and sort_dir == 'asc' else 'asc' }}">ED{% if sort_by == 'ed' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
-            <th><a href="/?q={{ query_encoded }}&sort_by=zuchtwert&sort_dir={{ 'desc' if sort_by == 'zuchtwert' and sort_dir == 'asc' else 'asc' }}">Zuchtwert{% if sort_by == 'zuchtwert' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
-            <th><a href="/?q={{ query_encoded }}&sort_by=konfidenz&sort_dir={{ 'desc' if sort_by == 'konfidenz' and sort_dir == 'asc' else 'asc' }}">Konfidenz [%]{% if sort_by == 'konfidenz' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+            <th><a href="/?q={{ query_encoded }}&sort_by=zuchtwert&sort_dir={{ 'desc' if sort_by == 'zuchtwert' and sort_dir == 'asc' else 'asc' }}">ED-EBV/ C[%]{% if sort_by == 'zuchtwert' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+            <th><a href="/?q={{ query_encoded }}&sort_by=hd&sort_dir={{ 'desc' if sort_by == 'hd' and sort_dir == 'asc' else 'asc' }}">HD{% if sort_by == 'hd' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
             <th></th>
           </tr>
         </thead>
@@ -52,10 +51,12 @@
               <td>{{ r.Name }}</td>
               <td>{{ r.zbnr or (r.ZBNr_norm or r.ZBNr) }}</td>
               <td>{{ r.wurfdatum }}</td>              
-              <td>{{ r.hd or '-' }}</td>
               <td>{{ r.ed or '-' }}</td>
-              <td>{{ r.zuchtwert if r.zuchtwert is not none else '-' }}</td>
-              <td>{{ r.konfidenz if r.konfidenz is not none else '-' }}</td>
+              <td>
+                {{ r.zuchtwert if r.zuchtwert is not none else '-' }}
+                {% if r.konfidenz is not none %} ({{ r.konfidenz }} %){% endif %}
+              </td>
+              <td>{{ r.hd or '-' }}</td>
               <td>
                 {% if r.zbnr %}
                   <button class="button show-pedigree" data-zbnr="{{ r.zbnr }}">Ahnentafel</button>

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Suchergebnisse - ED-Zuchtwertschätzung</title>
+    <title>Hundesuche - ED-Zuchtwertschätzung</title>
     <style>
       {% include "_nav_css.html" %}
       * { box-sizing: border-box; }
@@ -23,25 +23,11 @@
 
       .workspace {
         display: grid;
-        grid-template-columns: minmax(360px, 480px) minmax(0, 1fr);
         gap: 20px;
+        grid-template-columns: 1fr;
         align-items: start;
       }
       
-      /* Header */
-      header {
-        background: #fff;
-        border-bottom: 1px solid #e0e0e0;
-        padding: 20px 0;
-        margin-bottom: 30px;
-      }
-      
-      header h1 {
-        margin: 0;
-        font-size: 24px;
-        font-weight: 600;
-      }
-
       /* Search Section */
       .search-section {
         background: #fff;
@@ -49,12 +35,28 @@
         border-radius: 8px;
         padding: 24px;
         margin-bottom: 30px;
+        margin-top: 30px;
+      }
+
+      .search-title {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 16px;
       }
       
-      .search-section h2 {
-        margin: 0 0 16px 0;
-        font-size: 16px;
+      .search-title h1 {
+        color: #1f2937;
+        font-size: 24px;
         font-weight: 600;
+        margin: 0;
+      }
+
+      .search-title p {
+        color: #667085;
+        font-size: 13px;
+        line-height: 1.45;
+        margin: 0;
       }
       
       .search-form {
@@ -98,14 +100,11 @@
         background: #fff;
         border: 1px solid #e0e0e0;
         border-radius: 8px;
+        grid-column: 1 / -1;
         padding: 18px;
-        margin-bottom: 30px;
-        position: sticky;
-        top: 16px;
-        max-height: calc(100vh - 32px);
         overflow: auto;
       }
-      
+
       .results-header {
         display: flex;
         justify-content: space-between;
@@ -136,7 +135,7 @@
         font-size: 16px;
         color: #666;
       }
-      
+
       /* Results Table */
       .results-table {
         width: 100%;
@@ -175,9 +174,7 @@
       }
 
       .results-table th:nth-child(3),
-      .results-table td:nth-child(3),
-      .results-table th:nth-child(6),
-      .results-table td:nth-child(6) {
+      .results-table td:nth-child(3) {
         display: none;
       }
       
@@ -192,6 +189,104 @@
       
       .results-table tbody tr.selected {
         background: #e8f0ff;
+      }
+
+      .row-action-cell {
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .small-action-button {
+        align-items: center;
+        background: #fff;
+        border: 1px solid #cfd8e3;
+        border-radius: 6px;
+        color: #1f3a52;
+        cursor: pointer;
+        display: inline-flex;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        justify-content: center;
+        padding: 6px 10px;
+        text-decoration: none;
+      }
+
+      .small-action-button:hover {
+        background: #f5f8fb;
+        border-color: #9fb2c6;
+      }
+
+      .small-action-button.active {
+        background: #e8f5e9;
+        border-color: #a7d8b3;
+        color: #1c5a2d;
+      }
+
+      .small-action-button.danger {
+        border-color: #f2c7c7;
+        color: #a32020;
+      }
+
+      .small-action-button.danger:hover {
+        background: #fff5f5;
+      }
+
+      .small-action-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      .watchlist-panel {
+        align-items: center;
+        border-top: 1px solid #edf1f5;
+        display: none;
+        gap: 12px;
+        justify-content: space-between;
+        margin-top: 16px;
+        padding-top: 14px;
+      }
+
+      .watchlist-panel.active {
+        display: flex;
+      }
+
+      .watchlist-header {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .watchlist-header h2 {
+        color: #1f3a52;
+        font-size: 13px;
+        margin: 0;
+        white-space: nowrap;
+      }
+
+      .watchlist-count {
+        background: #eef6ff;
+        border: 1px solid #c9ddf4;
+        border-radius: 999px;
+        color: #1f5f9a;
+        font-size: 12px;
+        font-weight: 800;
+        padding: 2px 8px;
+      }
+
+      .watchlist-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .watchlist-names {
+        color: #667085;
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       
       .ed-free {
@@ -283,27 +378,12 @@
       
       /* Detail Card */
       .detail-card {
-        background: #fff;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 24px;
         display: none;
       }
       
       .detail-card.active {
-        display: block;
-      }
-      
-      .detail-header {
-        border-bottom: 1px solid #f0f0f0;
-        padding-bottom: 20px;
-        margin-bottom: 20px;
-      }
-      
-      .detail-header h3 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 600;
+        display: grid;
+        gap: 20px;
       }
       
       .detail-meta {
@@ -317,69 +397,22 @@
         margin-right: 20px;
       }
 
-      .pedigree-metrics {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
-        margin-top: 18px;
-      }
-
-      .metric-item {
-        border: 1px solid #e1e7ee;
-        border-radius: 6px;
-        background: #f8fafc;
-        padding: 10px 12px;
-      }
-
-      .metric-label {
-        color: #667085;
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        margin-bottom: 4px;
-        text-transform: uppercase;
-      }
-
-      .metric-value {
-        color: #243447;
-        font-size: 15px;
-        font-weight: 700;
-      }
-      
       .detail-section {
         margin-bottom: 24px;
       }
 
-      .detail-tabs {
-        display: flex;
-        gap: 6px;
-        border-bottom: 1px solid #e5e7eb;
-        margin-bottom: 18px;
+      .detail-content-section {
+        display: grid;
+        gap: 12px;
+        min-width: 0;
       }
 
-      .detail-tab {
-        border: none;
-        border-bottom: 2px solid transparent;
-        background: transparent;
-        color: #667085;
-        cursor: pointer;
-        font: inherit;
-        font-size: 13px;
-        font-weight: 600;
-        padding: 10px 12px;
-      }
-
-      .detail-tab.active {
-        border-bottom-color: #4a90e2;
+      .detail-section-title {
         color: #1f3a52;
-      }
-
-      .tab-panel {
-        display: none;
-      }
-
-      .tab-panel.active {
-        display: block;
+        font-size: 16px;
+        font-weight: 750;
+        letter-spacing: 0;
+        margin: 0;
       }
       
       .detail-section h4 {
@@ -524,6 +557,142 @@
       .zw-chip.high { background: #e7f6ec; color: #1f5f2f; }
       .zw-chip.medium { background: #fff6dc; color: #8f5d13; }
       .zw-chip.low { background: #fae8e8; color: #7a3535; }
+
+      .overview-dog-card {
+        border: 1px solid #e1e7ee;
+        border-radius: 8px;
+        padding: 18px;
+      }
+
+      .overview-dog-card h4 {
+        color: #1f3a52;
+        font-size: 20px;
+        letter-spacing: 0;
+        margin: 0 0 4px;
+        text-transform: none;
+      }
+
+      .overview-title-row {
+        align-items: start;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+      }
+
+      .overview-subline {
+        color: #667085;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .overview-joints-row {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+        margin-top: 10px;
+      }
+
+      .overview-ebv-row {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        display: inline-flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        margin-top: 12px;
+        padding: 12px;
+        width: fit-content;
+      }
+
+      .overview-ebv-row > span {
+        white-space: nowrap;
+      }
+
+      #overviewHealth {
+        color: #52606d;
+        font-size: 14px;
+      }
+
+      #overviewHealth strong {
+        color: #1f3a52;
+        font-weight: 800;
+      }
+
+      .overview-info-label {
+        color: #667085;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .overview-info-value {
+        color: #1f3a52;
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      .overview-info-note {
+        color: #52606d;
+        font-size: 13px;
+      }
+
+      .overview-zw-bar {
+        background: linear-gradient(90deg, #2d7d2d 0%, #f6d644 50%, #d04646 100%);
+        border-radius: 999px;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+        flex: 0 0 180px;
+        height: 8px;
+        overflow: visible;
+        position: relative;
+      }
+
+      .overview-zw-bar::before {
+        background: linear-gradient(90deg, rgba(255,255,255,0.27), rgba(255,255,255,0.04));
+        border-radius: inherit;
+        content: '';
+        inset: 0;
+        position: absolute;
+      }
+
+      .overview-zw-zero {
+        background: rgba(43, 58, 69, 0.45);
+        height: 100%;
+        left: 50%;
+        position: absolute;
+        top: 0;
+        width: 2px;
+      }
+
+      .overview-zw-marker {
+        background: #fff;
+        border: 2px solid #2b3a45;
+        border-radius: 50%;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        height: 14px;
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 14px;
+      }
+
+      .overview-block {
+        border-top: 1px solid #edf1f5;
+        margin-top: 12px;
+        padding-top: 12px;
+      }
+
+      .overview-compact-line {
+        color: #52606d;
+        font-size: 14px;
+        line-height: 1.55;
+        margin-top: 4px;
+      }
+
+      .overview-compact-line strong {
+        color: #1f3a52;
+        font-weight: 750;
+      }
       
       .pedigree-section {
         margin: 0;
@@ -548,25 +717,6 @@
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
       }
 
-      .relation-summary {
-        border: 1px solid #d8dee6;
-        border-radius: 8px;
-        background: #f8fafc;
-        padding: 14px 16px;
-        margin-bottom: 14px;
-      }
-
-      .relation-summary h4 {
-        margin: 0 0 6px;
-        color: #243447;
-        font-size: 15px;
-      }
-
-      .relation-summary div {
-        color: #667085;
-        font-size: 13px;
-      }
-
       .sibling-table {
         width: 100%;
         min-width: 760px;
@@ -587,6 +737,175 @@
         background: #f8fafc;
       }
 
+      .sibling-table tr.relative-parent-group-alt td {
+        background: #f7fbff;
+      }
+
+      .relative-sort {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        color: inherit;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-weight: 700;
+        gap: 4px;
+        padding: 0;
+        text-align: left;
+      }
+
+      .relative-sort:hover {
+        background: transparent;
+        color: #2563eb;
+      }
+
+      .relative-sort-indicator {
+        color: #2563eb;
+        font-size: 10px;
+      }
+
+      .offspring-drilldown {
+        background: transparent;
+        border: 0;
+        color: #2563eb;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 750;
+        padding: 0;
+        text-decoration: underline;
+      }
+
+      .offspring-drilldown:hover {
+        background: transparent;
+        color: #1d4ed8;
+      }
+
+      .modal-backdrop {
+        align-items: center;
+        background: rgba(15, 23, 42, 0.48);
+        display: none;
+        inset: 0;
+        justify-content: center;
+        padding: 24px;
+        position: fixed;
+        z-index: 1000;
+      }
+
+      .modal-backdrop.open {
+        display: flex;
+      }
+
+      .modal-dialog {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+        max-height: min(960px, calc(100vh - 24px));
+        max-width: 1280px;
+        overflow: hidden;
+        width: min(100%, 1280px);
+      }
+
+      .modal-head {
+        align-items: flex-start;
+        border-bottom: 1px solid #e1e7ee;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        padding: 18px 20px;
+      }
+
+      .modal-head h2 {
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+
+      .modal-meta {
+        color: #667085;
+        font-size: 13px;
+      }
+
+      .modal-actions {
+        align-items: center;
+        display: flex;
+        gap: 8px;
+      }
+
+      .relative-back-button {
+        background: #fff;
+        border: 1px solid #cbd7e4;
+        border-radius: 6px;
+        color: #243447;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 700;
+        min-height: 34px;
+        padding: 0 12px;
+      }
+
+      .relative-back-button:hover:not(:disabled) {
+        background: #f3f7fb;
+      }
+
+      .relative-back-button:disabled {
+        color: #98a2b3;
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
+
+      .modal-close {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #dbe2ea;
+        border-radius: 6px;
+        color: #243447;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        height: 34px;
+        justify-content: center;
+        padding: 0;
+        width: 34px;
+      }
+
+      .modal-close:hover {
+        background: #edf2f7;
+      }
+
+      .modal-body {
+        max-height: calc(min(960px, 100vh - 24px) - 72px);
+        overflow: auto;
+        padding: 20px;
+      }
+
+      .relatives-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: 1fr;
+      }
+
+      .relative-section {
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        overflow: auto;
+      }
+
+      .relative-section h3 {
+        background: #f8fafc;
+        border-bottom: 1px solid #e1e7ee;
+        font-size: 14px;
+        margin: 0;
+        padding: 12px 14px;
+      }
+
+      .relative-body {
+        overflow: auto;
+      }
+
+      body.modal-open {
+        overflow: hidden;
+      }
+
       @media (max-width: 1100px) {
         .workspace {
           grid-template-columns: 1fr;
@@ -595,6 +914,24 @@
         .results-section {
           position: static;
           max-height: none;
+        }
+
+        .watchlist-panel {
+          align-items: flex-start;
+          display: none;
+          flex-direction: column;
+        }
+
+        .watchlist-panel.active {
+          display: flex;
+        }
+
+        .watchlist-header {
+          width: 100%;
+        }
+
+        .watchlist-actions {
+          width: 100%;
         }
 
       }
@@ -704,22 +1041,31 @@
   </head>
   <body>
     {% include "_nav.html" %}
-    <header>
-      <div class="container">
-        <h1>Suchergebnisse</h1>
-      </div>
-    </header>
 
     <div class="container">
-      <!-- Search Section -->
       <div class="search-section">
-        <h2>Neue Suche</h2>
+        <div class="search-title">
+          <h1>Hundesuche</h1>
+          <p>Suche nach Hundename oder Zuchtbuchnummer und öffne Treffer, Überblick und Ahnentafel.</p>
+        </div>
         <form class="search-form" method="get" action="/search">
           <input name="q" type="text" value="{{ query }}" placeholder="Hundename oder Zuchtbuchnummer" />
           <button type="submit">Suchen</button>
         </form>
+
+        <div id="watchlistPanel" class="watchlist-panel" aria-live="polite">
+          <div class="watchlist-header">
+            <h2>Merkliste: <span id="watchlistCount">0 Hunde</span></h2>
+            <div id="watchlistNames" class="watchlist-names"></div>
+          </div>
+          <div class="watchlist-actions">
+            <a href="/compare" id="compareLink" class="small-action-button">Gemerkte Hunde vergleichen</a>
+            <button type="button" id="clearWatchlist" class="small-action-button danger">Merkliste leeren</button>
+          </div>
+        </div>
       </div>
 
+      {% if search_started %}
       <div class="workspace">
         <!-- Results Section -->
         <div class="results-section">
@@ -746,9 +1092,11 @@
                 <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=name&sort_dir={{ 'desc' if sort_by == 'name' and sort_dir == 'asc' else 'asc' }}">Name{% if sort_by == 'name' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
                 <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=zbnr&sort_dir={{ 'desc' if sort_by == 'zbnr' and sort_dir == 'asc' else 'asc' }}">ZBNr{% if sort_by == 'zbnr' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
                 <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=birth_year&sort_dir={{ 'desc' if sort_by == 'birth_year' and sort_dir == 'asc' else 'asc' }}">Geburtsjahr{% if sort_by == 'birth_year' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
-                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=ed&sort_dir={{ 'desc' if sort_by == 'ed' and sort_dir == 'asc' else 'asc' }}">ED-Befund{% if sort_by == 'ed' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
-                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=zuchtwert&sort_dir={{ 'desc' if sort_by == 'zuchtwert' and sort_dir == 'asc' else 'asc' }}">ED-Zuchtwert{% if sort_by == 'zuchtwert' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
-                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=konfidenz&sort_dir={{ 'desc' if sort_by == 'konfidenz' and sort_dir == 'asc' else 'asc' }}">Sicherheit{% if sort_by == 'konfidenz' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=ed&sort_dir={{ 'desc' if sort_by == 'ed' and sort_dir == 'asc' else 'asc' }}">ED{% if sort_by == 'ed' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=zuchtwert&sort_dir={{ 'desc' if sort_by == 'zuchtwert' and sort_dir == 'asc' else 'asc' }}">ED-EBV/ C[%]{% if sort_by == 'zuchtwert' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=hd&sort_dir={{ 'desc' if sort_by == 'hd' and sort_dir == 'asc' else 'asc' }}">HD{% if sort_by == 'hd' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=nachkommen&sort_dir={{ 'desc' if sort_by == 'nachkommen' and sort_dir == 'asc' else 'asc' }}">Nachkommen{% if sort_by == 'nachkommen' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                <th>Merkliste</th>
               </tr>
             </thead>
             <tbody id="resultsList">
@@ -765,8 +1113,9 @@
                   'zs': result.zs or '',
                   'stgd_status': result.stgd_status or '',
                   'ed': result.ed or '',
-                  'zuchtwert': result.zuchtwert or None,
-                  'konfidenz': result.konfidenz or None,
+                  'zuchtwert': result.zuchtwert if result.zuchtwert is not none else None,
+                  'konfidenz': result.konfidenz if result.konfidenz is not none else None,
+                  'anz_nachkommen': result.anz_nachkommen,
                   'wurfdatum': result.wurfdatum or '',
                   'birth_year': result.birth_year or '',
                   'geschlecht': result.geschlecht or 'unbekannt',
@@ -787,25 +1136,25 @@
                     {% endif %}
                   </td>
                   <td>
-                    {% if result.zuchtwert %}
+                    {% if result.zuchtwert is not none %}
                       <span>{{ result.zuchtwert }}</span>
-                      {% if result.zuchtwert_class %}
-                        <span class="classification-tag">{{ result.zuchtwert_class.text }}</span>
+                      {% if result.konfidenz is not none %}
+                        <span class="classification-tag">{{ result.konfidenz }} %</span>
                       {% endif %}
                     {% else %}
                       <span class="ed-missing">—</span>
                     {% endif %}
                   </td>
-                  <td>
-                    {% if result.konfidenz %}
-                      {% if result.konfidenz_class %}
-                        {{ result.konfidenz_class.text }}
-                      {% else %}
-                        {{ result.konfidenz }} %
-                      {% endif %}
-                    {% else %}
-                      <span class="ed-missing">—</span>
-                    {% endif %}
+                  <td>{{ result.hd or "—" }}</td>
+                  <td>{% if result.anz_nachkommen is not none %}{{ result.anz_nachkommen }}{% else %}—{% endif %}</td>
+                  <td class="row-action-cell">
+                    <button
+                      type="button"
+                      class="small-action-button watchlist-toggle"
+                      data-zbnr="{{ result.zbnr }}"
+                      data-dog='{{ dogData | tojson }}'
+                      onclick="toggleWatchlistFromButton(event, this)"
+                    >Merken</button>
                   </td>
                 </tr>
               {% endfor %}
@@ -840,125 +1189,62 @@
         {% endif %}
         </div>
 
-        <!-- Detail Card -->
         <div id="detailCard" class="detail-card">
-          <div class="detail-header">
-            <h3 id="dogName"></h3>
-            <div class="detail-meta">
-              <span id="dogMeta"></span>
-            </div>
-            <div class="pedigree-metrics" id="pedigreeMetrics">
-              <div class="metric-item">
-                <div class="metric-label">COI</div>
-                <div class="metric-value" id="coiValue">—</div>
+          <section class="detail-content-section" aria-labelledby="overviewSectionTitle">
+            <h4 class="detail-section-title" id="overviewSectionTitle">Überblick</h4>
+            <div class="overview-dog-card">
+              <div class="overview-title-row">
+                <h4 id="overviewDogName">Hund</h4>
+                <button type="button" id="overviewWatchlistButton" class="small-action-button">Merken</button>
               </div>
-              <div class="metric-item">
-                <div class="metric-label">AVK</div>
-                <div class="metric-value" id="avkValue">—</div>
-              </div>
-              <div class="metric-item">
-                <div class="metric-label">Vollständig bis</div>
-                <div class="metric-value" id="completeGenValue">—</div>
-              </div>
-            </div>
-          </div>
+              <div class="overview-subline" id="overviewIdentity"></div>
 
-          <div class="detail-tabs" role="tablist">
-            <button type="button" class="detail-tab active" data-tab="overview">Überblick</button>
-            <button type="button" class="detail-tab" data-tab="pedigree">Ahnentafel</button>
-            <button type="button" class="detail-tab" data-tab="siblings">Wurfgeschwister</button>
-            <button type="button" class="detail-tab" data-tab="offspring">Nachkommen</button>
-          </div>
+              <div class="overview-joints-row">
+                <div id="overviewHealth"></div>
+                <div class="overview-ebv-row">
+                  <span class="overview-info-label">ED-Zuchtwert</span>
+                  <span class="overview-info-value" id="zwValue">—</span>
+                  <span class="overview-info-note" id="zwAssessment">—</span>
+                  <div class="overview-zw-bar" aria-label="ED-Zuchtwert-Skala">
+                    <span class="overview-zw-zero"></span>
+                    <span class="overview-zw-marker" id="overviewZwMarker"></span>
+                  </div>
+                  <span class="overview-info-label">Sicherheit</span>
+                  <span class="overview-info-value" id="relValue">—</span>
+                </div>
+              </div>
 
-          <div id="tab-overview" class="tab-panel active">
-            <div class="detail-section">
-              <h4>ED-Informationen</h4>
-              <div class="detail-row">
-                <div class="detail-label">HD-Grad</div>
-                <div class="detail-value" id="hdValue"></div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">ED-Befund</div>
-                <div class="detail-value" id="edValue"></div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">ED-Zuchtwert</div>
-                <div class="detail-value" id="zwValue"></div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">Sicherheit</div>
-                <div class="detail-value" id="relValue"></div>
-              </div>
-              <div class="info-hint">
-                <strong>ED-Zuchtwert:</strong> Der ED-Zuchtwert beschreibt die genetische Einschätzung eines Hundes im Vergleich zur Population. Ein niedrigerer Wert ist günstiger.
+              <div class="overview-block">
+                <div class="overview-compact-line"><strong>Gentests:</strong> <span id="overviewTests"></span></div>
+                <div class="overview-compact-line"><strong>Zahnstatus:</strong> <span id="overviewDental"></span></div>
+                <div class="overview-compact-line" id="pedigreeMetrics">
+                  <strong>Pedigree:</strong>
+                  COI <span id="coiValue">—</span> ·
+                  AVK <span id="avkValue">—</span> ·
+                  vollständig bis <span id="completeGenValue">—</span>
+                </div>
               </div>
             </div>
-            <div class="detail-section">
-              <h4>Gentests</h4>
-              <div class="detail-row">
-                <div class="detail-label">prcd-PRA</div>
-                <div class="detail-value" id="prcdPraValue"></div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">HNPK</div>
-                <div class="detail-value" id="hnpkValue"></div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">SD2</div>
-                <div class="detail-value" id="sd2Value"></div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">CNM</div>
-                <div class="detail-value" id="cnmValue"></div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">EIC</div>
-                <div class="detail-value" id="eicValue"></div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">ZS</div>
-                <div class="detail-value" id="zsValue"></div>
-              </div>
-              <div class="detail-row">
-                <div class="detail-label">STGD</div>
-                <div class="detail-value" id="stgdValue"></div>
-              </div>
-            </div>
-          </div>
+          </section>
 
-          <div id="tab-pedigree" class="tab-panel">
-            <div class="relation-summary">
-              <h4 id="relationTitle">Verwandtschaft</h4>
-              <div id="relationMeta">Wähle einen Hund aus der Ahnentafel, um Wurfgeschwister und Nachkommen zu sehen.</div>
-            </div>
+          <section class="detail-content-section" aria-labelledby="pedigreeSectionTitle">
+            <h4 class="detail-section-title" id="pedigreeSectionTitle">Ahnentafel</h4>
             <div class="pedigree-section">
               <div id="pedigreeArea" class="loading">Wird geladen...</div>
             </div>
-          </div>
-
-          <div id="tab-siblings" class="tab-panel">
-            <div class="relation-summary">
-              <h4 id="siblingPanelTitle">Wurfgeschwister</h4>
-              <div id="siblingPanelMeta"></div>
-            </div>
-            <div id="siblingBody"><div class="loading">Wird geladen...</div></div>
-          </div>
-
-          <div id="tab-offspring" class="tab-panel">
-            <div class="relation-summary">
-              <h4 id="offspringPanelTitle">Nachkommen</h4>
-              <div id="offspringPanelMeta"></div>
-            </div>
-            <div id="offspringBody"><div class="loading">Wird geladen...</div></div>
-          </div>
+          </section>
         </div>
       </div>
+      {% endif %}
     </div>
+
+    {% include "_relatives_modal.html" %}
 
     <script>
       let currentSort = { column: null, direction: 'asc' };
       let selectedMetricsZbnr = null;
-      let selectedRelationZbnr = null;
+      let selectedDogForWatchlist = null;
+      const WATCHLIST_STORAGE_KEY = 'zwsDogWatchlist';
 
       function sortTable(column) {
         const rows = Array.from(document.querySelectorAll('#resultsList tr'));
@@ -1017,63 +1303,207 @@
 
       function selectDog(row, zbnrLink, dogName, dogData) {
         selectedMetricsZbnr = zbnrLink;
+        selectedDogForWatchlist = normalizeWatchlistDog(dogData, zbnrLink, dogName);
 
         // Update selected row
         document.querySelectorAll('#resultsList tr').forEach(r => r.classList.remove('selected'));
         row.classList.add('selected');
+        updateWatchlistButtons();
 
-        // Update detail card
-        document.getElementById('dogName').textContent = dogName || 'unbekannt';
-        
-        const metaParts = [
-          dogData.zbnr || 'unbekannt',
-          (dogData.geschlecht && dogData.geschlecht !== 'unbekannt') ? dogData.geschlecht : '',
-          dogData.wurfdatum || (dogData.birth_year || '')
-        ].filter(x => x).join(' · ');
-        document.getElementById('dogMeta').textContent = metaParts;
         resetPedigreeMetrics();
 
-        document.getElementById('hdValue').textContent = dogData.hd || '—';
-        document.getElementById('prcdPraValue').textContent = dogData.prcd_pra || '—';
-        document.getElementById('hnpkValue').textContent = dogData.hnpk || '—';
-        document.getElementById('sd2Value').textContent = dogData.sd2 || '—';
-        document.getElementById('cnmValue').textContent = dogData.cnm || '—';
-        document.getElementById('eicValue').textContent = dogData.eic || '—';
-        document.getElementById('zsValue').textContent = dogData.zs || '—';
-        document.getElementById('stgdValue').textContent = dogData.stgd_status || '—';
-
-        document.getElementById('edValue').innerHTML = dogData.ed 
-          ? '<span class="ed-free">' + dogData.ed + '</span>'
-          : '<span class="ed-missing">kein ED-Befund</span>';
-
-        document.getElementById('zwValue').innerHTML = renderZuchtwertDetail(dogData);
+        const sex = dogData.geschlecht || '—';
+        document.getElementById('overviewDogName').textContent = dogName || 'unbekannt';
+        document.getElementById('overviewIdentity').textContent = [
+          sex,
+          dogData.wurfdatum || '—',
+          'ZBNr ' + (dogData.zbnr || '—')
+        ].join(' · ');
+        document.getElementById('overviewHealth').innerHTML = [
+          '<strong>Gelenke</strong>',
+          'HD ' + escapeHtml(dogData.hd || '—'),
+          'ED ' + escapeHtml(dogData.ed || '—')
+        ].join(' · ');
+        document.getElementById('overviewTests').innerHTML = [
+          'prcd-PRA ' + escapeHtml(dogData.prcd_pra || '—'),
+          'HNPK ' + escapeHtml(dogData.hnpk || '—'),
+          'SD2 ' + escapeHtml(dogData.sd2 || '—'),
+          'CNM ' + escapeHtml(dogData.cnm || '—'),
+          'EIC ' + escapeHtml(dogData.eic || '—'),
+          'STGD ' + escapeHtml(dogData.stgd_status || '—')
+        ].join(' · ');
+        document.getElementById('overviewDental').textContent = dogData.zs || '—';
 
         const reliabilityClass = dogData.konfidenz_class || {};
-        if (dogData.konfidenz && reliabilityClass.text) {
-          document.getElementById('relValue').innerHTML = `<span class="zw-chip ${reliabilityClass.class}">${dogData.konfidenz} % — ${reliabilityClass.text}</span>`;
-        } else if (dogData.konfidenz) {
+        if (dogData.konfidenz != null) {
           document.getElementById('relValue').textContent = dogData.konfidenz + ' %';
         } else {
           document.getElementById('relValue').textContent = '—';
+        }
+        document.getElementById('zwValue').textContent = dogData.zuchtwert != null ? dogData.zuchtwert : '—';
+        document.getElementById('zwAssessment').textContent = zuchtwertAssessment(dogData.zuchtwert);
+        const marker = document.getElementById('overviewZwMarker');
+        if (dogData.zuchtwert != null) {
+          marker.style.display = 'block';
+          marker.style.left = computeParentStyleMarkerPosition(dogData.zuchtwert) + '%';
+        } else {
+          marker.style.display = 'none';
         }
 
         // Load pedigree
         loadPedigreeMetrics(zbnrLink);
         loadPedigree(zbnrLink);
-        loadRelatives(zbnrLink);
 
         // Show detail card
         document.getElementById('detailCard').classList.add('active');
-        setActiveTab('overview');
       }
 
-      function setActiveTab(tabName) {
-        document.querySelectorAll('.detail-tab').forEach(tab => {
-          tab.classList.toggle('active', tab.dataset.tab === tabName);
+      function readWatchlist() {
+        try {
+          const raw = localStorage.getItem(WATCHLIST_STORAGE_KEY);
+          const parsed = raw ? JSON.parse(raw) : [];
+          return Array.isArray(parsed) ? parsed.filter(dog => dog && dog.zbnr) : [];
+        } catch (error) {
+          console.warn('Merkliste konnte nicht gelesen werden:', error);
+          return [];
+        }
+      }
+
+      function writeWatchlist(dogs) {
+        localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(dogs));
+      }
+
+      function normalizeWatchlistDog(dogData, fallbackZbnr, fallbackName) {
+        const dog = dogData || {};
+        const zbnr = String(dog.zbnr || fallbackZbnr || '').trim();
+        return {
+          zbnr,
+          name: dog.name || fallbackName || 'unbekannt',
+          geschlecht: dog.geschlecht || '—',
+          wurfdatum: dog.wurfdatum || '—',
+          birth_year: dog.birth_year || '',
+          hd: dog.hd || '—',
+          ed: dog.ed || '—',
+          zuchtwert: dog.zuchtwert ?? null,
+          konfidenz: dog.konfidenz ?? null,
+          anz_nachkommen: dog.anz_nachkommen ?? null,
+          prcd_pra: dog.prcd_pra || '—',
+          hnpk: dog.hnpk || '—',
+          sd2: dog.sd2 || '—',
+          cnm: dog.cnm || '—',
+          eic: dog.eic || '—',
+          stgd_status: dog.stgd_status || '—',
+          zs: dog.zs || '—',
+          bemerkung: dog.bemerkung || '',
+          saved_at: new Date().toISOString()
+        };
+      }
+
+      function isDogRemembered(zbnr) {
+        const key = String(zbnr || '').trim();
+        return Boolean(key) && readWatchlist().some(dog => dog.zbnr === key);
+      }
+
+      function addToWatchlist(dog) {
+        const normalized = normalizeWatchlistDog(dog);
+        if (!normalized.zbnr) return;
+
+        const dogs = readWatchlist();
+        const existingIndex = dogs.findIndex(item => item.zbnr === normalized.zbnr);
+        if (existingIndex >= 0) {
+          dogs[existingIndex] = {
+            ...dogs[existingIndex],
+            ...normalized,
+            bemerkung: normalized.bemerkung || dogs[existingIndex].bemerkung || '',
+            saved_at: dogs[existingIndex].saved_at || normalized.saved_at
+          };
+        } else {
+          dogs.push(normalized);
+        }
+        writeWatchlist(dogs);
+        renderWatchlist();
+        updateWatchlistButtons();
+        fetchPedigreeMetricsForWatchlistDog(normalized.zbnr);
+      }
+
+      function removeFromWatchlist(zbnr) {
+        const key = String(zbnr || '').trim();
+        writeWatchlist(readWatchlist().filter(dog => dog.zbnr !== key));
+        renderWatchlist();
+        updateWatchlistButtons();
+      }
+
+      function toggleWatchlistFromButton(event, button) {
+        event.stopPropagation();
+        const dog = JSON.parse(button.getAttribute('data-dog') || '{}');
+        const normalized = normalizeWatchlistDog(dog, button.getAttribute('data-zbnr'), dog.name);
+        if (isDogRemembered(normalized.zbnr)) {
+          removeFromWatchlist(normalized.zbnr);
+        } else {
+          addToWatchlist(normalized);
+        }
+      }
+
+      function toggleSelectedDogWatchlist() {
+        if (!selectedDogForWatchlist || !selectedDogForWatchlist.zbnr) return;
+        if (isDogRemembered(selectedDogForWatchlist.zbnr)) {
+          removeFromWatchlist(selectedDogForWatchlist.zbnr);
+        } else {
+          addToWatchlist(selectedDogForWatchlist);
+        }
+      }
+
+      function updateWatchlistButtons() {
+        document.querySelectorAll('.watchlist-toggle').forEach(button => {
+          const remembered = isDogRemembered(button.getAttribute('data-zbnr'));
+          button.classList.toggle('active', remembered);
+          button.textContent = remembered ? 'Gemerkt' : 'Merken';
         });
-        document.querySelectorAll('.tab-panel').forEach(panel => {
-          panel.classList.toggle('active', panel.id === 'tab-' + tabName);
-        });
+
+        const overviewButton = document.getElementById('overviewWatchlistButton');
+        if (overviewButton) {
+          const remembered = selectedDogForWatchlist && isDogRemembered(selectedDogForWatchlist.zbnr);
+          overviewButton.disabled = !selectedDogForWatchlist;
+          overviewButton.classList.toggle('active', Boolean(remembered));
+          overviewButton.textContent = remembered ? 'Gemerkt' : 'Merken';
+        }
+      }
+
+      function renderWatchlist() {
+        const dogs = readWatchlist();
+        const panel = document.getElementById('watchlistPanel');
+        const count = document.getElementById('watchlistCount');
+        const names = document.getElementById('watchlistNames');
+        const compareLink = document.getElementById('compareLink');
+        if (!panel || !count || !names || !compareLink) return;
+
+        panel.classList.toggle('active', dogs.length > 0);
+        count.textContent = dogs.length === 1 ? '1 Hund' : dogs.length + ' Hunde';
+        names.textContent = dogs.slice(0, 4).map(dog => dog.name || 'unbekannt').join(' · ');
+        if (dogs.length > 4) names.textContent += ' · ...';
+        compareLink.setAttribute('aria-disabled', dogs.length === 0 ? 'true' : 'false');
+      }
+
+      function clearWatchlist() {
+        writeWatchlist([]);
+        renderWatchlist();
+        updateWatchlistButtons();
+      }
+
+      function fetchPedigreeMetricsForWatchlistDog(zbnr) {
+        if (!zbnr) return;
+
+        fetch('/pedigree_metrics?zbnr=' + encodeURIComponent(zbnr) + '&gens=5')
+          .then(r => {
+            return r.json().then(data => {
+              if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+              return data;
+            });
+          })
+          .then(data => updateWatchlistMetrics(zbnr, data))
+          .catch(error => {
+            console.warn('Pedigree-Kennzahlen für Merkliste konnten nicht geladen werden:', error);
+          });
       }
 
       function resetPedigreeMetrics() {
@@ -1109,6 +1539,8 @@
             const completeGen = data.deepest_complete_generation_in_data;
             document.getElementById('completeGenValue').textContent =
               completeGen !== null && completeGen !== undefined ? 'Gen. ' + completeGen : '—';
+
+            updateWatchlistMetrics(zbnr, data);
           })
           .catch(e => {
             if (selectedMetricsZbnr !== zbnr) return;
@@ -1117,6 +1549,26 @@
             document.getElementById('avkValue').textContent = '—';
             document.getElementById('completeGenValue').textContent = '—';
           });
+      }
+
+      function updateWatchlistMetrics(zbnr, data) {
+        const metrics = {
+          coi_percent: data.coi_percent ?? null,
+          avk_known_percent: data.avk_known_percent ?? null,
+          complete_generation: data.deepest_complete_generation_in_data ?? null
+        };
+
+        if (selectedDogForWatchlist && selectedDogForWatchlist.zbnr === zbnr) {
+          selectedDogForWatchlist = { ...selectedDogForWatchlist, ...metrics };
+        }
+
+        const dogs = readWatchlist();
+        const index = dogs.findIndex(dog => dog.zbnr === zbnr);
+        if (index >= 0) {
+          dogs[index] = { ...dogs[index], ...metrics };
+          writeWatchlist(dogs);
+          renderWatchlist();
+        }
       }
 
       function renderZuchtwertDetail(dogData) {
@@ -1157,6 +1609,22 @@
         return ((value - min) / (max - min)) * 100;
       }
 
+      function computeParentStyleMarkerPosition(zuchtwert) {
+        const min = -20;
+        const max = 20;
+        const value = Math.max(min, Math.min(max, Number(zuchtwert)));
+        return ((value - min) / (max - min)) * 100;
+      }
+
+      function zuchtwertAssessment(zuchtwert) {
+        if (zuchtwert === null || zuchtwert === undefined || zuchtwert === '') return 'keine Angabe';
+        const value = Number(zuchtwert);
+        if (!Number.isFinite(value)) return 'keine Angabe';
+        if (value < 0) return 'günstig';
+        if (value === 0) return 'durchschnittlich';
+        return 'ungünstig';
+      }
+
       function escapeHtml(value) {
         return String(value)
           .replace(/&/g, '&amp;')
@@ -1166,123 +1634,7 @@
           .replace(/'/g, '&#39;');
       }
 
-      function renderDogTable(dogs, emptyText) {
-        if (!dogs || dogs.length === 0) {
-          return '<div class="no-results"><p>' + escapeHtml(emptyText) + '</p></div>';
-        }
-
-        const rows = dogs.map(dog => `
-          <tr>
-            <td>${escapeHtml(dog.name || 'unbekannt')}</td>
-            <td>${escapeHtml(dog.zbnr || '—')}</td>
-            <td>${escapeHtml(dog.wurfdatum || '—')}</td>
-            <td>${escapeHtml(dog.geschlecht || '—')}</td>
-            <td>${escapeHtml(dog.hd || '—')}</td>
-            <td>${escapeHtml(dog.prcd_pra || '—')}</td>
-            <td>${escapeHtml(dog.hnpk || '—')}</td>
-            <td>${escapeHtml(dog.sd2 || '—')}</td>
-            <td>${escapeHtml(dog.cnm || '—')}</td>
-            <td>${escapeHtml(dog.eic || '—')}</td>
-            <td>${escapeHtml(dog.zs || '—')}</td>
-            <td>${escapeHtml(dog.stgd_status || '—')}</td>
-            <td>${escapeHtml(dog.ed || '—')}</td>
-            <td>${dog.zuchtwert != null ? escapeHtml(dog.zuchtwert) : '—'}</td>
-            <td>${dog.konfidenz != null ? escapeHtml(dog.konfidenz + ' %') : '—'}</td>
-          </tr>
-        `).join('');
-
-        return `
-          <table class="sibling-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>ZBNr</th>
-                <th>Wurfdatum</th>
-                <th>Geschlecht</th>
-                <th>HD</th>
-                <th>prcd-PRA</th>
-                <th>HNPK</th>
-                <th>SD2</th>
-                <th>CNM</th>
-                <th>EIC</th>
-                <th>ZS</th>
-                <th>STGD</th>
-                <th>ED</th>
-                <th>ED-Zuchtwert</th>
-                <th>Sicherheit</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        `;
-      }
-
-      function setRelationLoading(zbnr) {
-        const loading = '<div class="loading">Wird geladen...</div>';
-        document.getElementById('relationTitle').textContent = 'Verwandtschaft';
-        document.getElementById('relationMeta').textContent = 'ZBNr ' + zbnr;
-        document.getElementById('siblingPanelTitle').textContent = 'Wurfgeschwister';
-        document.getElementById('siblingPanelMeta').textContent = 'ZBNr ' + zbnr;
-        document.getElementById('offspringPanelTitle').textContent = 'Nachkommen';
-        document.getElementById('offspringPanelMeta').textContent = 'ZBNr ' + zbnr;
-        document.getElementById('siblingBody').innerHTML = loading;
-        document.getElementById('offspringBody').innerHTML = loading;
-      }
-
-      function loadRelatives(zbnr) {
-        selectedRelationZbnr = zbnr;
-        setRelationLoading(zbnr);
-
-        fetch('/littermates?zbnr=' + encodeURIComponent(zbnr))
-          .then(r => {
-            return r.json().then(data => {
-              if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
-              return data;
-            });
-          })
-          .then(data => {
-            if (selectedRelationZbnr !== zbnr) return;
-
-            const dog = data.dog || {};
-            const siblings = data.littermates || [];
-            const offspring = data.offspring || [];
-
-            const metaParts = [
-              dog.zbnr ? 'ZBNr ' + dog.zbnr : null,
-              data.litter_date ? 'Wurfdatum ' + data.litter_date : null,
-              siblings.length + ' Geschwister',
-              offspring.length + ' Nachkommen'
-            ].filter(Boolean);
-            const metaText = metaParts.join(' · ');
-            const titleText = dog.name || 'unbekannt';
-
-            document.getElementById('relationTitle').textContent = 'Ausgewählt: ' + titleText;
-            document.getElementById('relationMeta').textContent = metaText;
-            document.getElementById('siblingPanelTitle').textContent = 'Wurfgeschwister von ' + titleText;
-            document.getElementById('siblingPanelMeta').textContent = metaText;
-            document.getElementById('offspringPanelTitle').textContent = 'Nachkommen von ' + titleText;
-            document.getElementById('offspringPanelMeta').textContent = metaText;
-
-            if (data.message) {
-              const message = '<div class="no-results"><p>' + escapeHtml(data.message) + '</p></div>';
-              document.getElementById('siblingBody').innerHTML = message;
-              document.getElementById('offspringBody').innerHTML = renderDogTable(offspring, 'Keine Nachkommen gefunden.');
-              return;
-            }
-
-            const siblingsHtml = renderDogTable(siblings, 'Keine Wurfgeschwister gefunden.');
-            const offspringHtml = renderDogTable(offspring, 'Keine Nachkommen gefunden.');
-            document.getElementById('siblingBody').innerHTML = siblingsHtml;
-            document.getElementById('offspringBody').innerHTML = offspringHtml;
-          })
-          .catch(e => {
-            if (selectedRelationZbnr !== zbnr) return;
-            console.error('Relatives loading error:', e);
-            const errorHtml = '<div class="no-results"><p>Fehler beim Laden der Verwandtschaftsdaten: ' + escapeHtml(e.message) + '</p></div>';
-            document.getElementById('siblingBody').innerHTML = errorHtml;
-            document.getElementById('offspringBody').innerHTML = errorHtml;
-          });
-      }
+      {% include "_relatives_modal_script.html" %}
 
       function loadPedigree(zbnr) {
         const area = document.getElementById('pedigreeArea');
@@ -1305,17 +1657,27 @@
           });
       }
 
-      document.getElementById('pedigreeArea').addEventListener('click', function (event) {
-        const card = event.target.closest('.card[data-zbnr]');
-        if (!card || !this.contains(card)) return;
+      const pedigreeArea = document.getElementById('pedigreeArea');
+      if (pedigreeArea) {
+        pedigreeArea.addEventListener('click', function (event) {
+          const card = event.target.closest('.card[data-zbnr]');
+          if (!card || !this.contains(card)) return;
 
-        const zbnr = card.getAttribute('data-zbnr');
-        if (zbnr) loadRelatives(zbnr);
+          const zbnr = card.getAttribute('data-zbnr');
+          if (zbnr) loadRelativesModal(zbnr, { resetHistory: true });
+        });
+      }
+
+      attachRelativesModalEvents();
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') closeRelativesModal();
       });
 
-      document.querySelectorAll('.detail-tab').forEach(tab => {
-        tab.addEventListener('click', () => setActiveTab(tab.dataset.tab));
-      });
+      document.getElementById('overviewWatchlistButton')?.addEventListener('click', toggleSelectedDogWatchlist);
+      document.getElementById('clearWatchlist')?.addEventListener('click', clearWatchlist);
+
+      renderWatchlist();
+      updateWatchlistButtons();
 
       const firstResult = document.querySelector('#resultsList tr');
       if (firstResult) firstResult.click();

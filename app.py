@@ -2,8 +2,10 @@ from pathlib import Path
 from urllib.parse import quote_plus
 import math
 from datetime import date
+import hmac
+import os
 
-from flask import Flask, render_template, request, redirect, url_for, Response, jsonify
+from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, session
 import re
 
 import pedigree_tools as pt
@@ -16,6 +18,30 @@ ZWS_CSV = APP_DIR / "ed_zws_results_all_animals.csv"
 
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY") or os.environ.get("FLASK_SECRET_KEY") or "dev-secret-change-me"
+
+AUTH_USERNAME = os.environ.get("APP_USERNAME", "admin")
+AUTH_PASSWORD = os.environ.get("APP_PASSWORD", "admin")
+
+
+def is_authenticated():
+    return session.get("authenticated") is True
+
+
+def is_safe_next_url(value):
+    return bool(value) and value.startswith("/") and not value.startswith("//")
+
+
+@app.before_request
+def require_login():
+    public_endpoints = {"login", "static"}
+    if request.endpoint in public_endpoints:
+        return None
+
+    if is_authenticated():
+        return None
+
+    return redirect(url_for("login", next=request.full_path if request.query_string else request.path))
 
 
 def load_data():
@@ -185,6 +211,21 @@ def dog_summary(row):
         "konfidenz": confidence,
         "kc_health_url": kc_health_url,
     }
+
+
+def parent_display_by_zbnr(zbnr):
+    normalized = pt.normalize_zbnr(clean_text(zbnr)) or clean_text(zbnr)
+    if not normalized:
+        return None
+
+    parent = ZBNR_INDEX.get(normalized) or ZBNR_INDEX.get(clean_text(zbnr))
+    if parent is None:
+        return {"name": "", "zbnr": normalized, "label": normalized}
+
+    name = clean_text(parent.get("Name"))
+    parent_zbnr = clean_text(parent.get("ZBNr_norm")) or clean_text(parent.get("ZBNr")) or normalized
+    label = " · ".join(part for part in [name, parent_zbnr] if part)
+    return {"name": name, "zbnr": parent_zbnr, "label": label or normalized}
 
 
 def is_carrier_status(value):
@@ -368,6 +409,61 @@ def dog_matches_min_offspring(row, min_offspring=None):
     return count is not None and count >= min_offspring
 
 
+def ancestor_zbnrs_for_dog(row, max_generations=5, include_self=True):
+    zbnr = clean_text(row.get("ZBNr_norm") or row.get("ZBNr"))
+    zbnr = pt.normalize_zbnr(zbnr) or zbnr
+    if not zbnr:
+        return set()
+
+    slots = pt.build_ancestor_slots(ZBNR_INDEX, zbnr, max_generations=max_generations)
+    ancestor_zbnrs = set()
+    for slot_id, slot in slots.items():
+        if slot_id == 1 and not include_self:
+            continue
+        dog = slot.get("dog") or {}
+        slot_zbnr = clean_text(dog.get("ZBNr_norm") or dog.get("ZBNr")) or clean_text(slot.get("lookup_zbnr"))
+        slot_zbnr = pt.normalize_zbnr(slot_zbnr) or slot_zbnr
+        if slot_zbnr:
+            ancestor_zbnrs.add(slot_zbnr)
+    return ancestor_zbnrs
+
+
+def dog_has_excluded_ancestor(row, excluded_zbnrs, max_generations=5):
+    if not excluded_zbnrs:
+        return False
+    return bool(ancestor_zbnrs_for_dog(row, max_generations=max_generations) & set(excluded_zbnrs))
+
+
+def parse_excluded_ancestor_values(values):
+    result = []
+    seen = set()
+    for value in values:
+        zbnr = parse_selected_zbnr(value)
+        if not zbnr or zbnr in seen:
+            continue
+        seen.add(zbnr)
+        result.append(zbnr)
+    return result
+
+
+def excluded_ancestor_summaries(zbnrs):
+    summaries = []
+    for zbnr in zbnrs:
+        dog = resolve_dog(zbnr)
+        if dog is None:
+            summaries.append({"name": "", "zbnr": zbnr, "label": zbnr})
+            continue
+        summary = dog_summary(dog)
+        summaries.append(
+            {
+                "name": summary["name"],
+                "zbnr": summary["zbnr"] or zbnr,
+                "label": f"{summary['name']} | {summary['zbnr'] or zbnr}",
+            }
+        )
+    return summaries
+
+
 def get_sire_candidates(
     min_age=None,
     max_age=None,
@@ -375,6 +471,7 @@ def get_sire_candidates(
     min_offspring=None,
     dam_row=None,
     avoid_carrier_matches=False,
+    excluded_ancestor_zbnrs=None,
     query="",
     sort_by="zuchtwert",
     sort_dir="asc",
@@ -401,6 +498,11 @@ def get_sire_candidates(
         for _key, column in GENETIC_TEST_FIELDS:
             if column in candidates.columns and is_carrier_status(dam_row.get(column)):
                 candidates = candidates.loc[~candidates[column].map(is_carrier_status)]
+    if excluded_ancestor_zbnrs:
+        excluded = set(excluded_ancestor_zbnrs)
+        candidates = candidates.loc[
+            ~candidates.apply(lambda row: bool(ancestor_zbnrs_for_dog(row) & excluded), axis=1)
+        ]
 
     sort_map = {
         "name": "_sort_name",
@@ -659,6 +761,36 @@ def population_stats_context():
     }
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    next_url = request.args.get("next") or request.form.get("next") or url_for("landing")
+    if not is_safe_next_url(next_url):
+        next_url = url_for("landing")
+
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        username_ok = hmac.compare_digest(username, AUTH_USERNAME)
+        password_ok = hmac.compare_digest(password, AUTH_PASSWORD)
+
+        if username_ok and password_ok:
+            session.clear()
+            session["authenticated"] = True
+            session["username"] = username
+            return redirect(next_url)
+
+        error = "Benutzername oder Passwort ist nicht korrekt."
+
+    return render_template("login.html", error=error, next_url=next_url)
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
 @app.route("/")
 def landing():
     """Welcome page with entry points into the app."""
@@ -667,18 +799,22 @@ def landing():
 
 @app.route("/dogs", methods=["GET", "POST"])
 def dog_search_home():
-    """Dog search page with search box and population stats."""
-    # If there's a query, redirect to /search
+    """Compatibility route for the old dog search entry page."""
     query = request.values.get("q", "").strip()
     if query:
         return redirect(url_for("search_results", q=query, page=1))
 
-    return render_template("home.html", **population_stats_context())
+    return redirect(url_for("search_results"))
 
 
 @app.route("/info")
 def info():
     return render_template("info.html", **population_stats_context())
+
+
+@app.route("/compare")
+def compare_watchlist():
+    return render_template("compare.html")
 
 
 @app.route("/dog_suggest")
@@ -739,6 +875,7 @@ def pairing():
     sire_max_ebv = request.args.get("sire_max_ebv", "").strip()
     sire_min_offspring = request.args.get("sire_min_offspring", "").strip()
     avoid_carrier_matches = request.args.get("avoid_carrier_matches", "").strip() == "1"
+    excluded_ancestor_zbnrs = parse_excluded_ancestor_values(request.args.getlist("excluded_ancestor_zbnrs"))
     sire_search = request.args.get("sire_search", "").strip()
     sire_page = request.args.get("sire_page", "1").strip()
     sire_sort_by = request.args.get("sire_sort_by", "zuchtwert").strip().lower()
@@ -768,6 +905,7 @@ def pairing():
             min_offspring=min_offspring,
             dam_row=dam_preview,
             avoid_carrier_matches=avoid_carrier_matches,
+            excluded_ancestor_zbnrs=excluded_ancestor_zbnrs,
             query=sire_input,
             sort_by=sire_sort_by,
             sort_dir=sire_sort_dir,
@@ -792,6 +930,8 @@ def pairing():
         "sire_max_ebv": sire_max_ebv,
         "sire_min_offspring": sire_min_offspring,
         "avoid_carrier_matches": avoid_carrier_matches,
+        "excluded_ancestor_zbnrs": excluded_ancestor_zbnrs,
+        "excluded_ancestors": excluded_ancestor_summaries(excluded_ancestor_zbnrs),
         "sire_search": sire_search,
         "sire_candidates": sire_candidates,
         "sire_total": sire_total,
@@ -830,6 +970,9 @@ def pairing():
             carrier_conflicts = carrier_conflicts_with_dam(sire, dam) if avoid_carrier_matches else []
             if carrier_conflicts:
                 context["error"] = "Der ausgewählte Rüde passt nicht zur Gentest-Regel: Träger × Träger bei " + ", ".join(carrier_conflicts) + "."
+                return render_template("pairing.html", **context)
+            if dog_has_excluded_ancestor(sire, excluded_ancestor_zbnrs):
+                context["error"] = "Der ausgewählte Rüde hat mindestens einen ausgeschlossenen Hund in der Ahnentafel."
                 return render_template("pairing.html", **context)
 
             planned_zbnr, pairing_index = make_pairing_index(sire, dam)
@@ -885,18 +1028,6 @@ def pairing():
 def search_results():
     """Search results page."""
     query = request.args.get("q", "").strip()
-    if not query:
-        return redirect(url_for("dog_search_home"))
-    
-    q = query.lower()
-    df = MERGED_DF
-
-    # search in Name and ZBNr columns
-    mask = (
-        df["Name"].fillna("").str.lower().str.contains(q, na=False)
-        | df["ZBNr"].fillna("").str.lower().str.contains(q, na=False)
-    )
-
     page = request.args.get("page", "1")
     try:
         page = max(1, int(page))
@@ -908,6 +1039,30 @@ def search_results():
     sort_dir = request.args.get("sort_dir", "asc").lower()
     if sort_dir not in {"asc", "desc"}:
         sort_dir = "asc"
+
+    if not query:
+        return render_template(
+            "search_results.html",
+            query="",
+            results=[],
+            page=1,
+            page_count=0,
+            total_matches=0,
+            query_encoded="",
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+            no_results=False,
+            search_started=False,
+        )
+    
+    q = query.lower()
+    df = MERGED_DF
+
+    # search in Name and ZBNr columns
+    mask = (
+        df["Name"].fillna("").str.lower().str.contains(q, na=False)
+        | df["ZBNr"].fillna("").str.lower().str.contains(q, na=False)
+    )
 
     matches = df[mask].copy()
     
@@ -930,6 +1085,9 @@ def search_results():
     matches["sort_konfidenz"] = pd.to_numeric(
         matches.get("Confidenz", pd.Series([None] * len(matches))), errors="coerce"
     ).fillna(pd.to_numeric(matches.get("reliability_prozent", pd.Series([None] * len(matches))), errors="coerce"))
+    matches["sort_nachkommen"] = pd.to_numeric(
+        matches.get("AnzNachkommen", pd.Series([None] * len(matches))), errors="coerce"
+    )
     matches["sort_wurfdatum"] = matches.get("Wurfdatum", pd.Series([None] * len(matches)))
 
     def coalesce_text(series):
@@ -974,6 +1132,7 @@ def search_results():
         "ed": "sort_ed",
         "zuchtwert": "sort_zuchtwert",
         "konfidenz": "sort_konfidenz",
+        "nachkommen": "sort_nachkommen",
     }
     sort_column = sort_column_map.get(sort_by, "Name")
     ascending = sort_dir == "asc"
@@ -994,6 +1153,7 @@ def search_results():
             sort_by=sort_by,
             sort_dir=sort_dir,
             no_results=True,
+            search_started=True,
         )
     
     page_count = max(1, math.ceil(total_matches / page_size))
@@ -1005,10 +1165,10 @@ def search_results():
     results = []
     for r in recs:
         z = r.get("ZBNr_norm") or r.get("ZBNr")
-        hd = r.get("HD_Grad") or r.get("HD") or None
-        ed = r.get("ED_rechts") or r.get("ED_rechts_raw") or r.get("ED_links") or None
+        hd = clean_text(r.get("HD_Grad")) or clean_text(r.get("HD")) or None
+        ed = clean_text(r.get("ED_rechts")) or clean_text(r.get("ED_rechts_raw")) or clean_text(r.get("ED_links")) or None
         zucht_raw = r.get("EBV") or r.get("ed_zw_0_10_niedrig_gut")
-        wurfdatum = r.get("Wurfdatum")
+        wurfdatum = clean_text(r.get("Wurfdatum"))
         konf_raw = r.get("Confidenz") or r.get("reliability_prozent") or r.get("reliability")
 
         def to_int(v):
@@ -1029,11 +1189,13 @@ def search_results():
         res["ed"] = ed
         res["konfidenz"] = konf
         res["zuchtwert"] = zucht
+        res["anz_nachkommen"] = dog_offspring_count(r)
         res["wurfdatum"] = wurfdatum
         res["name"] = r.get("Name", "unbekannt")
         res["geschlecht"] = r.get("Geschlecht") or r.get("sex") or "unbekannt"
         res["vater"] = r.get("Vater") or "unbekannt"
         res["mutter"] = r.get("Mutter") or "unbekannt"
+        res["birth_year"] = clean_text(r.get("birth_year"))
         
         # Classification for display
         res["zuchtwert_class"] = "" #get_breeding_value_classification(zucht)
@@ -1052,6 +1214,7 @@ def search_results():
         sort_by=sort_by,
         sort_dir=sort_dir,
         no_results=(total_matches == 0),
+        search_started=True,
     )
 
 
@@ -1167,12 +1330,21 @@ def littermates():
     )
 
     offspring_mask = (father_series == dog_zbnr) | (mother_series == dog_zbnr)
-    offspring = [
-        dog_summary(row)
-        for row in MERGED_DF.loc[offspring_mask]
+    offspring = []
+    for row in (
+        MERGED_DF.loc[offspring_mask]
         .sort_values(by=["Wurfdatum", "Name"], na_position="last")
         .to_dict(orient="records")
-    ]
+    ):
+        child_summary = dog_summary(row)
+        child_father = normalized_zbnr(row.get("vater_zbnr_norm") or row.get("vater_zbnr"))
+        child_mother = normalized_zbnr(row.get("mutter_zbnr_norm") or row.get("mutter_zbnr"))
+        other_parent_zbnr = child_mother if child_father == dog_zbnr else child_father
+        other_parent = parent_display_by_zbnr(other_parent_zbnr)
+        child_summary["other_parent"] = other_parent["label"] if other_parent else ""
+        child_summary["other_parent_name"] = other_parent["name"] if other_parent else ""
+        child_summary["other_parent_zbnr"] = other_parent["zbnr"] if other_parent else ""
+        offspring.append(child_summary)
 
     message = None
     if not father or not mother or not litter_date:
