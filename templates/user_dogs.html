@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Eigene Hunde - Planer</title>
+    <style>
+      {% include "_nav_css.html" %}
+      * { box-sizing: border-box; }
+
+      body {
+        background: #f5f7fa;
+        color: #243447;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+      }
+
+      .container {
+        margin: 0 auto;
+        max-width: 1280px;
+        padding: 0 20px;
+      }
+
+      header {
+        background: #fff;
+        border-bottom: 1px solid #dfe5ec;
+      }
+
+      .page-head {
+        display: grid;
+        gap: 6px;
+        padding: 24px 20px;
+      }
+
+      h1 {
+        color: #12233a;
+        font-size: 24px;
+        margin: 0;
+      }
+
+      .page-subtitle {
+        color: #667085;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      main {
+        display: grid;
+        gap: 18px;
+        padding-bottom: 36px;
+        padding-top: 20px;
+      }
+
+      .panel {
+        background: #fff;
+        border: 1px solid #dfe5ec;
+        border-radius: 8px;
+        padding: 18px;
+      }
+
+      .panel-head {
+        align-items: flex-start;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+
+      .panel-head h2 {
+        color: #12233a;
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+
+      .panel-note,
+      .field-hint,
+      .storage-path {
+        color: #667085;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .storage-path {
+        word-break: break-all;
+      }
+
+      .form-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      label {
+        color: #344054;
+        display: grid;
+        font-size: 13px;
+        font-weight: 700;
+        gap: 6px;
+      }
+
+      input,
+      select,
+      textarea {
+        border: 1px solid #cfd8e3;
+        border-radius: 6px;
+        color: #243447;
+        font: inherit;
+        font-size: 14px;
+        padding: 9px 10px;
+        width: 100%;
+      }
+
+      input:focus,
+      select:focus,
+      textarea:focus {
+        border-color: #4a90e2;
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.12);
+        outline: none;
+      }
+
+      textarea {
+        min-height: 92px;
+        resize: vertical;
+      }
+
+      .span-2 { grid-column: span 2; }
+      .span-4 { grid-column: 1 / -1; }
+
+      .section-title {
+        border-top: 1px solid #edf1f5;
+        color: #1f3a52;
+        font-size: 14px;
+        font-weight: 800;
+        grid-column: 1 / -1;
+        margin-top: 4px;
+        padding-top: 14px;
+      }
+
+      .actions {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 16px;
+      }
+
+      .panel-head .actions {
+        flex-wrap: wrap;
+        margin-top: 0;
+      }
+
+      .primary-button,
+      .secondary-button {
+        border-radius: 6px;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 750;
+        justify-content: center;
+        padding: 9px 13px;
+        text-decoration: none;
+      }
+
+      .primary-button {
+        background: #2563eb;
+        border: 1px solid #2563eb;
+        color: #fff;
+      }
+
+      .primary-button:hover {
+        background: #1d4ed8;
+      }
+
+      .secondary-button {
+        background: #fff;
+        border: 1px solid #cfd8e3;
+        color: #1f3a52;
+      }
+
+      .secondary-button:hover {
+        background: #f5f8fb;
+      }
+
+      .message {
+        border-radius: 8px;
+        font-size: 14px;
+        line-height: 1.45;
+        margin-bottom: 14px;
+        padding: 12px;
+      }
+
+      .message.success {
+        background: #eaf7ec;
+        border: 1px solid #b8e3c1;
+        color: #1c5a2d;
+      }
+
+      .message.error {
+        background: #fff1f1;
+        border: 1px solid #f1c3c3;
+        color: #8a2525;
+      }
+
+      .dog-table {
+        border-collapse: collapse;
+        font-size: 13px;
+        width: 100%;
+      }
+
+      .dog-table th,
+      .dog-table td {
+        border-bottom: 1px solid #edf1f5;
+        padding: 9px 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .dog-table th {
+        background: #f8fafc;
+        color: #667085;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .dog-name {
+        color: #12233a;
+        font-weight: 800;
+      }
+
+      .empty {
+        background: #f8fafc;
+        border: 1px dashed #cfd8e3;
+        border-radius: 8px;
+        color: #667085;
+        font-size: 14px;
+        padding: 16px;
+      }
+
+      body.modal-open {
+        overflow: hidden;
+      }
+
+      .modal-backdrop {
+        align-items: center;
+        background: rgba(15, 23, 42, 0.48);
+        display: none;
+        inset: 0;
+        justify-content: center;
+        padding: 24px;
+        position: fixed;
+        z-index: 1000;
+      }
+
+      .modal-backdrop.open {
+        display: flex;
+      }
+
+      .modal-dialog {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        max-height: min(920px, calc(100vh - 32px));
+        max-width: 1120px;
+        overflow: hidden;
+        width: min(100%, 1120px);
+      }
+
+      .modal-head {
+        align-items: flex-start;
+        border-bottom: 1px solid #e1e7ee;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        padding: 18px 20px;
+      }
+
+      .modal-head h2 {
+        color: #12233a;
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+
+      .modal-close {
+        align-items: center;
+        background: #f5f7fa;
+        border: 1px solid #dbe2ea;
+        border-radius: 999px;
+        color: #52606d;
+        cursor: pointer;
+        display: inline-flex;
+        font-size: 20px;
+        height: 34px;
+        justify-content: center;
+        line-height: 1;
+        padding: 0;
+        width: 34px;
+      }
+
+      .modal-close:hover {
+        background: #edf4fb;
+        color: #1f3a52;
+      }
+
+      .modal-body {
+        overflow: auto;
+        padding: 18px 20px;
+      }
+
+      .modal-actions {
+        align-items: center;
+        border-top: 1px solid #edf1f5;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        padding: 14px 20px;
+      }
+
+      @media (max-width: 900px) {
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .span-2,
+        .span-4 {
+          grid-column: 1 / -1;
+        }
+
+        .panel-head,
+        .actions {
+          align-items: stretch;
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    {% include "_nav.html" %}
+
+    <header>
+      <div class="container page-head">
+        <h1>Eigene Hunde</h1>
+        <div class="page-subtitle">Hunde ergänzen, die nicht im CSV-Datenbestand enthalten sind. Nach dem Speichern werden sie wie normale Hunde in Suche, Ahnentafel und Verpaarungsplanung verwendet.</div>
+      </div>
+    </header>
+
+    <main class="container">
+      {% if saved_zbnr %}
+        <div class="message success">Der Hund wurde gespeichert: {{ saved_zbnr }}</div>
+      {% endif %}
+
+      <section class="panel" aria-labelledby="userDogsTitle">
+        <div class="panel-head">
+          <div>
+            <h2 id="userDogsTitle">Gespeicherte eigene Hunde</h2>
+            <div class="panel-note">{{ user_dogs|length }} Hunde in der Zusatzdatei</div>
+          </div>
+          <div class="actions">
+            <button class="primary-button" type="button" id="openAddDogModal">Hund hinzufügen</button>
+            <a class="secondary-button" href="/search">Zur Hundesuche</a>
+          </div>
+        </div>
+
+        <div class="storage-path">{{ user_dogs_path }}</div>
+
+        {% if user_dogs %}
+          <table class="dog-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>ZBNr</th>
+                <th>Geschlecht</th>
+                <th>Wurfdatum</th>
+                <th>Eltern</th>
+                <th>gespeichert</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for dog in user_dogs %}
+                <tr>
+                  <td><span class="dog-name">{{ dog.Name or "unbekannt" }}</span></td>
+                  <td>{{ dog.ZBNr or "—" }}</td>
+                  <td>{{ "Rüde" if dog.Geschlecht == "R" else "Hündin" if dog.Geschlecht == "H" else dog.Geschlecht or "—" }}</td>
+                  <td>{{ dog.Wurfdatum or "—" }}</td>
+                  <td>
+                    Vater: {{ dog.vater_name or dog.vater_zbnr or "—" }}<br>
+                    Mutter: {{ dog.mutter_name or dog.mutter_zbnr or "—" }}
+                  </td>
+                  <td>{{ dog.created_at or "—" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="empty">Noch keine eigenen Hunde gespeichert.</div>
+        {% endif %}
+      </section>
+    </main>
+
+    <div class="modal-backdrop {% if modal_open %}open{% endif %}" id="addDogModal" aria-hidden="{{ 'false' if modal_open else 'true' }}">
+      <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="addDogTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="addDogTitle">Hund hinzufügen</h2>
+            <div class="panel-note">Wenn keine ZBNr bekannt ist, erzeugt die App automatisch eine interne Nummer im Format USER-000001.</div>
+          </div>
+          <button type="button" class="modal-close" id="closeAddDogModal" aria-label="Dialog schließen">×</button>
+        </div>
+
+        <form method="post" action="/user-dogs">
+          <div class="modal-body">
+            {% if errors %}
+              <div class="message error">
+                {% for error in errors %}
+                  <div>{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <div class="form-grid">
+              <label class="span-2">
+                Name *
+                <input name="name" value="{{ form_values.name }}" required autocomplete="off">
+              </label>
+              <label>
+                Geschlecht *
+                <select name="geschlecht" required>
+                  <option value="">Bitte wählen</option>
+                  <option value="R" {% if form_values.geschlecht == "R" %}selected{% endif %}>Rüde</option>
+                  <option value="H" {% if form_values.geschlecht == "H" %}selected{% endif %}>Hündin</option>
+                </select>
+              </label>
+              <label>
+                ZBNr
+                <input name="zbnr" value="{{ form_values.zbnr }}" autocomplete="off">
+                <span class="field-hint">Leer lassen, falls unbekannt.</span>
+              </label>
+
+              <label>
+                Rasse
+                <input name="rasse" value="{{ form_values.rasse }}" autocomplete="off">
+              </label>
+              <label>
+                Wurfdatum
+                <input name="wurfdatum" value="{{ form_values.wurfdatum }}" placeholder="z. B. 2021-04-12" autocomplete="off">
+              </label>
+              <label class="span-2">
+                Vater
+                <input name="vater" value="{{ form_values.vater }}" list="sireSuggestions" placeholder="Name oder ZBNr suchen" autocomplete="off" data-sex="R">
+                <datalist id="sireSuggestions"></datalist>
+              </label>
+              <label class="span-2">
+                Mutter
+                <input name="mutter" value="{{ form_values.mutter }}" list="damSuggestions" placeholder="Name oder ZBNr suchen" autocomplete="off" data-sex="H">
+                <datalist id="damSuggestions"></datalist>
+              </label>
+
+              <div class="section-title">Gesundheit und Zuchtwerte</div>
+
+              <label>
+                HD
+                <input name="hd" value="{{ form_values.hd }}" autocomplete="off">
+              </label>
+              <label>
+                ED rechts
+                <input name="ed_rechts" value="{{ form_values.ed_rechts }}" autocomplete="off">
+              </label>
+              <label>
+                ED links
+                <input name="ed_links" value="{{ form_values.ed_links }}" autocomplete="off">
+              </label>
+              <label>
+                Nachkommen
+                <input name="anz_nachkommen" value="{{ form_values.anz_nachkommen }}" inputmode="numeric" autocomplete="off">
+              </label>
+              <label>
+                ED-Zuchtwert
+                <input name="ebv" value="{{ form_values.ebv }}" inputmode="decimal" autocomplete="off">
+              </label>
+              <label>
+                Sicherheit %
+                <input name="confidenz" value="{{ form_values.confidenz }}" inputmode="decimal" autocomplete="off">
+              </label>
+              <label>
+                Verlässlichkeit
+                <input name="verlaesslichkeit" value="{{ form_values.verlaesslichkeit }}" autocomplete="off">
+              </label>
+              <label>
+                ED_ZWS
+                <input name="ed_zws" value="{{ form_values.ed_zws }}" autocomplete="off">
+              </label>
+
+              <div class="section-title">Gentests</div>
+
+              <label>
+                prcd-PRA
+                <input name="prcd_pra" value="{{ form_values.prcd_pra }}" autocomplete="off">
+              </label>
+              <label>
+                HNPK
+                <input name="hnpk" value="{{ form_values.hnpk }}" autocomplete="off">
+              </label>
+              <label>
+                SD2
+                <input name="sd2" value="{{ form_values.sd2 }}" autocomplete="off">
+              </label>
+              <label>
+                CNM
+                <input name="cnm" value="{{ form_values.cnm }}" autocomplete="off">
+              </label>
+              <label>
+                EIC
+                <input name="eic" value="{{ form_values.eic }}" autocomplete="off">
+              </label>
+              <label>
+                ZS
+                <input name="zs" value="{{ form_values.zs }}" autocomplete="off">
+              </label>
+              <label>
+                STGD
+                <input name="stgd_status" value="{{ form_values.stgd_status }}" autocomplete="off">
+              </label>
+              <label class="span-4">
+                Notiz zur Quelle
+                <textarea name="user_notes">{{ form_values.user_notes }}</textarea>
+              </label>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button class="secondary-button" type="button" id="cancelAddDogModal">Abbrechen</button>
+            <button class="primary-button" type="submit">Hund speichern</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function attachDogSuggest(input, datalist) {
+        if (!input || !datalist) return;
+        let controller = null;
+        input.addEventListener('input', () => {
+          const query = input.value.trim();
+          if (query.length < 2) {
+            datalist.innerHTML = '';
+            return;
+          }
+
+          if (controller) controller.abort();
+          controller = new AbortController();
+          const params = new URLSearchParams({ q: query, sex: input.dataset.sex || '' });
+          fetch('/dog_suggest?' + params.toString(), { signal: controller.signal })
+            .then(response => response.json())
+            .then(items => {
+              datalist.innerHTML = items
+                .map(item => `<option value="${escapeHtml(item.label)}"></option>`)
+                .join('');
+            })
+            .catch(() => {});
+        });
+      }
+
+      attachDogSuggest(document.querySelector('input[name="vater"]'), document.getElementById('sireSuggestions'));
+      attachDogSuggest(document.querySelector('input[name="mutter"]'), document.getElementById('damSuggestions'));
+
+      function openAddDogModal() {
+        const modal = document.getElementById('addDogModal');
+        if (!modal) return;
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        setTimeout(() => document.querySelector('#addDogModal input[name="name"]')?.focus(), 0);
+      }
+
+      function closeAddDogModal() {
+        const modal = document.getElementById('addDogModal');
+        if (!modal) return;
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+      }
+
+      document.getElementById('openAddDogModal')?.addEventListener('click', openAddDogModal);
+      document.getElementById('closeAddDogModal')?.addEventListener('click', closeAddDogModal);
+      document.getElementById('cancelAddDogModal')?.addEventListener('click', closeAddDogModal);
+      document.getElementById('addDogModal')?.addEventListener('click', event => {
+        if (event.target.id === 'addDogModal') closeAddDogModal();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeAddDogModal();
+      });
+
+      if (document.getElementById('addDogModal')?.classList.contains('open')) {
+        document.body.classList.add('modal-open');
+        setTimeout(() => document.querySelector('#addDogModal input[name="name"]')?.focus(), 0);
+      }
+    </script>
+  </body>
+</html>

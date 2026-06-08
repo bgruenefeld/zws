@@ -1,0 +1,203 @@
+(function () {
+  const storageKey = window.WATCHLIST_STORAGE_KEY || 'zwsDogWatchlist';
+
+  if (!window.readWatchlist) {
+    window.readWatchlist = function readWatchlist() {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed.filter(dog => dog && dog.zbnr) : [];
+      } catch (error) {
+        console.warn('Merkliste konnte nicht gelesen werden:', error);
+        return [];
+      }
+    };
+  }
+
+  if (!window.writeWatchlist) {
+    window.writeWatchlist = function writeWatchlist(dogs) {
+      localStorage.setItem(storageKey, JSON.stringify(dogs));
+      window.dispatchEvent(new CustomEvent('watchlist:changed'));
+      window.updateNavWatchlistCount?.();
+    };
+  }
+
+  if (!window.normalizeWatchlistDog) {
+    window.normalizeWatchlistDog = function normalizeWatchlistDog(dogData, fallbackZbnr, fallbackName) {
+      const dog = dogData || {};
+      const zbnr = String(dog.zbnr || fallbackZbnr || '').trim();
+      return {
+        zbnr,
+        name: dog.name || fallbackName || 'unbekannt',
+        geschlecht: dog.geschlecht || '—',
+        wurfdatum: dog.wurfdatum || '—',
+        birth_year: dog.birth_year || '',
+        hd: dog.hd || '—',
+        ed: dog.ed || '—',
+        zuchtwert: dog.zuchtwert ?? null,
+        konfidenz: dog.konfidenz ?? null,
+        anz_nachkommen: dog.anz_nachkommen ?? null,
+        prcd_pra: dog.prcd_pra || '—',
+        hnpk: dog.hnpk || '—',
+        sd2: dog.sd2 || '—',
+        cnm: dog.cnm || '—',
+        eic: dog.eic || '—',
+        stgd_status: dog.stgd_status || '—',
+        zs: dog.zs || '—',
+        bemerkung: dog.bemerkung || '',
+        saved_at: new Date().toISOString()
+      };
+    };
+  }
+
+  if (!window.isDogRemembered) {
+    window.isDogRemembered = function isDogRemembered(zbnr) {
+      const key = String(zbnr || '').trim();
+      return Boolean(key) && window.readWatchlist().some(dog => dog.zbnr === key);
+    };
+  }
+
+  if (!window.renderWatchlist) {
+    window.renderWatchlist = function renderWatchlist() {
+      const dogs = window.readWatchlist();
+      const panel = document.getElementById('watchlistPanel');
+      const count = document.getElementById('watchlistCount');
+      const names = document.getElementById('watchlistNames');
+      const compareLink = document.getElementById('compareLink');
+      if (!panel || !count || !names || !compareLink) return;
+
+      panel.classList.toggle('active', dogs.length > 0);
+      count.textContent = dogs.length === 1 ? '1 Hund' : dogs.length + ' Hunde';
+      names.textContent = dogs.slice(0, 4).map(dog => dog.name || 'unbekannt').join(' · ');
+      if (dogs.length > 4) names.textContent += ' · ...';
+      compareLink.setAttribute('aria-disabled', dogs.length === 0 ? 'true' : 'false');
+    };
+  }
+
+  if (!window.updateWatchlistButtons) {
+    window.updateWatchlistButtons = function updateWatchlistButtons() {
+      document.querySelectorAll('.watchlist-toggle').forEach(button => {
+        const remembered = window.isDogRemembered(button.getAttribute('data-zbnr'));
+        button.classList.toggle('active', remembered);
+        button.textContent = remembered ? 'Gemerkt' : 'Merken';
+      });
+    };
+  }
+
+  if (!window.addToWatchlist) {
+    window.addToWatchlist = function addToWatchlist(dog) {
+      const normalized = window.normalizeWatchlistDog(dog);
+      if (!normalized.zbnr) return;
+
+      const dogs = window.readWatchlist();
+      const existingIndex = dogs.findIndex(item => item.zbnr === normalized.zbnr);
+      if (existingIndex >= 0) {
+        dogs[existingIndex] = {
+          ...dogs[existingIndex],
+          ...normalized,
+          bemerkung: normalized.bemerkung || dogs[existingIndex].bemerkung || '',
+          saved_at: dogs[existingIndex].saved_at || normalized.saved_at
+        };
+      } else {
+        dogs.push(normalized);
+      }
+
+      window.writeWatchlist(dogs);
+      window.renderWatchlist();
+      window.updateWatchlistButtons();
+      window.fetchPedigreeMetricsForWatchlistDog?.(normalized.zbnr);
+    };
+  }
+
+  if (!window.removeFromWatchlist) {
+    window.removeFromWatchlist = function removeFromWatchlist(zbnr) {
+      const key = String(zbnr || '').trim();
+      window.writeWatchlist(window.readWatchlist().filter(dog => dog.zbnr !== key));
+      window.renderWatchlist();
+      window.updateWatchlistButtons();
+    };
+  }
+
+  if (!window.toggleWatchlistFromButton) {
+    window.toggleWatchlistFromButton = function toggleWatchlistFromButton(event, button) {
+      if (event) event.stopPropagation();
+      let dog = {};
+      try {
+        dog = JSON.parse(button.getAttribute('data-dog') || '{}');
+      } catch {
+        dog = {};
+      }
+      const normalized = window.normalizeWatchlistDog(dog, button.getAttribute('data-zbnr'), dog.name);
+      if (window.isDogRemembered(normalized.zbnr)) {
+        window.removeFromWatchlist(normalized.zbnr);
+      } else {
+        window.addToWatchlist(normalized);
+      }
+    };
+  }
+
+  if (!window.clearWatchlist) {
+    window.clearWatchlist = function clearWatchlist() {
+      window.writeWatchlist([]);
+      window.renderWatchlist();
+      window.updateWatchlistButtons();
+    };
+  }
+
+  if (!window.updateWatchlistMetrics) {
+    window.updateWatchlistMetrics = function updateWatchlistMetrics(zbnr, data) {
+      const key = String(zbnr || '').trim();
+      if (!key) return;
+
+      const metrics = {
+        coi_percent: data.coi_percent ?? null,
+        avk_known_percent: data.avk_known_percent ?? null,
+        complete_generation: data.deepest_complete_generation_in_data ?? null
+      };
+
+      const dogs = window.readWatchlist();
+      const index = dogs.findIndex(dog => dog.zbnr === key);
+      if (index >= 0) {
+        dogs[index] = { ...dogs[index], ...metrics };
+        window.writeWatchlist(dogs);
+        window.renderWatchlist();
+      }
+    };
+  }
+
+  if (!window.fetchPedigreeMetricsForWatchlistDog) {
+    window.fetchPedigreeMetricsForWatchlistDog = function fetchPedigreeMetricsForWatchlistDog(zbnr) {
+      if (!zbnr) return;
+
+      fetch('/pedigree_metrics?zbnr=' + encodeURIComponent(zbnr) + '&gens=5')
+        .then(r => {
+          return r.json().then(data => {
+            if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+            return data;
+          });
+        })
+        .then(data => window.updateWatchlistMetrics(zbnr, data))
+        .catch(error => {
+          console.warn('Pedigree-Kennzahlen für Merkliste konnten nicht geladen werden:', error);
+        });
+    };
+  }
+
+  window.watchlistButtonHtml = function watchlistButtonHtml(dog) {
+    if (!dog || !dog.zbnr) return '—';
+    const normalized = window.normalizeWatchlistDog(dog);
+    return `
+      <button
+        type="button"
+        class="small-action-button watchlist-toggle"
+        data-zbnr="${escapeHtml(normalized.zbnr)}"
+        data-dog='${escapeHtml(JSON.stringify(normalized))}'
+        onclick="toggleWatchlistFromButton(event, this)"
+      >Merken</button>
+    `;
+  };
+
+  document.getElementById('clearWatchlist')?.addEventListener('click', window.clearWatchlist);
+  window.renderWatchlist();
+  window.updateWatchlistButtons();
+})();

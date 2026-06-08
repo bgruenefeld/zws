@@ -5,7 +5,11 @@
     </a>
     <div class="app-nav__links">
       <a href="/search">Hundesuche</a>
+      <a class="app-nav__watchlist" href="/compare" aria-label="Merkzettel öffnen">
+        Merkzettel <span class="app-nav__badge" id="navWatchlistCount">0</span>
+      </a>
       <a href="/pairing">Verpaarungen planen</a>
+      <a href="/user-dogs">Eigene Hunde</a>
       <a href="/info">Informationen zur Zuchtwertschätzung</a>
       <form class="app-nav__logout" method="post" action="/logout">
         <button type="submit">Abmelden</button>
@@ -13,3 +17,29 @@
     </div>
   </div>
 </nav>
+<script>
+  (function () {
+    const storageKey = 'zwsDogWatchlist';
+
+    function readNavWatchlistCount() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        return Array.isArray(parsed) ? parsed.filter(dog => dog && dog.zbnr).length : 0;
+      } catch {
+        return 0;
+      }
+    }
+
+    window.updateNavWatchlistCount = function updateNavWatchlistCount() {
+      const badge = document.getElementById('navWatchlistCount');
+      if (!badge) return;
+      badge.textContent = String(readNavWatchlistCount());
+    };
+
+    window.updateNavWatchlistCount();
+    window.addEventListener('storage', event => {
+      if (event.key === storageKey) window.updateNavWatchlistCount();
+    });
+    window.addEventListener('watchlist:changed', window.updateNavWatchlistCount);
+  })();
+</script>

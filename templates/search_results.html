@@ -6,6 +6,7 @@
     <title>Hundesuche - ED-Zuchtwertschätzung</title>
     <style>
       {% include "_nav_css.html" %}
+      {% include "_pedigree_notes_css.html" %}
       * { box-sizing: border-box; }
       body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -585,6 +586,23 @@
         line-height: 1.5;
       }
 
+      .external-health-link {
+        color: #2563eb;
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        margin-top: 4px;
+        text-decoration: none;
+      }
+
+      .external-health-link:hover {
+        text-decoration: underline;
+      }
+
+      .external-health-link[hidden] {
+        display: none;
+      }
+
       .overview-joints-row {
         align-items: center;
         display: flex;
@@ -692,6 +710,41 @@
       .overview-compact-line strong {
         color: #1f3a52;
         font-weight: 750;
+      }
+
+      .overview-note-card {
+        background: #fff;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        display: grid;
+        gap: 8px;
+        margin-top: 10px;
+        padding: 10px 12px;
+      }
+
+      .overview-note-head {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+      }
+
+      .overview-note-title {
+        color: #1f3a52;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .overview-note-text {
+        color: #52606d;
+        font-size: 13px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+
+      .overview-note-text.empty {
+        color: #98a2b3;
+        font-style: italic;
       }
       
       .pedigree-section {
@@ -1055,7 +1108,7 @@
 
         <div id="watchlistPanel" class="watchlist-panel" aria-live="polite">
           <div class="watchlist-header">
-            <h2>Merkliste: <span id="watchlistCount">0 Hunde</span></h2>
+            <h2>Merkzettel: <span id="watchlistCount">0 Hunde</span></h2>
             <div id="watchlistNames" class="watchlist-names"></div>
           </div>
           <div class="watchlist-actions">
@@ -1084,6 +1137,7 @@
           <div class="no-results">
             <h3>Keine Treffer gefunden</h3>
             <p>Bitte prüfen Sie die Schreibweise oder die Zuchtbuchnummer.</p>
+            <a class="small-action-button" href="{{ url_for('manage_user_dogs', prefill_name=query) }}">Hund hinzufügen</a>
           </div>
         {% else %}
           <table class="results-table">
@@ -1119,13 +1173,20 @@
                   'wurfdatum': result.wurfdatum or '',
                   'birth_year': result.birth_year or '',
                   'geschlecht': result.geschlecht or 'unbekannt',
+                  'kc_health_url': result.kc_health_url or '',
                   'zuchtwert_class': result.zuchtwert_class if result.zuchtwert_class else None,
                   'konfidenz_class': result.konfidenz_class if result.konfidenz_class else None,
                   'zuchtwert_class_text': result.zuchtwert_class.get('text') if result.zuchtwert_class else '',
                   'konfidenz_class_text': result.konfidenz_class.get('text') if result.konfidenz_class else ''
                 } %}
                 <tr onclick='selectDog(this, {{ result.zbnr | tojson }}, {{ result.name | tojson }}, {{ dogData | tojson }})'>
-                  <td>{{ result.name or "unbekannt" }}</td>
+                  <td>
+                    {{ result.name or "unbekannt" }}
+                    {% if result.kc_health_url %}
+                      <br>
+                      <a class="external-health-link" href="{{ result.kc_health_url }}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">Royal Kennel Club</a>
+                    {% endif %}
+                  </td>
                   <td>{{ result.zbnr or "—" }}</td>
                   <td>{{ result.birth_year or "—" }}</td>
                   <td>
@@ -1198,6 +1259,7 @@
                 <button type="button" id="overviewWatchlistButton" class="small-action-button">Merken</button>
               </div>
               <div class="overview-subline" id="overviewIdentity"></div>
+              <a class="external-health-link" id="overviewKennelClubLink" href="#" target="_blank" rel="noopener noreferrer" hidden>Royal Kennel Club Health Test Results</a>
 
               <div class="overview-joints-row">
                 <div id="overviewHealth"></div>
@@ -1222,6 +1284,13 @@
                   COI <span id="coiValue">—</span> ·
                   AVK <span id="avkValue">—</span> ·
                   vollständig bis <span id="completeGenValue">—</span>
+                </div>
+                <div class="overview-note-card" id="overviewNoteCard">
+                  <div class="overview-note-head">
+                    <div class="overview-note-title">Notizen</div>
+                    <button type="button" id="overviewNoteButton" class="small-action-button">Notiz bearbeiten</button>
+                  </div>
+                  <div class="overview-note-text empty" id="overviewNoteText">Keine Notiz gespeichert.</div>
                 </div>
               </div>
             </div>
@@ -1319,6 +1388,16 @@
           dogData.wurfdatum || '—',
           'ZBNr ' + (dogData.zbnr || '—')
         ].join(' · ');
+        const kennelClubLink = document.getElementById('overviewKennelClubLink');
+        if (kennelClubLink) {
+          if (dogData.kc_health_url) {
+            kennelClubLink.href = dogData.kc_health_url;
+            kennelClubLink.hidden = false;
+          } else {
+            kennelClubLink.href = '#';
+            kennelClubLink.hidden = true;
+          }
+        }
         document.getElementById('overviewHealth').innerHTML = [
           '<strong>Gelenke</strong>',
           'HD ' + escapeHtml(dogData.hd || '—'),
@@ -1333,6 +1412,7 @@
           'STGD ' + escapeHtml(dogData.stgd_status || '—')
         ].join(' · ');
         document.getElementById('overviewDental').textContent = dogData.zs || '—';
+        renderSelectedDogNote();
 
         const reliabilityClass = dogData.konfidenz_class || {};
         if (dogData.konfidenz != null) {
@@ -1358,6 +1438,33 @@
         document.getElementById('detailCard').classList.add('active');
       }
 
+      function renderSelectedDogNote() {
+        const noteText = document.getElementById('overviewNoteText');
+        const noteButton = document.getElementById('overviewNoteButton');
+        if (!noteText || !noteButton) return;
+
+        if (!selectedDogForWatchlist?.zbnr) {
+          noteText.textContent = 'Keine Notiz gespeichert.';
+          noteText.classList.add('empty');
+          noteButton.disabled = true;
+          return;
+        }
+
+        const note = window.getPedigreeDogNote?.(selectedDogForWatchlist.zbnr) || '';
+        noteText.textContent = note || 'Keine Notiz gespeichert.';
+        noteText.classList.toggle('empty', !note);
+        noteButton.disabled = false;
+        noteButton.textContent = note ? 'Notiz bearbeiten' : 'Notiz hinzufügen';
+      }
+
+      function openSelectedDogNote() {
+        if (!selectedDogForWatchlist?.zbnr) return;
+        window.openPedigreeDogNote?.(
+          selectedDogForWatchlist.zbnr,
+          selectedDogForWatchlist.name || 'Hund'
+        );
+      }
+
       function readWatchlist() {
         try {
           const raw = localStorage.getItem(WATCHLIST_STORAGE_KEY);
@@ -1371,6 +1478,8 @@
 
       function writeWatchlist(dogs) {
         localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(dogs));
+        window.dispatchEvent(new CustomEvent('watchlist:changed'));
+        window.updateNavWatchlistCount?.();
       }
 
       function normalizeWatchlistDog(dogData, fallbackZbnr, fallbackName) {
@@ -1634,6 +1743,8 @@
           .replace(/'/g, '&#39;');
       }
 
+      {% include "_watchlist_script.html" %}
+      {% include "_pedigree_notes_script.html" %}
       {% include "_relatives_modal_script.html" %}
 
       function loadPedigree(zbnr) {
@@ -1674,6 +1785,8 @@
       });
 
       document.getElementById('overviewWatchlistButton')?.addEventListener('click', toggleSelectedDogWatchlist);
+      document.getElementById('overviewNoteButton')?.addEventListener('click', openSelectedDogNote);
+      window.addEventListener('pedigree-notes:changed', renderSelectedDogNote);
       document.getElementById('clearWatchlist')?.addEventListener('click', clearWatchlist);
 
       renderWatchlist();

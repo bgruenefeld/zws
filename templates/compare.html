@@ -6,6 +6,7 @@
     <title>Gemerkte Hunde vergleichen - ED-Zuchtwertschätzung</title>
     <style>
       {% include "_nav_css.html" %}
+      {% include "_pedigree_notes_css.html" %}
       * { box-sizing: border-box; }
 
       body {
@@ -321,6 +322,8 @@
 
       function writeWatchlist(dogs) {
         localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(dogs));
+        window.dispatchEvent(new CustomEvent('watchlist:changed'));
+        window.updateNavWatchlistCount?.();
       }
 
       function removeFromWatchlist(zbnr) {
@@ -545,6 +548,8 @@
       function escapeJs(value) {
         return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       }
+
+      {% include "_pedigree_notes_script.html" %}
 
       document.getElementById('clearWatchlist')?.addEventListener('click', clearWatchlist);
       renderComparePage();

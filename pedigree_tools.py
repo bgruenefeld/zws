@@ -810,6 +810,17 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
         card_classes += " ebv-unfavorable"
         warning_title = " | Ungünstiger ED-EBV (> 0)"
 
+    epi_score = clean(dog.get("EpiScore"))
+    epi_score_html = ""
+    if epi_score:
+        card_classes += " epi-score-match"
+        epi_score_html = (
+            '<span class="epi-score" title="Score">'
+            '<span class="epi-score-dot" aria-hidden="true"></span>'
+            f'{html.escape(epi_score)}'
+            '</span>'
+        )
+
     info_parts = []
 
     if zbnr:
@@ -844,8 +855,9 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
 
     zws_line = " · ".join(zws_parts)
 
-    detail_lines = [name, info_line, health_line, zws_line]
+    detail_lines = [name, f"Score {epi_score}" if epi_score else "", info_line, health_line, zws_line]
     title = html.escape(" | ".join(line for line in detail_lines if line) + warning_title, quote=True)
+    name_html = f'<div class="name">{html.escape(name)}{epi_score_html}</div>'
 
     if generation >= 5:
         compact_parts = []
@@ -861,7 +873,7 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
 
         return f"""
         <div class="{card_classes}" data-zbnr="{zbnr_attr}" title="{title}">
-            <div class="name">{html.escape(name)}</div>
+            {name_html}
             {compact_html}
         </div>
         """
@@ -884,7 +896,7 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
 
         return f"""
         <div class="{card_classes}" data-zbnr="{zbnr_attr}" title="{title}">
-            <div class="name">{html.escape(name)}</div>
+            {name_html}
             {compact_html}
         </div>
         """
@@ -896,7 +908,7 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
 
         return f"""
         <div class="{card_classes}" data-zbnr="{zbnr_attr}" title="{title}">
-            <div class="name">{html.escape(name)}</div>
+            {name_html}
             {info_html}
             {combined_html}
         </div>
@@ -908,7 +920,7 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
 
     return f"""
     <div class="{card_classes}" data-zbnr="{zbnr_attr}" title="{title}">
-        <div class="name">{html.escape(name)}</div>
+        {name_html}
         {info_html}
         {health_html}
         {zws_html}
@@ -1074,6 +1086,26 @@ def render_pedigree_html(
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+        }}
+
+        .epi-score {{
+            align-items: center;
+            color: #b42318;
+            display: inline-flex;
+            font-size: 11px;
+            font-weight: 800;
+            gap: 4px;
+            margin-left: 6px;
+            white-space: nowrap;
+        }}
+
+        .epi-score-dot {{
+            background: #d92d20;
+            border-radius: 50%;
+            display: inline-block;
+            flex: 0 0 auto;
+            height: 8px;
+            width: 8px;
         }}
 
         .subline {{

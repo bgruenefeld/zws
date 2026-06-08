@@ -49,6 +49,13 @@ function renderRelativesOffspringCount(dog) {
   return dog.anz_nachkommen != null ? escapeHtml(dog.anz_nachkommen) : '—';
 }
 
+function renderRelativesNameCell(dog) {
+  const kennelClubLink = dog.kc_health_url
+    ? `<br><a class="external-health-link" href="${escapeHtml(dog.kc_health_url)}" target="_blank" rel="noopener noreferrer">Royal Kennel Club</a>`
+    : '';
+  return `${escapeHtml(dog.name || 'unbekannt')}${kennelClubLink}`;
+}
+
 function updateRelativesBackButton() {
   const button = document.getElementById('relativesModalBack');
   if (!button) return;
@@ -79,7 +86,7 @@ function renderRelativesTable(dogs, emptyText, options = {}) {
 
     return `
     <tr${rowClass}>
-      <td>${escapeHtml(dog.name || 'unbekannt')}</td>
+      <td>${renderRelativesNameCell(dog)}</td>
       <td>${escapeHtml(dog.zbnr || '—')}</td>
       <td>${escapeHtml(dog.wurfdatum || '—')}</td>
       <td>${escapeHtml(dog.geschlecht || '—')}</td>
@@ -95,6 +102,7 @@ function renderRelativesTable(dogs, emptyText, options = {}) {
       <td>${escapeHtml(dog.eic || '—')}</td>
       <td>${escapeHtml(dog.zs || '—')}</td>
       <td>${escapeHtml(dog.stgd_status || '—')}</td>
+      <td class="row-action-cell">${window.watchlistButtonHtml ? window.watchlistButtonHtml(dog) : '—'}</td>
     </tr>
   `;
   }).join('');
@@ -119,6 +127,7 @@ function renderRelativesTable(dogs, emptyText, options = {}) {
           ${relativesHeader('EIC', 'eic', sortable)}
           ${relativesHeader('ZS', 'zs', sortable)}
           ${relativesHeader('STGD', 'stgd_status', sortable)}
+          ${relativesHeader('Merkliste', 'watchlist', false)}
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -135,6 +144,7 @@ function renderRelativesOffspring() {
     'Keine Nachkommen gefunden.',
     { sortable: true, showOtherParent: true }
   );
+  window.updateWatchlistButtons?.();
 }
 
 function openRelativesModal() {
@@ -199,7 +209,7 @@ function loadRelativesModal(zbnr, options = {}) {
       const offspring = data.offspring || [];
       currentRelativesOffspring = offspring;
       relativesOffspringSort = { column: null, direction: 'asc' };
-      const title = dog.name || 'unbekannt';
+      const title = dog.name + " (" + dog.geschlecht + ")" || 'unbekannt';
       const meta = [
         dog.zbnr ? 'ZBNr ' + dog.zbnr : null,
         data.litter_date ? 'Wurfdatum ' + data.litter_date : null,
@@ -215,11 +225,12 @@ function loadRelativesModal(zbnr, options = {}) {
       document.getElementById('relativesModalMeta').textContent = meta;
       document.getElementById('relativesSiblingsTitle').textContent = 'Wurfgeschwister von ' + title;
       document.getElementById('relativesOffspringTitle').textContent = 'Nachkommen von ' + title;
-      document.getElementById('relativesSiblingsBody').innerHTML = data.message
-        ? '<div class="empty-state no-results"><p>' + escapeHtml(data.message) + '</p></div>'
-        : renderRelativesTable(siblings, 'Keine Wurfgeschwister gefunden.');
-      renderRelativesOffspring();
-    })
+            document.getElementById('relativesSiblingsBody').innerHTML = data.message
+              ? '<div class="empty-state no-results"><p>' + escapeHtml(data.message) + '</p></div>'
+              : renderRelativesTable(siblings, 'Keine Wurfgeschwister gefunden.');
+            renderRelativesOffspring();
+            window.updateWatchlistButtons?.();
+          })
     .catch(error => {
       if (activeRelativesZbnr !== zbnr) return;
       const errorHtml = '<div class="empty-state no-results"><p>Fehler beim Laden: ' + escapeHtml(error.message) + '</p></div>';

@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <title>Trefferliste</title>
     <style>
+      {% include "_watchlist_css.html" %}
+      {% include "_pedigree_notes_css.html" %}
       body{font-family:Arial;max-width:1400px;margin:24px auto;padding:0 16px}
       table{width:100%;border-collapse:collapse}
       th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}
@@ -42,11 +44,30 @@
             <th><a href="/?q={{ query_encoded }}&sort_by=ed&sort_dir={{ 'desc' if sort_by == 'ed' and sort_dir == 'asc' else 'asc' }}">ED{% if sort_by == 'ed' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
             <th><a href="/?q={{ query_encoded }}&sort_by=zuchtwert&sort_dir={{ 'desc' if sort_by == 'zuchtwert' and sort_dir == 'asc' else 'asc' }}">ED-EBV/ C[%]{% if sort_by == 'zuchtwert' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
             <th><a href="/?q={{ query_encoded }}&sort_by=hd&sort_dir={{ 'desc' if sort_by == 'hd' and sort_dir == 'asc' else 'asc' }}">HD{% if sort_by == 'hd' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+            <th>Merkliste</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {% for r in results %}
+            {% set dogData = {
+              'name': r.name or r.Name or 'unbekannt',
+              'zbnr': r.zbnr or (r.ZBNr_norm or r.ZBNr) or '',
+              'geschlecht': r.geschlecht or r.Geschlecht or '',
+              'wurfdatum': r.wurfdatum or r.Wurfdatum or '',
+              'hd': r.hd or '',
+              'ed': r.ed or '',
+              'zuchtwert': r.zuchtwert if r.zuchtwert is not none else None,
+              'konfidenz': r.konfidenz if r.konfidenz is not none else None,
+              'anz_nachkommen': r.anz_nachkommen if r.anz_nachkommen is not none else None,
+              'prcd_pra': r.prcd_pra or '',
+              'hnpk': r.hnpk or '',
+              'sd2': r.sd2 or '',
+              'cnm': r.cnm or '',
+              'eic': r.eic or '',
+              'zs': r.zs or '',
+              'stgd_status': r.stgd_status or ''
+            } %}
             <tr data-zbnr="{{ r.zbnr }}">
               <td>{{ r.Name }}</td>
               <td>{{ r.zbnr or (r.ZBNr_norm or r.ZBNr) }}</td>
@@ -57,6 +78,19 @@
                 {% if r.konfidenz is not none %} ({{ r.konfidenz }} %){% endif %}
               </td>
               <td>{{ r.hd or '-' }}</td>
+              <td class="row-action-cell">
+                {% if dogData.zbnr %}
+                  <button
+                    type="button"
+                    class="small-action-button watchlist-toggle"
+                    data-zbnr="{{ dogData.zbnr }}"
+                    data-dog='{{ dogData | tojson }}'
+                    onclick="toggleWatchlistFromButton(event, this)"
+                  >Merken</button>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
               <td>
                 {% if r.zbnr %}
                   <button class="button show-pedigree" data-zbnr="{{ r.zbnr }}">Ahnentafel</button>
@@ -102,6 +136,9 @@
           }[c];
         });
       }
+
+      {% include "_watchlist_script.html" %}
+      {% include "_pedigree_notes_script.html" %}
 
       async function loadPedigree(zbnr){
         const htmlUrl = '/pedigree_fragment?zbnr=' + encodeURIComponent(zbnr) + '&gens=5';

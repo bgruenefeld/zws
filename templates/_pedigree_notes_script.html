@@ -1,0 +1,211 @@
+(function () {
+  const storageKey = 'zwsDogPedigreeNotes.v1';
+  let activeZbnr = '';
+  let activeDogName = '';
+  let activeCard = null;
+  let annotateQueued = false;
+
+  function noteEscapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function readNotes() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(storageKey) || '{}');
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function writeNotes(notes) {
+    localStorage.setItem(storageKey, JSON.stringify(notes));
+    window.dispatchEvent(new CustomEvent('pedigree-notes:changed'));
+  }
+
+  function noteForZbnr(zbnr) {
+    const entry = readNotes()[zbnr];
+    return entry && typeof entry.text === 'string' ? entry.text : '';
+  }
+
+  function dogNameFromCard(card) {
+    const nameElement = card.querySelector('.name');
+    return (nameElement?.textContent || 'Hund').trim();
+  }
+
+  function ensureModal() {
+    let modal = document.getElementById('pedigreeNoteModal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'pedigree-note-backdrop';
+    modal.id = 'pedigreeNoteModal';
+    modal.setAttribute('aria-hidden', 'true');
+    modal.innerHTML = `
+      <div class="pedigree-note-dialog" role="dialog" aria-modal="true" aria-labelledby="pedigreeNoteTitle">
+        <div class="pedigree-note-head">
+          <div>
+            <h2 id="pedigreeNoteTitle">Notiz</h2>
+            <div class="pedigree-note-meta" id="pedigreeNoteMeta"></div>
+          </div>
+          <button type="button" class="pedigree-note-close" id="pedigreeNoteClose" aria-label="Notiz schließen">×</button>
+        </div>
+        <div class="pedigree-note-body">
+          <label>
+            Notiz
+            <textarea id="pedigreeNoteText" placeholder="Notiz zu diesem Hund"></textarea>
+          </label>
+          <div class="pedigree-note-actions">
+            <div class="pedigree-note-status" id="pedigreeNoteStatus" aria-live="polite"></div>
+            <button type="button" class="danger-button" id="pedigreeNoteDelete">Löschen</button>
+            <button type="button" class="secondary-button" id="pedigreeNoteCancel">Abbrechen</button>
+            <button type="button" id="pedigreeNoteSave">Speichern</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('pedigreeNoteClose')?.addEventListener('click', closeNoteModal);
+    document.getElementById('pedigreeNoteCancel')?.addEventListener('click', closeNoteModal);
+    document.getElementById('pedigreeNoteSave')?.addEventListener('click', saveActiveNote);
+    document.getElementById('pedigreeNoteDelete')?.addEventListener('click', deleteActiveNote);
+    modal.addEventListener('click', event => {
+      if (event.target === modal) closeNoteModal();
+    });
+
+    return modal;
+  }
+
+  function openNoteModal(card) {
+    const zbnr = card.getAttribute('data-zbnr') || '';
+    if (!zbnr || zbnr.startsWith('__')) return;
+
+    openNoteModalForDog(zbnr, dogNameFromCard(card), card);
+  }
+
+  function openNoteModalForDog(zbnr, dogName, card = null) {
+    if (!zbnr || String(zbnr).startsWith('__')) return;
+
+    activeZbnr = zbnr;
+    activeDogName = dogName || 'Hund';
+    activeCard = card;
+
+    const modal = ensureModal();
+    const title = document.getElementById('pedigreeNoteTitle');
+    const meta = document.getElementById('pedigreeNoteMeta');
+    const textarea = document.getElementById('pedigreeNoteText');
+    const status = document.getElementById('pedigreeNoteStatus');
+
+    if (title) title.textContent = 'Notiz zu ' + activeDogName;
+    if (meta) meta.textContent = 'ZBNr ' + zbnr;
+    if (textarea) textarea.value = noteForZbnr(zbnr);
+    if (status) status.textContent = '';
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    textarea?.focus();
+  }
+
+  function closeNoteModal() {
+    const modal = document.getElementById('pedigreeNoteModal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+    activeZbnr = '';
+    activeDogName = '';
+    activeCard = null;
+  }
+
+  function saveActiveNote() {
+    if (!activeZbnr) return;
+    const textarea = document.getElementById('pedigreeNoteText');
+    const status = document.getElementById('pedigreeNoteStatus');
+    const text = (textarea?.value || '').trim();
+    const notes = readNotes();
+
+    if (text) {
+      notes[activeZbnr] = {
+        text,
+        updatedAt: new Date().toISOString()
+      };
+      if (status) status.textContent = 'Gespeichert.';
+    } else {
+      delete notes[activeZbnr];
+      if (status) status.textContent = 'Notiz entfernt.';
+    }
+
+    writeNotes(notes);
+    refreshPedigreeNoteButtons();
+    window.setTimeout(closeNoteModal, 350);
+  }
+
+  function deleteActiveNote() {
+    if (!activeZbnr) return;
+    const notes = readNotes();
+    delete notes[activeZbnr];
+    writeNotes(notes);
+    refreshPedigreeNoteButtons();
+    closeNoteModal();
+  }
+
+  function createButton(card) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'pedigree-note-button';
+    button.textContent = 'N';
+    button.setAttribute('aria-label', 'Notiz bearbeiten');
+    button.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      openNoteModal(card);
+    });
+    card.appendChild(button);
+    return button;
+  }
+
+  function refreshPedigreeNoteButtons() {
+    const notes = readNotes();
+    document.querySelectorAll('.card[data-zbnr]').forEach(card => {
+      const zbnr = card.getAttribute('data-zbnr') || '';
+      if (!zbnr || zbnr.startsWith('__')) return;
+
+      const button = card.querySelector('.pedigree-note-button') || createButton(card);
+      const hasNote = Boolean(notes[zbnr]?.text);
+      button.classList.toggle('has-note', hasNote);
+      button.title = hasNote ? 'Notiz anzeigen/bearbeiten' : 'Notiz hinzufügen';
+      button.setAttribute('aria-label', hasNote ? 'Notiz anzeigen und bearbeiten' : 'Notiz hinzufügen');
+    });
+  }
+
+  function queueRefresh() {
+    if (annotateQueued) return;
+    annotateQueued = true;
+    window.requestAnimationFrame(() => {
+      annotateQueued = false;
+      refreshPedigreeNoteButtons();
+    });
+  }
+
+  window.refreshPedigreeNoteButtons = refreshPedigreeNoteButtons;
+  window.getPedigreeDogNote = noteForZbnr;
+  window.openPedigreeDogNote = openNoteModalForDog;
+  window.addEventListener('pedigree-notes:changed', refreshPedigreeNoteButtons);
+  window.addEventListener('storage', event => {
+    if (event.key === storageKey) refreshPedigreeNoteButtons();
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeNoteModal();
+  });
+
+  const observer = new MutationObserver(queueRefresh);
+  observer.observe(document.body, { childList: true, subtree: true });
+  queueRefresh();
+})();

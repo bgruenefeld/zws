@@ -1,20 +1,33 @@
 from pathlib import Path
 from urllib.parse import quote_plus
+from contextlib import contextmanager
 import math
 from datetime import date
+from datetime import datetime
 import hmac
 import os
+import re
+import tempfile
+import threading
 
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, session
-import re
 
 import pedigree_tools as pt
 import pandas as pd
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 
 APP_DIR = Path(__file__).parent
 BASE_CSV = APP_DIR / "drc-Hunde-mit-eltern-rkey-gentest.csv"
 ZWS_CSV = APP_DIR / "ed_zws_results_all_animals.csv"
+SCORES_CSV = APP_DIR / "scores_bereinigt_mit_originalname.csv"
+USER_DOGS_CSV = Path(os.environ.get("USER_DOGS_CSV", APP_DIR / "user_hunde.csv"))
+USER_DOGS_LOCK_FILE = Path(os.environ.get("USER_DOGS_LOCK_FILE", f"{USER_DOGS_CSV}.lock"))
+USER_DOGS_LOCK = threading.Lock()
 
 
 app = Flask(__name__)
@@ -22,6 +35,46 @@ app.secret_key = os.environ.get("SECRET_KEY") or os.environ.get("FLASK_SECRET_KE
 
 AUTH_USERNAME = os.environ.get("APP_USERNAME", "admin")
 AUTH_PASSWORD = os.environ.get("APP_PASSWORD", "admin")
+
+USER_DOG_COLUMNS = [
+    "ZBNr",
+    "ZBNr_norm",
+    "Name",
+    "Rasse",
+    "Wurfdatum",
+    "Geschlecht",
+    "HD_Grad",
+    "ED_rechts",
+    "ED_links",
+    "AnzNachkommen",
+    "EBV",
+    "Confidenz",
+    "Verlässlichkeit",
+    "ED_ZWS",
+    "prcd-PRA",
+    "HNPK",
+    "SD2",
+    "CNM",
+    "EIC",
+    "ZS",
+    "STGD_Status",
+    "vater_name",
+    "vater_zbnr",
+    "vater_zbnr_norm",
+    "mutter_name",
+    "mutter_zbnr",
+    "mutter_zbnr_norm",
+    "Vater",
+    "Mutter",
+    "geburtsjahr",
+    "pedigree_status",
+    "father_found",
+    "mother_found",
+    "source",
+    "created_at",
+    "updated_at",
+    "user_notes",
+]
 
 
 def is_authenticated():
@@ -57,9 +110,293 @@ def load_data():
         except Exception:
             merged_df = pd.read_csv(BASE_CSV, dtype=str)
 
+    merged_df = append_user_dogs(merged_df)
+    merged_df = attach_epi_scores(merged_df)
     index, duplicates = pt.build_zbnr_index(merged_df)
 
     return merged_df, index
+
+
+def reload_data():
+    global MERGED_DF, ZBNR_INDEX, PAIRING_SEARCH_CACHE_DATE
+    MERGED_DF, ZBNR_INDEX = load_data()
+    PAIRING_SEARCH_CACHE_DATE = None
+
+
+def empty_user_dogs_df():
+    return pd.DataFrame(columns=USER_DOG_COLUMNS)
+
+
+def load_user_dogs_df():
+    if not USER_DOGS_CSV.exists():
+        return empty_user_dogs_df()
+
+    try:
+        df = pd.read_csv(USER_DOGS_CSV, dtype=str, encoding="utf-8-sig").fillna("")
+    except Exception:
+        return empty_user_dogs_df()
+
+    for column in USER_DOG_COLUMNS:
+        if column not in df.columns:
+            df[column] = ""
+
+    df = df[USER_DOG_COLUMNS].copy()
+    df = pt.normalize_zbnr_columns(df)
+    df["source"] = df["source"].replace("", "user")
+    return df.fillna("")
+
+
+def append_user_dogs(merged_df):
+    user_df = load_user_dogs_df()
+    if user_df.empty:
+        return merged_df
+
+    merged_df = merged_df.copy()
+    for column in user_df.columns:
+        if column not in merged_df.columns:
+            merged_df[column] = ""
+    for column in merged_df.columns:
+        if column not in user_df.columns:
+            user_df[column] = ""
+
+    combined = pd.concat([merged_df, user_df[merged_df.columns]], ignore_index=True)
+    combined = pt.normalize_zbnr_columns(combined)
+    return combined
+
+
+@contextmanager
+def locked_user_dogs_file():
+    USER_DOGS_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with USER_DOGS_LOCK_FILE.open("a+", encoding="utf-8") as lock_file:
+        if fcntl is not None:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            if fcntl is not None:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+def normalize_dog_name_for_score(value):
+    text = "" if value is None or pd.isna(value) else str(value)
+    text = text.replace("\ufeff", "")
+    text = re.sub(r"\s+", " ", text).strip()
+    return text.casefold()
+
+
+def load_epi_score_map():
+    if not SCORES_CSV.exists():
+        return {}
+
+    try:
+        score_df = pd.read_csv(SCORES_CSV, dtype=str, encoding="utf-8-sig")
+    except Exception:
+        return {}
+
+    score_map = {}
+    for row in score_df.to_dict(orient="records"):
+        score = "" if row.get("Score") is None or pd.isna(row.get("Score")) else str(row.get("Score")).strip()
+        if not score:
+            continue
+        for column in ("Hundename", "Original_Hundename"):
+            key = normalize_dog_name_for_score(row.get(column))
+            if key and key not in score_map:
+                score_map[key] = score
+    return score_map
+
+
+def attach_epi_scores(df):
+    score_map = load_epi_score_map()
+    if not score_map or "Name" not in df.columns:
+        return df
+
+    df = df.copy()
+    normalized_names = df["Name"].map(normalize_dog_name_for_score)
+    df["EpiScore"] = normalized_names.map(score_map).fillna("")
+    return df
+
+
+def user_dog_path_label():
+    return str(USER_DOGS_CSV)
+
+
+def extract_birth_year(value):
+    text = clean_text(value)
+    match = re.search(r"\b(\d{4})\b", text)
+    return match.group(1) if match else ""
+
+
+def next_user_zbnr(user_df):
+    highest = 0
+    for value in user_df.get("ZBNr", pd.Series(dtype=str)).fillna("").astype(str):
+        match = re.fullmatch(r"USER-(\d+)", value.strip().upper())
+        if match:
+            highest = max(highest, int(match.group(1)))
+    return f"USER-{highest + 1:06d}"
+
+
+def parent_from_form(value, required_sex):
+    raw = clean_text(value)
+    if not raw:
+        return "", ""
+
+    dog = resolve_dog(raw, required_sex=required_sex)
+    if dog is not None:
+        zbnr = clean_text(dog.get("ZBNr_norm") or dog.get("ZBNr"))
+        name = clean_text(dog.get("Name"))
+        return zbnr, name
+
+    zbnr = parse_selected_zbnr(raw)
+    if zbnr != raw:
+        name = raw.rsplit("|", 1)[0].strip()
+        return zbnr, name
+
+    return raw, ""
+
+
+def bool_text(value):
+    return "True" if value else "False"
+
+
+def clean_form_value(name):
+    return clean_text(request.form.get(name, ""))
+
+
+def user_dog_form_defaults():
+    return {
+        "zbnr": "",
+        "name": "",
+        "geschlecht": "",
+        "rasse": "Labrador-Retriever",
+        "wurfdatum": "",
+        "vater": "",
+        "mutter": "",
+        "hd": "",
+        "ed_rechts": "",
+        "ed_links": "",
+        "anz_nachkommen": "",
+        "ebv": "",
+        "confidenz": "",
+        "verlaesslichkeit": "",
+        "ed_zws": "",
+        "prcd_pra": "",
+        "hnpk": "",
+        "sd2": "",
+        "cnm": "",
+        "eic": "",
+        "zs": "",
+        "stgd_status": "",
+        "user_notes": "",
+    }
+
+
+def user_dog_form_from_request():
+    values = user_dog_form_defaults()
+    for key in values:
+        values[key] = clean_form_value(key)
+    return values
+
+
+def build_user_dog_record(values, existing_user_df):
+    zbnr = pt.normalize_zbnr(values.get("zbnr")) or next_user_zbnr(existing_user_df)
+    zbnr_norm = pt.normalize_zbnr(zbnr) or zbnr
+    name = clean_text(values.get("name"))
+    geschlecht = clean_text(values.get("geschlecht")).upper()
+    wurfdatum = clean_text(values.get("wurfdatum"))
+    vater_zbnr, vater_name = parent_from_form(values.get("vater"), "R")
+    mutter_zbnr, mutter_name = parent_from_form(values.get("mutter"), "H")
+    now = datetime.now().isoformat(timespec="seconds")
+
+    return {
+        "ZBNr": zbnr,
+        "ZBNr_norm": zbnr_norm,
+        "Name": name,
+        "Rasse": clean_text(values.get("rasse")) or "Labrador-Retriever",
+        "Wurfdatum": wurfdatum,
+        "Geschlecht": geschlecht,
+        "HD_Grad": clean_text(values.get("hd")),
+        "ED_rechts": clean_text(values.get("ed_rechts")),
+        "ED_links": clean_text(values.get("ed_links")),
+        "AnzNachkommen": clean_text(values.get("anz_nachkommen")),
+        "EBV": clean_text(values.get("ebv")),
+        "Confidenz": clean_text(values.get("confidenz")),
+        "Verlässlichkeit": clean_text(values.get("verlaesslichkeit")),
+        "ED_ZWS": clean_text(values.get("ed_zws")),
+        "prcd-PRA": clean_text(values.get("prcd_pra")),
+        "HNPK": clean_text(values.get("hnpk")),
+        "SD2": clean_text(values.get("sd2")),
+        "CNM": clean_text(values.get("cnm")),
+        "EIC": clean_text(values.get("eic")),
+        "ZS": clean_text(values.get("zs")),
+        "STGD_Status": clean_text(values.get("stgd_status")),
+        "vater_name": vater_name,
+        "vater_zbnr": vater_zbnr,
+        "vater_zbnr_norm": pt.normalize_zbnr(vater_zbnr) or "",
+        "mutter_name": mutter_name,
+        "mutter_zbnr": mutter_zbnr,
+        "mutter_zbnr_norm": pt.normalize_zbnr(mutter_zbnr) or "",
+        "Vater": vater_name or vater_zbnr,
+        "Mutter": mutter_name or mutter_zbnr,
+        "geburtsjahr": extract_birth_year(wurfdatum),
+        "pedigree_status": "ok",
+        "father_found": bool_text(bool(vater_zbnr and resolve_dog(vater_zbnr, required_sex="R") is not None)),
+        "mother_found": bool_text(bool(mutter_zbnr and resolve_dog(mutter_zbnr, required_sex="H") is not None)),
+        "source": "user",
+        "created_at": now,
+        "updated_at": now,
+        "user_notes": clean_text(values.get("user_notes")),
+    }
+
+
+def validate_user_dog(values, record, existing_user_df):
+    errors = []
+    if not record["Name"]:
+        errors.append("Bitte gib einen Namen ein.")
+    if record["Geschlecht"] not in {"R", "H"}:
+        errors.append("Bitte wähle das Geschlecht Rüde oder Hündin.")
+
+    zbnr_norm = pt.normalize_zbnr(record["ZBNr_norm"] or record["ZBNr"])
+    if not zbnr_norm:
+        errors.append("Die ZBNr konnte nicht ermittelt werden.")
+    elif zbnr_norm in ZBNR_INDEX:
+        errors.append("Diese ZBNr existiert bereits im Datenbestand.")
+
+    existing_user_zbnrs = {
+        pt.normalize_zbnr(value)
+        for value in existing_user_df.get("ZBNr_norm", pd.Series(dtype=str)).fillna("").astype(str)
+        if pt.normalize_zbnr(value)
+    }
+    if zbnr_norm in existing_user_zbnrs:
+        errors.append("Diese ZBNr existiert bereits in den manuell hinzugefügten Hunden.")
+
+    if record["vater_zbnr_norm"] and record["vater_zbnr_norm"] == zbnr_norm:
+        errors.append("Der Hund kann nicht sein eigener Vater sein.")
+    if record["mutter_zbnr_norm"] and record["mutter_zbnr_norm"] == zbnr_norm:
+        errors.append("Der Hund kann nicht seine eigene Mutter sein.")
+
+    return errors
+
+
+def write_user_dogs_df(df):
+    USER_DOGS_CSV.parent.mkdir(parents=True, exist_ok=True)
+    for column in USER_DOG_COLUMNS:
+        if column not in df.columns:
+            df[column] = ""
+    df = df[USER_DOG_COLUMNS].fillna("")
+
+    with tempfile.NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        newline="",
+        delete=False,
+        dir=USER_DOGS_CSV.parent,
+        prefix=".user_hunde.",
+        suffix=".tmp",
+    ) as tmp:
+        temp_path = Path(tmp.name)
+        df.to_csv(tmp, index=False)
+
+    temp_path.replace(USER_DOGS_CSV)
 
 
 # load at startup
@@ -170,6 +507,16 @@ def clean_text(value):
     return text
 
 
+def kennel_club_health_url(zbnr, name):
+    zbnr_text = clean_text(zbnr)
+    if not zbnr_text.upper().startswith("KC"):
+        return ""
+    return (
+        "https://www.royalkennelclub.com/search/health-test-results-finder/"
+        f"?Filter={quote_plus(clean_text(name))}"
+    )
+
+
 def dog_summary(row):
     age_years = calculate_age_years(row)
     name = clean_text(row.get("Name")) or "unbekannt"
@@ -187,12 +534,7 @@ def dog_summary(row):
     except Exception:
         confidence = None
 
-    kc_health_url = ""
-    if zbnr.upper().startswith("KC"):
-        kc_health_url = (
-            "https://www.royalkennelclub.com/search/health-test-results-finder/"
-            f"?Filter={quote_plus(name)}"
-        )
+    kc_health_url = kennel_club_health_url(zbnr, name)
 
     genetic_tests = {key: clean_text(row.get(column)) for key, column in GENETIC_TEST_FIELDS}
 
@@ -817,6 +1159,43 @@ def compare_watchlist():
     return render_template("compare.html")
 
 
+@app.route("/user-dogs", methods=["GET", "POST"])
+def manage_user_dogs():
+    errors = []
+    saved_zbnr = request.args.get("saved", "")
+    form_values = user_dog_form_defaults()
+    prefill_name = clean_text(request.args.get("prefill_name"))
+    modal_open = bool(prefill_name)
+    if prefill_name:
+        form_values["name"] = prefill_name
+
+    if request.method == "POST":
+        form_values = user_dog_form_from_request()
+        with USER_DOGS_LOCK:
+            with locked_user_dogs_file():
+                user_df = load_user_dogs_df()
+                record = build_user_dog_record(form_values, user_df)
+                errors = validate_user_dog(form_values, record, user_df)
+                if not errors:
+                    new_df = pd.concat([user_df, pd.DataFrame([record])], ignore_index=True)
+                    write_user_dogs_df(new_df)
+                    reload_data()
+                    return redirect(url_for("manage_user_dogs", saved=record["ZBNr"]))
+            modal_open = True
+
+    user_dogs = load_user_dogs_df().to_dict(orient="records")
+    user_dogs = sorted(user_dogs, key=lambda dog: clean_text(dog.get("created_at")), reverse=True)
+    return render_template(
+        "user_dogs.html",
+        errors=errors,
+        saved_zbnr=saved_zbnr,
+        form_values=form_values,
+        user_dogs=user_dogs,
+        user_dogs_path=user_dog_path_label(),
+        modal_open=modal_open,
+    )
+
+
 @app.route("/dog_suggest")
 def dog_suggest():
     ensure_pairing_search_columns()
@@ -892,11 +1271,12 @@ def pairing():
         sire_sort_dir = "asc"
 
     show_sire_results = sire_search == "1"
-    sire_page_size = 15
+    sire_page_size = 10
     sire_candidates = []
     sire_total = 0
     sire_page_count = 0
     dam_preview = resolve_dog(dam_input, required_sex="H") if dam_input else None
+    selected_sire_row = resolve_dog(selected_sire, required_sex="R") if selected_sire else None
     if show_sire_results:
         sire_df = get_sire_candidates(
             min_age=min_age,
@@ -925,6 +1305,7 @@ def pairing():
         "selected_sire": selected_sire,
         "dam_input": dam_input,
         "dam_summary": None,
+        "selected_sire_summary": dog_summary(selected_sire_row) if selected_sire_row is not None else None,
         "sire_min_age": sire_min_age,
         "sire_max_age": sire_max_age,
         "sire_max_ebv": sire_max_ebv,
@@ -947,14 +1328,12 @@ def pairing():
         context["dam_summary"] = dog_summary(dam_preview)
 
     if selected_sire or dam_input:
-        sire = resolve_dog(selected_sire, required_sex="R") if selected_sire else None
+        sire = selected_sire_row
         dam = dam_preview
 
         if sire is None or dam is None:
             if dam_input and dam is None:
                 context["error"] = "Hündin nicht gefunden oder falsches Geschlecht."
-            elif selected_sire and not dam_input:
-                context["error"] = "Bitte zuerst eine Hündin auswählen."
             elif selected_sire and sire is None:
                 context["error"] = "Rüde nicht gefunden oder falsches Geschlecht."
         else:
@@ -1192,6 +1571,7 @@ def search_results():
         res["anz_nachkommen"] = dog_offspring_count(r)
         res["wurfdatum"] = wurfdatum
         res["name"] = r.get("Name", "unbekannt")
+        res["kc_health_url"] = kennel_club_health_url(z, res["name"])
         res["geschlecht"] = r.get("Geschlecht") or r.get("sex") or "unbekannt"
         res["vater"] = r.get("Vater") or "unbekannt"
         res["mutter"] = r.get("Mutter") or "unbekannt"

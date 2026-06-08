@@ -6,6 +6,8 @@
     <title>Verpaarung planen</title>
     <style>
       {% include "_nav_css.html" %}
+      {% include "_watchlist_css.html" %}
+      {% include "_pedigree_notes_css.html" %}
       * { box-sizing: border-box; }
       body {
         margin: 0;
@@ -467,6 +469,10 @@
         gap: 14px;
       }
 
+      .save-modal-form textarea {
+        min-height: 118px;
+      }
+
       .save-modal-actions {
         align-items: center;
         display: flex;
@@ -852,8 +858,278 @@
         color: #2563eb;
       }
 
+      .planning-overview {
+        background: #fff;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        padding: 14px;
+      }
+
+      .planning-overview-head {
+        align-items: baseline;
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .planning-overview-head h2 {
+        color: #12233a;
+        font-size: 18px;
+        margin: 0;
+      }
+
+      .planning-overview-subtitle {
+        color: #667085;
+        font-size: 13px;
+      }
+
+      .planning-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .planning-card {
+        border: 1px solid #e1e7ee;
+        border-radius: 8px;
+        display: grid;
+        gap: 10px;
+        min-width: 0;
+        padding: 12px;
+      }
+
+      .planning-card-head {
+        align-items: flex-start;
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+      }
+
+      .planning-card h3 {
+        color: #12233a;
+        font-size: 15px;
+        margin: 0;
+      }
+
+      .planning-card-subtitle,
+      .planning-more,
+      .planning-item-meta {
+        color: #667085;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .planning-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .planning-item {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #edf1f5;
+        border-radius: 8px;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 10px;
+      }
+
+      .planning-item-title {
+        color: #1f3a52;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.3;
+      }
+
+      .planning-card-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .planning-empty {
+        background: #f8fafc;
+        border: 1px dashed #cfd8e3;
+        border-radius: 8px;
+        color: #667085;
+        font-size: 13px;
+        line-height: 1.45;
+        padding: 12px;
+      }
+
+      .planning-drawer-backdrop {
+        background: rgba(15, 23, 42, 0.32);
+        display: none;
+        inset: 0;
+        position: fixed;
+        z-index: 1100;
+      }
+
+      .planning-drawer-backdrop.open {
+        display: block;
+      }
+
+      .planning-drawer {
+        background: #fff;
+        box-shadow: -18px 0 48px rgba(15, 23, 42, 0.22);
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        height: 100%;
+        margin-left: auto;
+        max-width: 560px;
+        outline: none;
+        transform: translateX(100%);
+        transition: transform 0.18s ease;
+        width: min(100%, 560px);
+      }
+
+      .planning-drawer-backdrop.open .planning-drawer {
+        transform: translateX(0);
+      }
+
+      .planning-drawer-head {
+        align-items: flex-start;
+        border-bottom: 1px solid #e1e7ee;
+        display: flex;
+        gap: 14px;
+        justify-content: space-between;
+        padding: 18px 20px;
+      }
+
+      .planning-drawer-head h2 {
+        color: #12233a;
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+
+      .planning-drawer-controls {
+        border-bottom: 1px solid #edf1f5;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: minmax(0, 1fr) 180px;
+        padding: 14px 20px;
+      }
+
+      .planning-drawer-list {
+        display: grid;
+        gap: 10px;
+        overflow: auto;
+        padding: 16px 20px 20px;
+      }
+
+      .planning-drawer-item {
+        border: 1px solid #e1e7ee;
+        border-radius: 8px;
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+      }
+
+      .planning-drawer-actions {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .planning-drawer-actions .secondary-button,
+      .planning-drawer-actions .danger-button {
+        font-size: 12px;
+        min-height: 30px;
+        padding: 6px 9px;
+      }
+
+      .planning-drawer-actions .danger-button {
+        margin-left: auto;
+      }
+
+      .drawer-muted-action {
+        background: #fff;
+        color: #667085;
+      }
+
+      .drawer-muted-action:hover {
+        background: #fff5f5;
+        color: #9f1c1c;
+      }
+
       .saved-pairings-body {
         margin-top: 14px;
+      }
+
+      .watchlist-sire-body {
+        margin-top: 14px;
+      }
+
+      .watchlist-sire-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .watchlist-sire-item {
+        align-items: center;
+        border: 1px solid #e1e7ee;
+        border-radius: 8px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 12px;
+      }
+
+      .watchlist-sire-title {
+        color: #12233a;
+        font-weight: 800;
+      }
+
+      .watchlist-sire-meta,
+      .selected-sire-hint {
+        color: #667085;
+        font-size: 13px;
+        line-height: 1.45;
+        margin-top: 4px;
+      }
+
+      .selected-sire-card {
+        background: #f8fafc;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        display: grid;
+        gap: 8px;
+        grid-column: 1 / -1;
+        padding: 10px 12px;
+      }
+
+      .selected-sire-head {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+      }
+
+      .selected-sire-title {
+        color: #12233a;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .selected-sire-clear {
+        background: transparent;
+        border: 0;
+        color: #52606d;
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 800;
+        padding: 0;
+      }
+
+      .selected-sire-clear:hover {
+        background: transparent;
+        color: #9f1c1c;
       }
 
       .saved-list {
@@ -899,7 +1175,10 @@
       .danger-button {
         border: 1px solid #dbe2ea;
         color: #243447;
+        display: inline-flex;
+        justify-content: center;
         padding: 8px 11px;
+        text-decoration: none;
       }
 
       .secondary-button {
@@ -941,7 +1220,9 @@
       @media (max-width: 900px) {
         .summary-grid,
         .parents,
-        .relatives-grid {
+        .relatives-grid,
+        .planning-grid,
+        .planning-drawer-controls {
           grid-template-columns: 1fr;
         }
 
@@ -950,7 +1231,8 @@
         }
 
         .pairing-result-head,
-        .saved-item {
+        .saved-item,
+        .watchlist-sire-item {
           grid-template-columns: 1fr;
         }
 
@@ -990,20 +1272,52 @@
 
 
 
-      <section class="panel" id="savedPairingsPanel">
-        <div class="saved-pairings-head">
-          <div class="saved-pairings-title">
-            <h2>Gespeicherte Verpaarungen  
-            </h2>
-            <span class="saved-count-badge" id="savedPairingsCount">0</span>
+      <section class="planning-overview" aria-labelledby="planningOverviewTitle">
+        <div class="planning-overview-head">
+          <div>
+            <h2 id="planningOverviewTitle">Meine Planung</h2>
+            <div class="planning-overview-subtitle">Planung fortsetzen oder vorbereitete Rüden als Kandidaten übernehmen.</div>
           </div>
-          <button type="button" class="saved-toggle" id="savedPairingsToggle" aria-expanded="false" aria-controls="savedPairingsBody">aufklappen</button>
         </div>
+        <div class="planning-grid">
+          <article class="planning-card" aria-labelledby="savedPairingsCardTitle">
+            <div class="planning-card-head">
+              <div>
+                <h3 id="savedPairingsCardTitle">Gespeicherte Verpaarungen</h3>
+                <div class="planning-card-subtitle" id="savedPairingsSubtitle">0 Planungen gespeichert</div>
+              </div>
+              <span class="saved-count-badge" id="savedPairingsCount">0</span>
+            </div>
+            <div class="planning-list" id="savedPairingsPreview">
+              <div class="planning-empty">
+                <strong>Noch keine gespeicherte Verpaarung.</strong><br>
+                Sobald du eine Verpaarung speicherst, kannst du sie hier später fortsetzen.
+              </div>
+            </div>
+            <div class="planning-card-actions">
+              <button type="button" class="secondary-button" id="openSavedPairingsDrawerButton">Alle anzeigen</button>
+            </div>
+          </article>
 
-        <div class="saved-pairings-body" id="savedPairingsBody" hidden>
-          <div class="saved-list" id="savedPairingsList">
-            <div class="empty-state">Noch keine Verpaarung gespeichert.</div>
-          </div>
+          <article class="planning-card" aria-labelledby="watchlistSiresCardTitle">
+            <div class="planning-card-head">
+              <div>
+                <h3 id="watchlistSiresCardTitle">Rüden vom Merkzettel</h3>
+                <div class="planning-card-subtitle" id="watchlistSiresSubtitle">0 Rüden vorgemerkt</div>
+              </div>
+              <span class="saved-count-badge" id="watchlistSiresCount">0</span>
+            </div>
+            <div class="planning-list" id="watchlistSiresList">
+              <div class="planning-empty">
+                <strong>Noch keine Rüden vorgemerkt.</strong><br>
+                Du kannst interessante Rüden in der Hundesuche auf den Merkzettel setzen und später hier als Kandidaten übernehmen.
+              </div>
+            </div>
+            <div class="planning-card-actions">
+              <button type="button" class="secondary-button" id="openWatchlistSiresDrawerButton">Alle anzeigen</button>
+              <a class="secondary-button" href="/compare">Merkzettel öffnen</a>
+            </div>
+          </article>
         </div>
       </section>
 
@@ -1011,6 +1325,7 @@
         <form class="pairing-form" id="pairingForm" method="get" action="/pairing">
           <input type="hidden" name="sire_search" value="1">
           <input type="hidden" name="sire_page" value="1">
+          <input type="hidden" name="selected_sire" id="selectedSireInput" value="{{ selected_sire }}">
 
           <div class="planner-card-top">
             <div class="dam-summary">
@@ -1081,6 +1396,21 @@
               <datalist id="damSuggestions"></datalist>
             </label>
             <div class="sire-filter">
+              <div class="selected-sire-card" id="selectedSireCard" {% if not selected_sire_summary %}hidden{% endif %}>
+                <div class="selected-sire-head">
+                  <div>
+                    <div class="selected-sire-title" id="selectedSireTitle">
+                      {% if selected_sire_summary %}{{ selected_sire_summary.name }}{% endif %}
+                    </div>
+                    <div class="selected-sire-hint" id="selectedSireMeta">
+                      {% if selected_sire_summary %}
+                        Rüde · ZBNr {{ selected_sire_summary.zbnr or "—" }} · ED {{ selected_sire_summary.ed or "—" }} · ZW {{ selected_sire_summary.zuchtwert if selected_sire_summary.zuchtwert is not none else "—" }}
+                      {% endif %}
+                    </div>
+                  </div>
+                  <button type="button" class="selected-sire-clear" id="clearSelectedSireButton">Auswahl entfernen</button>
+                </div>
+              </div>
               <label>
                 Rüde suchen
                 <input name="sire" value="{{ sire_input }}" placeholder="Name oder ZBNr optional" autocomplete="off" data-sex="R">
@@ -1160,11 +1490,30 @@
                   <th>ED</th>                   
                   <th>{{ sort_link("Nachkommen", "nachkommen") }}</th>
                   <th>{{ sort_link("ED-EBV/ C[%]", "zuchtwert") }}</th>
+                  <th>Merkliste</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {% for dog in sire_candidates %}
+                  {% set dogData = {
+                    'name': dog.name or 'unbekannt',
+                    'zbnr': dog.zbnr or '',
+                    'geschlecht': dog.geschlecht or 'R',
+                    'wurfdatum': dog.wurfdatum or '',
+                    'hd': dog.hd or '',
+                    'ed': dog.ed or '',
+                    'zuchtwert': dog.zuchtwert if dog.zuchtwert is not none else None,
+                    'konfidenz': dog.konfidenz if dog.konfidenz is not none else None,
+                    'anz_nachkommen': dog.anz_nachkommen,
+                    'prcd_pra': dog.prcd_pra or '',
+                    'hnpk': dog.hnpk or '',
+                    'sd2': dog.sd2 or '',
+                    'cnm': dog.cnm or '',
+                    'eic': dog.eic or '',
+                    'zs': dog.zs or '',
+                    'stgd_status': dog.stgd_status or ''
+                  } %}
                   <tr>
                     <td>
                       {{ dog.name or "unbekannt" }}
@@ -1180,6 +1529,15 @@
                     <td>
                       {% if dog.zuchtwert is not none %}{{ dog.zuchtwert }}{% else %}—{% endif %}
                       {% if dog.konfidenz is not none %} ({{ dog.konfidenz }} %){% endif %}
+                    </td>
+                    <td class="row-action-cell">
+                      <button
+                        type="button"
+                        class="small-action-button watchlist-toggle"
+                        data-zbnr="{{ dog.zbnr }}"
+                        data-dog='{{ dogData | tojson }}'
+                        onclick="toggleWatchlistFromButton(event, this)"
+                      >Merken</button>
                     </td>
                     <td>
                       <a class="candidate-action" href="{{ url_for('pairing', sire=sire_input, selected_sire=dog.zbnr, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', excluded_ancestor_zbnrs=excluded_ancestor_zbnrs, sire_search='1', sire_page=sire_page, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">
@@ -1316,6 +1674,66 @@
       {% endif %}
     </main>
 
+    <div class="planning-drawer-backdrop" id="savedPairingsDrawer" aria-hidden="true">
+      <aside class="planning-drawer" role="dialog" aria-modal="true" aria-labelledby="savedPairingsDrawerTitle" tabindex="-1">
+        <div class="planning-drawer-head">
+          <div>
+            <h2 id="savedPairingsDrawerTitle">Gespeicherte Verpaarungen</h2>
+            <div class="planning-card-subtitle" id="savedPairingsDrawerSubtitle">0 Planungen gespeichert</div>
+          </div>
+          <button type="button" class="modal-close" id="closeSavedPairingsDrawer" aria-label="Gespeicherte Verpaarungen schließen">×</button>
+        </div>
+        <div class="planning-drawer-controls">
+          <label>
+            Suche
+            <input id="savedPairingsSearch" placeholder="Nach Hündin oder Rüde suchen" autocomplete="off">
+          </label>
+          <label>
+            Sortierung
+            <select id="savedPairingsSort">
+              <option value="recent">Zuletzt bearbeitet</option>
+              <option value="oldest">Älteste zuerst</option>
+              <option value="dam">Hündin A-Z</option>
+              <option value="sire">Rüde A-Z</option>
+            </select>
+          </label>
+        </div>
+        <div class="planning-drawer-list" id="savedPairingsDrawerList">
+          <div class="planning-empty">Noch keine gespeicherte Verpaarung.</div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="planning-drawer-backdrop" id="watchlistSiresDrawer" aria-hidden="true">
+      <aside class="planning-drawer" role="dialog" aria-modal="true" aria-labelledby="watchlistSiresDrawerTitle" tabindex="-1">
+        <div class="planning-drawer-head">
+          <div>
+            <h2 id="watchlistSiresDrawerTitle">Rüden vom Merkzettel</h2>
+            <div class="planning-card-subtitle" id="watchlistSiresDrawerSubtitle">0 Rüden vorgemerkt</div>
+          </div>
+          <button type="button" class="modal-close" id="closeWatchlistSiresDrawer" aria-label="Rüden vom Merkzettel schließen">×</button>
+        </div>
+        <div class="planning-drawer-controls">
+          <label>
+            Suche
+            <input id="watchlistSiresSearch" placeholder="Nach Rüde oder ZBNr suchen" autocomplete="off">
+          </label>
+          <label>
+            Sortierung
+            <select id="watchlistSiresSort">
+              <option value="name">Name A-Z</option>
+              <option value="zuchtwert">ED-Zuchtwert</option>
+              <option value="konfidenz">Sicherheit</option>
+              <option value="nachkommen">Nachkommen</option>
+            </select>
+          </label>
+        </div>
+        <div class="planning-drawer-list" id="watchlistSiresDrawerList">
+          <div class="planning-empty">Noch keine Rüden auf dem Merkzettel.</div>
+        </div>
+      </aside>
+    </div>
+
     {% include "_relatives_modal.html" %}
 
     {% if result %}
@@ -1335,8 +1753,8 @@
                 <input id="savedPairingName" value="{{ result.dam.name }} × {{ result.sire.name }}" placeholder="Name der Verpaarung">
               </label>
               <label>
-                Bemerkung
-                <textarea id="savedPairingDescription" placeholder="Kurze Notiz zur Verpaarung"></textarea>
+                Kommentar zur Verpaarung
+                <textarea id="savedPairingDescription" placeholder="Kommentar oder Notiz zu dieser Verpaarung"></textarea>
               </label>
               <div class="save-modal-actions">
                 <div class="save-status" id="savePairingStatus" aria-live="polite"></div>
@@ -1364,6 +1782,8 @@
           .replace(/'/g, '&#39;');
       }
 
+      {% include "_watchlist_script.html" %}
+      {% include "_pedigree_notes_script.html" %}
       {% include "_relatives_modal_script.html" %}
 
       function attachPairingPedigreeClick() {
@@ -1397,14 +1817,227 @@
         return window.location.pathname + window.location.search;
       }
 
-      function setSavedPairingsExpanded(expanded) {
-        const body = document.getElementById('savedPairingsBody');
-        const toggle = document.getElementById('savedPairingsToggle');
-        if (!body || !toggle) return;
+      function isWatchlistSire(dog) {
+        const sex = String(dog?.geschlecht || '').trim().toUpperCase();
+        return sex === 'R';
+      }
 
-        body.hidden = !expanded;
-        toggle.setAttribute('aria-expanded', String(expanded));
-        toggle.textContent = expanded ? 'einklappen' : 'aufklappen';
+      function countLabel(count, singular, plural) {
+        return count === 1 ? '1 ' + singular : count + ' ' + plural;
+      }
+
+      function pairingParts(item) {
+        const name = String(item?.name || '');
+        const parts = name.split(' × ');
+        return {
+          dam: (parts[0] || name || '').trim(),
+          sire: (parts[1] || '').trim()
+        };
+      }
+
+      function savedPairingDate(item) {
+        return item?.savedAt ? new Date(item.savedAt).toLocaleString('de-DE') : '';
+      }
+
+      function savedPairingPreviewItem(item) {
+        return `
+          <div class="planning-item">
+            <div>
+              <div class="planning-item-title">${escapeHtml(item.name || 'Unbenannte Verpaarung')}</div>
+              <div class="planning-item-meta">${escapeHtml(savedPairingDate(item))}</div>
+            </div>
+            <button type="button" class="secondary-button saved-open" data-url="${escapeHtml(item.url || '#')}">Öffnen</button>
+          </div>
+        `;
+      }
+
+      function savedPairingDrawerItem(item) {
+        const description = item.description ? `<div class="saved-description">${escapeHtml(item.description)}</div>` : '';
+        return `
+          <div class="planning-drawer-item">
+            <div>
+              <div class="planning-item-title">${escapeHtml(item.name || 'Unbenannte Verpaarung')}</div>
+              <div class="planning-item-meta">gespeichert am ${escapeHtml(savedPairingDate(item) || '—')}</div>
+              ${description}
+            </div>
+            <div class="planning-drawer-actions">
+              <button type="button" class="secondary-button saved-open" data-url="${escapeHtml(item.url || '#')}">Planung öffnen</button>
+              <button type="button" class="danger-button drawer-muted-action saved-delete" data-id="${escapeHtml(item.id)}">Löschen</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function filteredSavedPairings() {
+        const query = (document.getElementById('savedPairingsSearch')?.value || '').trim().toLocaleLowerCase('de-DE');
+        const sort = document.getElementById('savedPairingsSort')?.value || 'recent';
+        let items = readSavedPairings();
+
+        if (query) {
+          items = items.filter(item => String(item.name || '').toLocaleLowerCase('de-DE').includes(query));
+        }
+
+        return items.sort((a, b) => {
+          if (sort === 'oldest') return String(a.savedAt || '').localeCompare(String(b.savedAt || ''));
+          if (sort === 'dam') return pairingParts(a).dam.localeCompare(pairingParts(b).dam, 'de-DE');
+          if (sort === 'sire') return pairingParts(a).sire.localeCompare(pairingParts(b).sire, 'de-DE');
+          return String(b.savedAt || '').localeCompare(String(a.savedAt || ''));
+        });
+      }
+
+      function filteredWatchlistSires() {
+        const query = (document.getElementById('watchlistSiresSearch')?.value || '').trim().toLocaleLowerCase('de-DE');
+        const sort = document.getElementById('watchlistSiresSort')?.value || 'name';
+        let sires = readWatchlist().filter(isWatchlistSire);
+
+        if (query) {
+          sires = sires.filter(dog => {
+            return [
+              dog.name,
+              dog.zbnr,
+              dog.ed,
+              dog.hd
+            ].some(value => String(value || '').toLocaleLowerCase('de-DE').includes(query));
+          });
+        }
+
+        return sires.sort((a, b) => {
+          if (sort === 'zuchtwert') return numericSort(a.zuchtwert, b.zuchtwert, true);
+          if (sort === 'konfidenz') return numericSort(a.konfidenz, b.konfidenz, false);
+          if (sort === 'nachkommen') return numericSort(a.anz_nachkommen, b.anz_nachkommen, false);
+          return String(a.name || '').localeCompare(String(b.name || ''), 'de-DE');
+        });
+      }
+
+      function numericSort(a, b, ascending) {
+        const aNum = Number(a);
+        const bNum = Number(b);
+        const aOk = Number.isFinite(aNum);
+        const bOk = Number.isFinite(bNum);
+        if (!aOk && !bOk) return 0;
+        if (!aOk) return 1;
+        if (!bOk) return -1;
+        return ascending ? aNum - bNum : bNum - aNum;
+      }
+
+      function watchlistSireDrawerItem(dog) {
+        const meta = [
+          dog.zbnr ? 'ZBNr ' + dog.zbnr : null,
+          dog.ed ? 'ED ' + dog.ed : null,
+          dog.zuchtwert != null ? 'ZW ' + dog.zuchtwert : null,
+          dog.konfidenz != null ? 'C ' + dog.konfidenz + ' %' : null,
+          dog.anz_nachkommen != null ? dog.anz_nachkommen + ' Nachkommen' : null
+        ].filter(Boolean).join(' · ');
+
+        return `
+          <div class="planning-drawer-item">
+            <div>
+              <div class="planning-item-title">${escapeHtml(dog.name || 'unbekannt')}</div>
+              <div class="planning-item-meta">${escapeHtml(meta || 'Keine Detaildaten im Merkzettel.')}</div>
+            </div>
+            <div class="planning-drawer-actions">
+              <button type="button" class="secondary-button select-watchlist-sire" data-dog='${escapeHtml(JSON.stringify(dog))}'>Als Kandidat übernehmen</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderWatchlistSires() {
+        const list = document.getElementById('watchlistSiresList');
+        const count = document.getElementById('watchlistSiresCount');
+        const subtitle = document.getElementById('watchlistSiresSubtitle');
+        const drawerSubtitle = document.getElementById('watchlistSiresDrawerSubtitle');
+        const drawerList = document.getElementById('watchlistSiresDrawerList');
+        const drawerButton = document.getElementById('openWatchlistSiresDrawerButton');
+        if (!list || !count || !subtitle || !drawerSubtitle || !drawerList) return;
+
+        const sires = readWatchlist().filter(isWatchlistSire);
+        count.textContent = String(sires.length);
+        subtitle.textContent = countLabel(sires.length, 'Rüde vorgemerkt', 'Rüden vorgemerkt');
+        drawerSubtitle.textContent = subtitle.textContent;
+        if (drawerButton) drawerButton.disabled = sires.length === 0;
+
+        if (sires.length === 0) {
+          list.innerHTML = `
+            <div class="planning-empty">
+              <strong>Noch keine Rüden vorgemerkt.</strong><br>
+              Du kannst interessante Rüden in der Hundesuche auf den Merkzettel setzen und später hier als Kandidaten übernehmen.
+            </div>
+          `;
+          drawerList.innerHTML = `
+            <div class="planning-empty">
+              <strong>Noch keine Rüden vorgemerkt.</strong><br>
+              Du kannst interessante Rüden in der Hundesuche auf den Merkzettel setzen.
+            </div>
+          `;
+          return;
+        }
+
+        list.innerHTML = sires.slice(0, 3).map(dog => {
+          const meta = [
+            dog.zbnr ? 'ZBNr ' + dog.zbnr : null,
+            dog.ed ? 'ED ' + dog.ed : null,
+            dog.zuchtwert != null ? 'ZW ' + dog.zuchtwert : null,
+            dog.konfidenz != null ? 'C ' + dog.konfidenz + ' %' : null
+          ].filter(Boolean).join(' · ');
+
+          return `
+            <div class="planning-item">
+              <div>
+                <div class="planning-item-title">${escapeHtml(dog.name || 'unbekannt')}</div>
+                <div class="planning-item-meta">${escapeHtml(meta || 'Keine Detaildaten im Merkzettel.')}</div>
+              </div>
+              <button type="button" class="secondary-button select-watchlist-sire" data-dog='${escapeHtml(JSON.stringify(dog))}'>Als Kandidat übernehmen</button>
+            </div>
+          `;
+        }).join('') + (
+          sires.length > 3
+            ? `<div class="planning-more">Weitere ${sires.length - 3} Rüden auf dem Merkzettel</div>`
+            : ''
+        );
+
+        const drawerSires = filteredWatchlistSires();
+        drawerList.innerHTML = drawerSires.length
+          ? drawerSires.map(watchlistSireDrawerItem).join('')
+          : '<div class="planning-empty">Kein Rüde passt zur Suche.</div>';
+      }
+
+      function setSelectedSireFromDog(dog, options = {}) {
+        if (!dog?.zbnr) return;
+
+        const hidden = document.getElementById('selectedSireInput');
+        const sireInput = document.querySelector('input[name="sire"]');
+        const card = document.getElementById('selectedSireCard');
+        const title = document.getElementById('selectedSireTitle');
+        const meta = document.getElementById('selectedSireMeta');
+        if (!hidden || !card || !title || !meta) return;
+
+        hidden.value = dog.zbnr;
+        if (sireInput) sireInput.value = dog.zbnr;
+        title.textContent = dog.name || 'unbekannt';
+        meta.textContent = [
+          'Rüde',
+          dog.zbnr ? 'ZBNr ' + dog.zbnr : null,
+          dog.ed ? 'ED ' + dog.ed : null,
+          dog.zuchtwert != null ? 'ZW ' + dog.zuchtwert : null
+        ].filter(Boolean).join(' · ');
+        card.hidden = false;
+
+        const damInput = document.querySelector('input[name="dam"]');
+        if (options.submit && damInput?.value.trim()) {
+          document.getElementById('pairingForm')?.submit();
+        } else {
+          damInput?.focus();
+        }
+      }
+
+      function clearSelectedSire() {
+        const hidden = document.getElementById('selectedSireInput');
+        const sireInput = document.querySelector('input[name="sire"]');
+        const card = document.getElementById('selectedSireCard');
+        if (hidden) hidden.value = '';
+        if (sireInput) sireInput.value = '';
+        if (card) card.hidden = true;
       }
 
       function openSavePairingModal() {
@@ -1436,34 +2069,42 @@
       }
 
       function renderSavedPairings() {
-        const list = document.getElementById('savedPairingsList');
+        const preview = document.getElementById('savedPairingsPreview');
+        const drawerList = document.getElementById('savedPairingsDrawerList');
         const count = document.getElementById('savedPairingsCount');
-        if (!list || !count) return;
+        const subtitle = document.getElementById('savedPairingsSubtitle');
+        const drawerSubtitle = document.getElementById('savedPairingsDrawerSubtitle');
+        const drawerButton = document.getElementById('openSavedPairingsDrawerButton');
+        if (!preview || !drawerList || !count || !subtitle || !drawerSubtitle) return;
 
         const items = readSavedPairings().sort((a, b) => String(b.savedAt || '').localeCompare(String(a.savedAt || '')));
         count.textContent = String(items.length);
+        const label = countLabel(items.length, 'Planung gespeichert', 'Planungen gespeichert');
+        subtitle.textContent = label;
+        drawerSubtitle.textContent = label;
+        if (drawerButton) drawerButton.disabled = items.length === 0;
 
         if (items.length === 0) {
-          list.innerHTML = '<div class="empty-state">Noch keine Verpaarung gespeichert.</div>';
+          preview.innerHTML = `
+            <div class="planning-empty">
+              <strong>Noch keine gespeicherte Verpaarung.</strong><br>
+              Sobald du eine Verpaarung speicherst, kannst du sie hier später fortsetzen.
+            </div>
+          `;
+          drawerList.innerHTML = '<div class="planning-empty">Noch keine gespeicherte Verpaarung.</div>';
           return;
         }
 
-        list.innerHTML = items.map(item => {
-          const date = item.savedAt ? new Date(item.savedAt).toLocaleString('de-DE') : '';
-          return `
-            <div class="saved-item">
-              <div>
-                <a class="saved-title" href="${escapeHtml(item.url || '#')}">${escapeHtml(item.name || 'Unbenannte Verpaarung')}</a>
-                ${item.description ? `<div class="saved-description">${escapeHtml(item.description)}</div>` : ''}
-                <div class="saved-meta">${escapeHtml(date)}</div>
-              </div>
-              <div class="saved-actions">
-                <button type="button" class="secondary-button saved-open" data-url="${escapeHtml(item.url || '#')}">Öffnen</button>
-                <button type="button" class="danger-button saved-delete" data-id="${escapeHtml(item.id)}">Löschen</button>
-              </div>
-            </div>
-          `;
-        }).join('');
+        preview.innerHTML = items.slice(0, 3).map(savedPairingPreviewItem).join('') + (
+          items.length > 3
+            ? `<div class="planning-more">Weitere ${items.length - 3} gespeicherte Verpaarungen</div>`
+            : ''
+        );
+
+        const drawerItems = filteredSavedPairings();
+        drawerList.innerHTML = drawerItems.length
+          ? drawerItems.map(savedPairingDrawerItem).join('')
+          : '<div class="planning-empty">Keine gespeicherte Verpaarung passt zur Suche.</div>';
       }
 
       function saveCurrentPairing() {
@@ -1499,9 +2140,50 @@
       }
 
       function deleteSavedPairing(id) {
+        if (!window.confirm('Diese gespeicherte Verpaarung wirklich löschen?')) return;
         const items = readSavedPairings().filter(item => item.id !== id);
         writeSavedPairings(items);
         renderSavedPairings();
+      }
+
+      function openSavedPairingsDrawer() {
+        const drawer = document.getElementById('savedPairingsDrawer');
+        const panel = drawer?.querySelector('.planning-drawer');
+        if (!drawer || !panel) return;
+
+        renderSavedPairings();
+        drawer.classList.add('open');
+        drawer.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        panel.focus();
+      }
+
+      function closeSavedPairingsDrawer() {
+        const drawer = document.getElementById('savedPairingsDrawer');
+        if (!drawer) return;
+        drawer.classList.remove('open');
+        drawer.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+      }
+
+      function openWatchlistSiresDrawer() {
+        const drawer = document.getElementById('watchlistSiresDrawer');
+        const panel = drawer?.querySelector('.planning-drawer');
+        if (!drawer || !panel) return;
+
+        renderWatchlistSires();
+        drawer.classList.add('open');
+        drawer.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        panel.focus();
+      }
+
+      function closeWatchlistSiresDrawer() {
+        const drawer = document.getElementById('watchlistSiresDrawer');
+        if (!drawer) return;
+        drawer.classList.remove('open');
+        drawer.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
       }
 
       function attachDamSuggest() {
@@ -1530,6 +2212,31 @@
             })
             .catch(() => {});
         });
+      }
+
+      function attachWatchlistSires() {
+        document.addEventListener('click', event => {
+          const button = event.target.closest('.select-watchlist-sire');
+          if (!button) return;
+
+          let dog = {};
+          try {
+            dog = JSON.parse(button.getAttribute('data-dog') || '{}');
+          } catch {
+            dog = {};
+          }
+          setSelectedSireFromDog(dog, { submit: true });
+          closeWatchlistSiresDrawer();
+        });
+
+        document.getElementById('clearSelectedSireButton')?.addEventListener('click', clearSelectedSire);
+        document.querySelector('input[name="sire"]')?.addEventListener('input', () => {
+          const hidden = document.getElementById('selectedSireInput');
+          if (hidden) hidden.value = '';
+          document.getElementById('selectedSireCard')?.setAttribute('hidden', '');
+        });
+
+        window.addEventListener('watchlist:changed', renderWatchlistSires);
       }
 
       function attachExcludedAncestorPicker() {
@@ -1637,6 +2344,8 @@
         if (event.key === 'Escape') {
           closeRelativesModal();
           closeSavePairingModal();
+          closeSavedPairingsDrawer();
+          closeWatchlistSiresDrawer();
         }
       });
 
@@ -1648,16 +2357,27 @@
       document.getElementById('savePairingModal')?.addEventListener('click', event => {
         if (event.target.id === 'savePairingModal') closeSavePairingModal();
       });
-      document.getElementById('savedPairingsToggle')?.addEventListener('click', event => {
-        const expanded = event.currentTarget.getAttribute('aria-expanded') === 'true';
-        setSavedPairingsExpanded(!expanded);
-      });
       document.getElementById('focusPairingFilters')?.addEventListener('click', () => {
         document.querySelector('input[name="sire"]')?.focus();
       });
-      document.getElementById('savedPairingsList').addEventListener('click', event => {
+      document.getElementById('openSavedPairingsDrawerButton')?.addEventListener('click', openSavedPairingsDrawer);
+      document.getElementById('closeSavedPairingsDrawer')?.addEventListener('click', closeSavedPairingsDrawer);
+      document.getElementById('savedPairingsDrawer')?.addEventListener('click', event => {
+        if (event.target.id === 'savedPairingsDrawer') closeSavedPairingsDrawer();
+      });
+      document.getElementById('savedPairingsSearch')?.addEventListener('input', renderSavedPairings);
+      document.getElementById('savedPairingsSort')?.addEventListener('change', renderSavedPairings);
+      document.getElementById('openWatchlistSiresDrawerButton')?.addEventListener('click', openWatchlistSiresDrawer);
+      document.getElementById('closeWatchlistSiresDrawer')?.addEventListener('click', closeWatchlistSiresDrawer);
+      document.getElementById('watchlistSiresDrawer')?.addEventListener('click', event => {
+        if (event.target.id === 'watchlistSiresDrawer') closeWatchlistSiresDrawer();
+      });
+      document.getElementById('watchlistSiresSearch')?.addEventListener('input', renderWatchlistSires);
+      document.getElementById('watchlistSiresSort')?.addEventListener('change', renderWatchlistSires);
+      document.addEventListener('click', event => {
         const openButton = event.target.closest('.saved-open');
         if (openButton) {
+          closeSavedPairingsDrawer();
           window.location.href = openButton.dataset.url || '#';
           return;
         }
@@ -1667,7 +2387,8 @@
       });
 
       renderSavedPairings();
-      setSavedPairingsExpanded(false);
+      renderWatchlistSires();
+      attachWatchlistSires();
       attachDamSuggest();
       attachExcludedAncestorPicker();
       attachPairingPedigreeClick();
