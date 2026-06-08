@@ -1,6 +1,7 @@
 from pathlib import Path
 from urllib.parse import quote_plus
 from contextlib import contextmanager
+import json
 import math
 from datetime import date
 from datetime import datetime
@@ -158,6 +159,16 @@ def append_user_dogs(merged_df):
     for column in merged_df.columns:
         if column not in user_df.columns:
             user_df[column] = ""
+
+    user_zbnrs = {
+        pt.normalize_zbnr(value)
+        for value in user_df.get("ZBNr_norm", pd.Series(dtype=str)).fillna("").astype(str)
+        if pt.normalize_zbnr(value)
+    }
+    if user_zbnrs and "ZBNr_norm" in merged_df.columns:
+        merged_df = merged_df[
+            ~merged_df["ZBNr_norm"].fillna("").map(lambda value: pt.normalize_zbnr(value) in user_zbnrs)
+        ].copy()
 
     combined = pd.concat([merged_df, user_df[merged_df.columns]], ignore_index=True)
     combined = pt.normalize_zbnr_columns(combined)
@@ -397,6 +408,232 @@ def write_user_dogs_df(df):
         df.to_csv(tmp, index=False)
 
     temp_path.replace(USER_DOGS_CSV)
+
+
+def preorder_pedigree_slots(max_generation=4):
+    def walk(slot):
+        generation = slot.bit_length() - 1
+        if generation > max_generation:
+            return []
+        return [slot] + walk(slot * 2) + walk(slot * 2 + 1)
+
+    return walk(1)
+
+
+def imported_slot_sex(slot, root_sex=""):
+    if slot == 1:
+        return clean_text(root_sex).upper() if clean_text(root_sex).upper() in {"R", "H"} else ""
+    return "R" if slot % 2 == 0 else "H"
+
+
+def strip_label(value, label):
+    text = clean_text(value)
+    if text.lower().startswith(label.lower()):
+        return text[len(label):].strip()
+    return text
+
+
+def parse_import_year(value):
+    text = clean_text(value)
+    match = re.search(r"\b(\d{4})\b", text)
+    return match.group(1) if match else ""
+
+
+def parse_import_elbow(value):
+    text = strip_label(value, "Elbows:")
+    ebv = ""
+    confidence = ""
+
+    ebv_match = re.search(r"\bEBV:\s*([-+]?\d+(?:[.,]\d+)?)", text, re.I)
+    if ebv_match:
+        ebv = ebv_match.group(1).replace(",", ".")
+
+    confidence_match = re.search(r"\bConfidence:\s*(\d+(?:[.,]\d+)?)\s*%", text, re.I)
+    if confidence_match:
+        confidence = confidence_match.group(1).replace(",", ".")
+
+    score = re.split(r",?\s*\bEBV:\s*", text, maxsplit=1, flags=re.I)[0].strip()
+    if score.lower().endswith("bva/kc:"):
+        score = ""
+    return score, ebv, confidence
+
+
+def parse_pedigree_text(text, root_sex=""):
+    lines = [line.strip() for line in clean_text(text).splitlines() if line.strip()]
+    entries = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith(("Hips:", "Elbows:")):
+            i += 1
+            continue
+
+        entry = {
+            "name": line,
+            "year_line": "",
+            "birth_year": "",
+            "hips": "",
+            "elbows": "",
+            "ed": "",
+            "ebv": "",
+            "confidence": "",
+        }
+        i += 1
+
+        if i < len(lines) and re.match(r"^\d{4}(?:\s*-.*)?$", lines[i]):
+            entry["year_line"] = lines[i]
+            entry["birth_year"] = parse_import_year(lines[i])
+            i += 1
+
+        while i < len(lines) and lines[i].startswith(("Hips:", "Elbows:")):
+            if lines[i].startswith("Hips:"):
+                entry["hips"] = strip_label(lines[i], "Hips:")
+            elif lines[i].startswith("Elbows:"):
+                entry["elbows"] = strip_label(lines[i], "Elbows:")
+                entry["ed"], entry["ebv"], entry["confidence"] = parse_import_elbow(lines[i])
+            i += 1
+
+        entries.append(entry)
+
+    slots = preorder_pedigree_slots(max_generation=4)
+    if len(entries) != len(slots):
+        raise ValueError(f"Erwartet wurden 31 Hunde, erkannt wurden {len(entries)}.")
+
+    parsed = []
+    for slot, entry in zip(slots, entries):
+        generation = slot.bit_length() - 1
+        item = dict(entry)
+        item.update({
+            "slot": slot,
+            "generation": generation,
+            "geschlecht": imported_slot_sex(slot, root_sex=root_sex),
+            "father_slot": slot * 2 if generation < 4 else None,
+            "mother_slot": slot * 2 + 1 if generation < 4 else None,
+        })
+        parsed.append(item)
+
+    return parsed
+
+
+def normalize_import_name(value):
+    return re.sub(r"\s+", " ", clean_text(value)).strip().casefold()
+
+
+def match_imported_dog(item):
+    name_key = normalize_import_name(item.get("name"))
+    if not name_key:
+        return None
+
+    candidates = MERGED_DF[
+        MERGED_DF["Name"].fillna("").map(normalize_import_name) == name_key
+    ].copy()
+    if candidates.empty:
+        return None
+
+    birth_year = clean_text(item.get("birth_year"))
+    if birth_year:
+        year_source = candidates.get("geburtsjahr", pd.Series([""] * len(candidates), index=candidates.index)).fillna("")
+        year_mask = year_source.astype(str).str.extract(r"(\d{4})")[0].fillna("") == birth_year
+        year_matches = candidates[year_mask]
+        if not year_matches.empty:
+            candidates = year_matches
+
+    row = candidates.iloc[0].to_dict()
+    has_parents = bool(
+        clean_text(row.get("vater_zbnr_norm") or row.get("vater_zbnr"))
+        or clean_text(row.get("mutter_zbnr_norm") or row.get("mutter_zbnr"))
+    )
+    return {
+        "zbnr": clean_text(row.get("ZBNr_norm") or row.get("ZBNr")),
+        "name": clean_text(row.get("Name")),
+        "birth_year": extract_birth_year(row.get("Wurfdatum") or row.get("geburtsjahr")),
+        "geschlecht": clean_text(row.get("Geschlecht")),
+        "has_parents": has_parents,
+    }
+
+
+def build_import_preview(parsed_items):
+    preview = []
+    for item in parsed_items:
+        match = match_imported_dog(item)
+        can_add_parent_links = bool(match) and not match.get("has_parents") and bool(item.get("father_slot") or item.get("mother_slot"))
+        preview_item = dict(item)
+        preview_item["match"] = match
+        preview_item["status"] = "found" if match else "new"
+        preview_item["selected"] = not bool(match) or can_add_parent_links
+        preview_item["can_add_parent_links"] = can_add_parent_links
+        preview.append(preview_item)
+    return preview
+
+
+def user_dog_record_from_import(item, zbnr, parent_refs, now):
+    father = parent_refs.get(item.get("father_slot")) or {}
+    mother = parent_refs.get(item.get("mother_slot")) or {}
+    match = item.get("match") or {}
+    return {
+        "ZBNr": zbnr,
+        "ZBNr_norm": zbnr,
+        "Name": clean_text(item.get("name")),
+        "Rasse": "Labrador-Retriever",
+        "Wurfdatum": clean_text(item.get("birth_year")),
+        "Geschlecht": clean_text(item.get("geschlecht")) or clean_text(match.get("geschlecht")),
+        "HD_Grad": clean_text(item.get("hips")),
+        "ED_rechts": clean_text(item.get("ed")),
+        "ED_links": "",
+        "AnzNachkommen": "",
+        "EBV": clean_text(item.get("ebv")),
+        "Confidenz": clean_text(item.get("confidence")),
+        "Verlässlichkeit": "",
+        "ED_ZWS": "",
+        "prcd-PRA": "",
+        "HNPK": "",
+        "SD2": "",
+        "CNM": "",
+        "EIC": "",
+        "ZS": "",
+        "STGD_Status": "",
+        "vater_name": clean_text(father.get("name")),
+        "vater_zbnr": clean_text(father.get("zbnr")),
+        "vater_zbnr_norm": pt.normalize_zbnr(father.get("zbnr")) or "",
+        "mutter_name": clean_text(mother.get("name")),
+        "mutter_zbnr": clean_text(mother.get("zbnr")),
+        "mutter_zbnr_norm": pt.normalize_zbnr(mother.get("zbnr")) or "",
+        "Vater": clean_text(father.get("name") or father.get("zbnr")),
+        "Mutter": clean_text(mother.get("name") or mother.get("zbnr")),
+        "geburtsjahr": clean_text(item.get("birth_year")),
+        "pedigree_status": "ok",
+        "father_found": bool_text(bool(father.get("zbnr"))),
+        "mother_found": bool_text(bool(mother.get("zbnr"))),
+        "source": "user_import_override" if match else "user_import",
+        "created_at": now,
+        "updated_at": now,
+        "user_notes": "Import aus Text-Ahnentafel",
+    }
+
+
+def prepare_import_records(preview_items, selected_slots, user_df):
+    selected_slots = {int(slot) for slot in selected_slots}
+    slot_refs = {}
+    next_number_df = user_df.copy()
+
+    for item in sorted(preview_items, key=lambda dog: dog["slot"]):
+        match = item.get("match")
+        if match and match.get("zbnr"):
+            slot_refs[item["slot"]] = {"zbnr": match["zbnr"], "name": match.get("name") or item.get("name")}
+        elif item["slot"] in selected_slots:
+            zbnr = next_user_zbnr(next_number_df)
+            next_number_df = pd.concat([next_number_df, pd.DataFrame([{"ZBNr": zbnr, "ZBNr_norm": zbnr}])], ignore_index=True)
+            slot_refs[item["slot"]] = {"zbnr": zbnr, "name": item.get("name")}
+
+    now = datetime.now().isoformat(timespec="seconds")
+    records = []
+    for item in sorted(preview_items, key=lambda dog: dog["slot"]):
+        if item["slot"] not in selected_slots:
+            continue
+        zbnr = slot_refs[item["slot"]]["zbnr"]
+        records.append(user_dog_record_from_import(item, zbnr, slot_refs, now))
+
+    return records
 
 
 # load at startup
@@ -1163,6 +1400,7 @@ def compare_watchlist():
 def manage_user_dogs():
     errors = []
     saved_zbnr = request.args.get("saved", "")
+    imported_count = request.args.get("imported", "")
     form_values = user_dog_form_defaults()
     prefill_name = clean_text(request.args.get("prefill_name"))
     modal_open = bool(prefill_name)
@@ -1193,7 +1431,115 @@ def manage_user_dogs():
         user_dogs=user_dogs,
         user_dogs_path=user_dog_path_label(),
         modal_open=modal_open,
+        imported_count=imported_count,
+        import_errors=[],
+        import_preview=[],
+        import_data_json="",
+        import_modal_open=False,
+        import_root_sex="",
+        import_text="",
     )
+
+
+@app.route("/user-dogs/import", methods=["POST"])
+def preview_user_dog_import():
+    import_errors = []
+    root_sex = clean_text(request.form.get("root_sex")).upper()
+    import_text = clean_text(request.form.get("pedigree_text"))
+    uploaded = request.files.get("pedigree_file")
+    if uploaded is not None and clean_text(uploaded.filename):
+        try:
+            import_text = uploaded.read().decode("utf-8-sig")
+        except UnicodeDecodeError:
+            uploaded.stream.seek(0)
+            import_text = uploaded.read().decode("latin-1")
+
+    import_preview = []
+    import_data_json = ""
+    if not clean_text(import_text):
+        import_errors.append("Bitte füge Text ein oder lade eine Textdatei hoch.")
+    else:
+        try:
+            parsed = parse_pedigree_text(import_text, root_sex=root_sex)
+            import_preview = build_import_preview(parsed)
+            import_data_json = json.dumps(import_preview, ensure_ascii=False)
+        except Exception as exc:
+            import_errors.append(str(exc))
+
+    user_dogs = load_user_dogs_df().to_dict(orient="records")
+    user_dogs = sorted(user_dogs, key=lambda dog: clean_text(dog.get("created_at")), reverse=True)
+    return render_template(
+        "user_dogs.html",
+        errors=[],
+        saved_zbnr="",
+        form_values=user_dog_form_defaults(),
+        user_dogs=user_dogs,
+        user_dogs_path=user_dog_path_label(),
+        modal_open=False,
+        imported_count="",
+        import_errors=import_errors,
+        import_preview=import_preview,
+        import_data_json=import_data_json,
+        import_modal_open=True,
+        import_root_sex=root_sex,
+        import_text=import_text,
+    )
+
+
+@app.route("/user-dogs/import-confirm", methods=["POST"])
+def confirm_user_dog_import():
+    import_errors = []
+    try:
+        preview_items = json.loads(request.form.get("import_data", "[]"))
+    except Exception:
+        preview_items = []
+        import_errors.append("Die Importdaten konnten nicht gelesen werden. Bitte erzeuge die Vorschau erneut.")
+
+    selected_slots = request.form.getlist("import_slots")
+    if not selected_slots:
+        import_errors.append("Bitte wähle mindestens einen neuen Hund für den Import aus.")
+
+    if import_errors:
+        user_dogs = load_user_dogs_df().to_dict(orient="records")
+        user_dogs = sorted(user_dogs, key=lambda dog: clean_text(dog.get("created_at")), reverse=True)
+        return render_template(
+            "user_dogs.html",
+            errors=[],
+            saved_zbnr="",
+            form_values=user_dog_form_defaults(),
+            user_dogs=user_dogs,
+            user_dogs_path=user_dog_path_label(),
+            modal_open=False,
+            imported_count="",
+            import_errors=import_errors,
+            import_preview=preview_items,
+            import_data_json=json.dumps(preview_items, ensure_ascii=False),
+            import_modal_open=True,
+            import_root_sex="",
+            import_text="",
+        )
+
+    with USER_DOGS_LOCK:
+        with locked_user_dogs_file():
+            user_df = load_user_dogs_df()
+            records = prepare_import_records(preview_items, selected_slots, user_df)
+            if records:
+                record_zbnrs = {
+                    pt.normalize_zbnr(record.get("ZBNr_norm") or record.get("ZBNr"))
+                    for record in records
+                    if pt.normalize_zbnr(record.get("ZBNr_norm") or record.get("ZBNr"))
+                }
+                if record_zbnrs:
+                    user_df = user_df[
+                        ~user_df.get("ZBNr_norm", pd.Series([""] * len(user_df), index=user_df.index))
+                        .fillna("")
+                        .map(lambda value: pt.normalize_zbnr(value) in record_zbnrs)
+                    ].copy()
+                new_df = pd.concat([user_df, pd.DataFrame(records)], ignore_index=True)
+                write_user_dogs_df(new_df)
+                reload_data()
+
+    return redirect(url_for("manage_user_dogs", imported=len(records)))
 
 
 @app.route("/dog_suggest")

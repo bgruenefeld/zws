@@ -17,40 +17,272 @@
       }
 
       .container {
-        max-width: 1760px;
+        max-width: none;
         margin: 0 auto;
-        padding: 0 20px;
+        padding: 0 14px;
       }
 
       main.container {
         padding-top: 20px;
       }
 
+      .pairing-workspace {
+        align-items: start;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 270px minmax(0, 1360px) 285px;
+        justify-content: center;
+      }
+
+      .pairing-sidebar,
+      .pairing-assessment {
+        display: grid;
+        gap: 12px;
+        max-height: calc(100vh - 82px);
+        overflow: auto;
+        position: sticky;
+        top: 68px;
+      }
+
+      .pairing-center {
+        display: grid;
+        gap: 14px;
+        overflow: visible;
+        min-width: 0;
+      }
+
+      .workspace-card {
+        background: #fff;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        padding: 14px;
+      }
+
+      .workspace-card h2,
+      .workspace-card h3 {
+        color: #12233a;
+        font-size: 16px;
+        margin: 0 0 8px;
+      }
+
+      .workspace-empty {
+        background: #f8fafc;
+        border: 1px dashed #cfd8e3;
+        border-radius: 8px;
+        color: #667085;
+        font-size: 13px;
+        line-height: 1.45;
+        padding: 14px;
+      }
+
+      .pairing-sidebar .planning-overview,
+      .pairing-sidebar .planner-card,
+      .pairing-assessment .workspace-card {
+        margin: 0;
+      }
+
+      .pairing-sidebar .planning-overview {
+        padding: 12px;
+      }
+
+      .pairing-sidebar .planning-grid,
+      .pairing-sidebar .planner-card-top,
+      .pairing-sidebar .planner-fields,
+      .pairing-sidebar .sire-filter,
+      .pairing-assessment .summary-grid,
+      .pairing-assessment .parents {
+        grid-template-columns: 1fr;
+      }
+
+      .pairing-sidebar .planning-list,
+      .pairing-sidebar .planning-overview-subtitle,
+      .pairing-sidebar .planner-status,
+      .pairing-sidebar .hint {
+        display: none;
+      }
+
+      .pairing-sidebar .planning-card {
+        padding: 10px;
+      }
+
+      .pairing-sidebar .planning-card-actions,
+      .pairing-sidebar .planner-actions {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: 1fr;
+      }
+
+      .pairing-sidebar .planner-card {
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      .pairing-sidebar .planner-card-top {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .pairing-sidebar .planner-fields {
+        margin-top: 12px;
+      }
+
+      .pairing-sidebar .dam-summary {
+        align-items: start;
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .pairing-sidebar .dam-avatar {
+        height: 34px;
+        width: 34px;
+      }
+
+      .pairing-sidebar .dam-title {
+        font-size: 15px;
+      }
+
+      .pairing-sidebar .excluded-ancestor-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .pairing-sidebar .selected-sire-card,
+      .pairing-sidebar .checkbox-field,
+      .pairing-sidebar .excluded-ancestor-field {
+        padding: 10px;
+      }
+
+      .sidebar-search-actions {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: 1fr;
+      }
+
+      .filter-details {
+        background: #f8fafc;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      .filter-details summary {
+        color: #1f3a52;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .filter-detail-grid {
+        display: grid;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .pairing-center #sireCandidatePanel {
+        margin: 0;
+        max-height: 330px;
+        overflow: auto;
+        padding: 14px;
+      }
+
+      .pairing-center .workspace-card {
+        overflow: visible;
+      }
+
+      .pairing-center .candidate-table {
+        min-width: 900px;
+      }
+
+      .pairing-center .candidate-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+      }
+
+      .pedigree-work-card {
+        min-height: 360px;
+      }
+
+      .pedigree-work-card .pedigree-panel {
+        max-height: none;
+        min-height: 0;
+        overflow: visible;
+      }
+
+      .pairing-assessment {
+        min-width: 0;
+        z-index: 1;
+      }
+
+      .pairing-assessment .workspace-card {
+        overflow: hidden;
+      }
+
+      .pairing-block-title {
+        border-bottom: 1px solid #edf1f5;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+      }
+
+      .pairing-block-title h2 {
+        color: #12233a;
+        font-size: 16px;
+        margin: 0 0 4px;
+      }
+
+      .pairing-block-title div {
+        color: #667085;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .pairing-assessment .pairing-result-head {
+        align-items: start;
+        grid-template-columns: 1fr;
+      }
+
+      .pairing-assessment .metric {
+        padding: 12px;
+      }
+
+      .pairing-assessment .parents {
+        gap: 10px;
+      }
+
+      .assessment-actions {
+        border-top: 1px solid #edf1f5;
+        display: grid;
+        gap: 8px;
+        margin-top: 12px;
+        padding-top: 12px;
+      }
+
       header {
         background: #f8fafc;
         border-bottom: 1px solid #e0e5eb;
-        padding: 26px 0 18px;
+        padding: 14px 0;
         margin-bottom: 0;
       }
 
       header h1 {
         margin: 0;
         color: #12233a;
-        font-size: 28px;
+        font-size: 24px;
         font-weight: 800;
+        white-space: nowrap;
       }
 
       .page-head {
         align-items: center;
         display: flex;
-        gap: 18px;
-        justify-content: space-between;
+        gap: 16px;
+        justify-content: flex-start;
+        max-width: 1927px;
       }
 
       .page-subtitle {
         color: #667085;
         font-size: 13px;
-        margin-top: 4px;
+        margin-top: 2px;
+        white-space: nowrap;
       }
 
       .reset-link {
@@ -975,14 +1207,14 @@
 
       .planning-drawer {
         background: #fff;
-        box-shadow: -18px 0 48px rgba(15, 23, 42, 0.22);
+        box-shadow: 18px 0 48px rgba(15, 23, 42, 0.22);
         display: grid;
         grid-template-rows: auto auto minmax(0, 1fr);
         height: 100%;
-        margin-left: auto;
+        margin-right: auto;
         max-width: 560px;
         outline: none;
-        transform: translateX(100%);
+        transform: translateX(-100%);
         transition: transform 0.18s ease;
         width: min(100%, 560px);
       }
@@ -1218,6 +1450,33 @@
       }
 
       @media (max-width: 900px) {
+        .page-head {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        header h1,
+        .page-subtitle {
+          white-space: normal;
+        }
+
+        .pairing-workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .pairing-sidebar,
+        .pairing-assessment {
+          max-height: none;
+          overflow: visible;
+          position: static;
+        }
+
+        .pairing-center #sireCandidatePanel,
+        .pedigree-work-card .pedigree-panel {
+          max-height: none;
+        }
+
         .summary-grid,
         .parents,
         .relatives-grid,
@@ -1255,10 +1514,8 @@
     {% include "_nav.html" %}
     <header>
       <div class="container page-head">
-        <div>
-          <h1>Verpaarung planen</h1>
-          <div class="page-subtitle">Rüden auswählen, Paarung bewerten, Kandidaten vergleichen und Details gezielt öffnen.</div>
-        </div>        
+        <h1>Verpaarung planen</h1>
+        <div class="page-subtitle">Rüden auswählen, Paarung bewerten, Kandidaten vergleichen und Details gezielt öffnen.</div>
       </div>
     </header>
 
@@ -1271,6 +1528,8 @@
       {%- endmacro %}
 
 
+      <div class="pairing-workspace">
+        <aside class="pairing-sidebar" aria-label="Planung und Suche">
 
       <section class="planning-overview" aria-labelledby="planningOverviewTitle">
         <div class="planning-overview-head">
@@ -1315,7 +1574,6 @@
             </div>
             <div class="planning-card-actions">
               <button type="button" class="secondary-button" id="openWatchlistSiresDrawerButton">Alle anzeigen</button>
-              <a class="secondary-button" href="/compare">Merkzettel öffnen</a>
             </div>
           </article>
         </div>
@@ -1326,6 +1584,16 @@
           <input type="hidden" name="sire_search" value="1">
           <input type="hidden" name="sire_page" value="1">
           <input type="hidden" name="selected_sire" id="selectedSireInput" value="{{ selected_sire }}">
+
+          <div class="pairing-block-title">
+            {% if result or (dam_summary and selected_sire_summary) %}
+              <h2>Gewählte Verpaarung</h2>
+              <div>Hündin und Rüde sind ausgewählt. Du kannst die Auswahl ändern oder die Paarung bewerten.</div>
+            {% else %}
+              <h2>Neue Verpaarung</h2>
+              <div>Wähle zuerst eine Hündin und suche danach passende Rüden.</div>
+            {% endif %}
+          </div>
 
           <div class="planner-card-top">
             <div class="dam-summary">
@@ -1415,45 +1683,54 @@
                 Rüde suchen
                 <input name="sire" value="{{ sire_input }}" placeholder="Name oder ZBNr optional" autocomplete="off" data-sex="R">
               </label>
-              <label>
-                Alter von
-                <input name="sire_min_age" value="{{ sire_min_age }}" type="number" min="0" max="25" placeholder="Jahre">
-              </label>
-              <label>
-                Alter bis
-                <input name="sire_max_age" value="{{ sire_max_age }}" type="number" min="0" max="25" placeholder="Jahre">
-              </label>
-              <label>
-                Max. ED-ZW
-                <input name="sire_max_ebv" value="{{ sire_max_ebv }}" type="number" min="-100" step="1" placeholder="z. B. -5">
-              </label>
-              <label>
-                Mind. Nachkommen
-                <input name="sire_min_offspring" value="{{ sire_min_offspring }}" type="number" min="0" step="1" placeholder="z. B. 5">
-              </label>
-              <label class="checkbox-field">
-                <input name="avoid_carrier_matches" value="1" type="checkbox" {% if avoid_carrier_matches %}checked{% endif %}>
-                Träger × Träger bei Gentests ausschließen
-              </label>
-              <div class="excluded-ancestor-field">
-                <div class="excluded-ancestor-controls">
-                  <label>
-                    Unerwünschte Hunde in der Ahnentafel
-                    <input id="excludedAncestorSearch" list="excludedAncestorSuggestions" placeholder="Name oder ZBNr suchen" autocomplete="off">
-                    <datalist id="excludedAncestorSuggestions"></datalist>
-                  </label>
-                  <button type="button" class="secondary-button" id="addExcludedAncestorButton">Hinzufügen</button>
-                </div>
-                <div class="excluded-ancestor-list" id="excludedAncestorList">
-                  {% for dog in excluded_ancestors %}
-                    <span class="excluded-ancestor-chip" data-zbnr="{{ dog.zbnr }}" data-label="{{ dog.label }}">
-                      {{ dog.label }}
-                      <button type="button" class="excluded-ancestor-remove" aria-label="{{ dog.label }} entfernen">×</button>
-                      <input type="hidden" name="excluded_ancestor_zbnrs" value="{{ dog.zbnr }}">
-                    </span>
-                  {% endfor %}
-                </div>
+              <div class="sidebar-search-actions">
+                <button type="submit">Rüden suchen</button>
+                <a class="reset-link" href="/pairing">Zurücksetzen</a>
               </div>
+              <details class="filter-details" {% if sire_min_age or sire_max_age or sire_max_ebv or sire_min_offspring or avoid_carrier_matches or excluded_ancestors %}open{% endif %}>
+                <summary>Filter ändern</summary>
+                <div class="filter-detail-grid">
+                  <label>
+                    Alter von
+                    <input name="sire_min_age" value="{{ sire_min_age }}" type="number" min="0" max="25" placeholder="Jahre">
+                  </label>
+                  <label>
+                    Alter bis
+                    <input name="sire_max_age" value="{{ sire_max_age }}" type="number" min="0" max="25" placeholder="Jahre">
+                  </label>
+                  <label>
+                    Max. ED-ZW
+                    <input name="sire_max_ebv" value="{{ sire_max_ebv }}" type="number" min="-100" step="1" placeholder="z. B. -5">
+                  </label>
+                  <label>
+                    Mind. Nachkommen
+                    <input name="sire_min_offspring" value="{{ sire_min_offspring }}" type="number" min="0" step="1" placeholder="z. B. 5">
+                  </label>
+                  <label class="checkbox-field">
+                    <input name="avoid_carrier_matches" value="1" type="checkbox" {% if avoid_carrier_matches %}checked{% endif %}>
+                    Träger × Träger bei Gentests ausschließen
+                  </label>
+                  <div class="excluded-ancestor-field">
+                    <div class="excluded-ancestor-controls">
+                      <label>
+                        Unerwünschte Hunde in der Ahnentafel
+                        <input id="excludedAncestorSearch" list="excludedAncestorSuggestions" placeholder="Name oder ZBNr suchen" autocomplete="off">
+                        <datalist id="excludedAncestorSuggestions"></datalist>
+                      </label>
+                      <button type="button" class="secondary-button" id="addExcludedAncestorButton">Hinzufügen</button>
+                    </div>
+                    <div class="excluded-ancestor-list" id="excludedAncestorList">
+                      {% for dog in excluded_ancestors %}
+                        <span class="excluded-ancestor-chip" data-zbnr="{{ dog.zbnr }}" data-label="{{ dog.label }}">
+                          {{ dog.label }}
+                          <button type="button" class="excluded-ancestor-remove" aria-label="{{ dog.label }} entfernen">×</button>
+                          <input type="hidden" name="excluded_ancestor_zbnrs" value="{{ dog.zbnr }}">
+                        </span>
+                      {% endfor %}
+                    </div>
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
         </form>
@@ -1461,6 +1738,9 @@
           Hinweis: Die Filter können später um weitere Kriterien wie Land, Titel, Gesundheitsstatus oder Mindest-Sicherheit ergänzt werden.
         </div>
       </section>
+
+        </aside>
+        <section class="pairing-center" aria-label="Kandidaten und Ahnentafel">
 
       {% if error %}
         <div class="error">{{ error }}</div>
@@ -1583,95 +1863,95 @@
       {% endif %}
 
       {% if result %}
-        <section class="panel">
+        <section class="workspace-card pedigree-work-card" aria-labelledby="plannedPedigreeTitle">
           <div class="pairing-result-head">
             <div>
-              <h2>{{ result.dam.name }} × {{ result.sire.name }}</h2>
-              <div class="pairing-result-subtitle">Ausgewählte Verpaarung mit berechneter Ahnentafel und Kennzahlen</div>
-            </div>
-            <button type="button" class="secondary-button" id="openSavePairingModalButton">Speichern</button>
-          </div>
-
-          <div class="summary-grid">
-            <div class="metric">
-              <div class="metric-label">Erwarteter ED-Zuchtwert</div>
-              <div class="metric-value">{{ result.planned_ebv_display }}</div>
-            </div>
-            <div class="metric">
-              <div class="metric-label">COI</div>
-              <div class="metric-value">{{ result.coi_display }}</div>
-            </div>
-            <div class="metric">
-              <div class="metric-label">AVK</div>
-              <div class="metric-value">{{ result.avk_display }}</div>
-            </div>
-            <div class="metric">
-              <div class="metric-label">Vollständig bis</div>
-              <div class="metric-value">{% if result.complete_generation is not none %}Gen. {{ result.complete_generation }}{% else %}—{% endif %}</div>
+              <h2 id="plannedPedigreeTitle">Ahnentafel der geplanten Verpaarung</h2>
+              <div class="pairing-result-subtitle">{{ result.dam.name }} × {{ result.sire.name }}</div>
             </div>
           </div>
+          <section class="pedigree-panel">
+            {{ result.pedigree_html | safe }}
+          </section>
+        </section>
+      {% elif dam_input or dam_summary %}
+        <section class="workspace-card">
+          <h2>Ahnentafel der geplanten Verpaarung</h2>
+          <div class="workspace-empty">Wähle einen Rüden aus der Suche oder vom Merkzettel, um die geplante Verpaarung zu prüfen.</div>
+        </section>
+      {% else %}
+        <section class="workspace-card">
+          <h2>Ahnentafel der geplanten Verpaarung</h2>
+          <div class="workspace-empty">Wähle zuerst eine Hündin aus. Danach kannst du Rüden suchen oder Kandidaten aus dem Merkzettel übernehmen.</div>
+        </section>
+      {% endif %}
 
-          <div class="parents">
-            <div class="parent-card">
-              <h3>{{ result.sire.name }}</h3>
-              <div class="parent-meta">
-                Rüde · ZBNr {{ result.sire.zbnr or "—" }} · Wurfdatum {{ result.sire.wurfdatum or "—" }} · Alter {% if result.sire.alter is not none %}{{ result.sire.alter }} Jahre{% else %}—{% endif %}<br>
-                HD {{ result.sire.hd or "—" }} · ED {{ result.sire.ed or "—" }}<br>
-                prcd-PRA {{ result.sire.prcd_pra or "—" }} · HNPK {{ result.sire.hnpk or "—" }} · SD2 {{ result.sire.sd2 or "—" }}<br>
-                CNM {{ result.sire.cnm or "—" }} · EIC {{ result.sire.eic or "—" }} · ZS {{ result.sire.zs or "—" }} · STGD {{ result.sire.stgd_status or "—" }}
-                {% if result.sire.kc_health_url %}
-                  <br>
-                  <a class="external-health-link" href="{{ result.sire.kc_health_url }}" target="_blank" rel="noopener noreferrer">Royal Kennel Club Health Test Results</a>
+        </section>
+        <aside class="pairing-assessment" aria-label="Paarungsbewertung">
+          <section class="workspace-card">
+            <div class="pairing-result-head">
+              <div>
+                <h2>Paarungsbewertung</h2>
+                {% if result %}
+                  <div class="pairing-result-subtitle">{{ result.dam.name }} × {{ result.sire.name }}</div>
                 {% endif %}
               </div>
-              <div class="parent-zw">
-                <div class="parent-zw-head">
-                  <span class="parent-zw-label">ED-Zuchtwert</span>
-                </div>
-                <div class="parent-zw-bar" aria-label="ED-Zuchtwert-Skala">
-                  <span class="parent-zw-zero" style="left: 50%;"></span>
-                  {% if result.sire.zuchtwert_marker is not none %}
-                    <span class="parent-zw-marker" style="left: {{ result.sire.zuchtwert_marker }}%;"></span>
-                  {% endif %}
-                </div>
-                <div class="parent-zw-values">
-                  <span>ZW <span class="parent-zw-value">{{ result.sire.zuchtwert if result.sire.zuchtwert is not none else "—" }}</span></span>
-                  <span>Sicherheit <span class="parent-zw-value">{% if result.sire.konfidenz is not none %}{{ result.sire.konfidenz }} %{% else %}—{% endif %}</span></span>
-                </div>
-              </div>
             </div>
-            <div class="parent-card">
-              <h3>{{ result.dam.name }}</h3>
-              <div class="parent-meta">
-                Hündin · ZBNr {{ result.dam.zbnr or "—" }} · Wurfdatum {{ result.dam.wurfdatum or "—" }} · Alter {% if result.dam.alter is not none %}{{ result.dam.alter }} Jahre{% else %}—{% endif %}<br>
-                HD {{ result.dam.hd or "—" }} · ED {{ result.dam.ed or "—" }}<br>
-                prcd-PRA {{ result.dam.prcd_pra or "—" }} · HNPK {{ result.dam.hnpk or "—" }} · SD2 {{ result.dam.sd2 or "—" }}<br>
-                CNM {{ result.dam.cnm or "—" }} · EIC {{ result.dam.eic or "—" }} · ZS {{ result.dam.zs or "—" }} · STGD {{ result.dam.stgd_status or "—" }}
-              </div>
-              <div class="parent-zw">
-                <div class="parent-zw-head">
-                  <span class="parent-zw-label">ED-Zuchtwert</span>
+
+            {% if result %}
+              <div class="summary-grid">
+                <div class="metric">
+                  <div class="metric-label">Erwarteter ED-Zuchtwert</div>
+                  <div class="metric-value">{{ result.planned_ebv_display }}</div>
                 </div>
-                <div class="parent-zw-bar" aria-label="ED-Zuchtwert-Skala">
-                  <span class="parent-zw-zero" style="left: 50%;"></span>
-                  {% if result.dam.zuchtwert_marker is not none %}
-                    <span class="parent-zw-marker" style="left: {{ result.dam.zuchtwert_marker }}%;"></span>
-                  {% endif %}
+                <div class="metric">
+                  <div class="metric-label">COI</div>
+                  <div class="metric-value">{{ result.coi_display }}</div>
                 </div>
-                <div class="parent-zw-values">
-                  <span>ZW <span class="parent-zw-value">{{ result.dam.zuchtwert if result.dam.zuchtwert is not none else "—" }}</span></span>
-                  <span>Sicherheit <span class="parent-zw-value">{% if result.dam.konfidenz is not none %}{{ result.dam.konfidenz }} %{% else %}—{% endif %}</span></span>
+                <div class="metric">
+                  <div class="metric-label">AVK</div>
+                  <div class="metric-value">{{ result.avk_display }}</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Vollständig bis</div>
+                  <div class="metric-value">{% if result.complete_generation is not none %}Gen. {{ result.complete_generation }}{% else %}—{% endif %}</div>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
 
-        <section class="pedigree-panel">
-          {{ result.pedigree_html | safe }}
-        </section>
-
-      {% endif %}
+              <div class="parents">
+                <div class="parent-card">
+                  <h3>{{ result.sire.name }}</h3>
+                  <div class="parent-meta">
+                    Rüde · ZBNr {{ result.sire.zbnr or "—" }} · Alter {% if result.sire.alter is not none %}{{ result.sire.alter }} Jahre{% else %}—{% endif %}<br>
+                    HD {{ result.sire.hd or "—" }} · ED {{ result.sire.ed or "—" }}<br>
+                    ZW {{ result.sire.zuchtwert if result.sire.zuchtwert is not none else "—" }} · Sicherheit {% if result.sire.konfidenz is not none %}{{ result.sire.konfidenz }} %{% else %}—{% endif %}
+                    {% if result.sire.kc_health_url %}
+                      <br>
+                      <a class="external-health-link" href="{{ result.sire.kc_health_url }}" target="_blank" rel="noopener noreferrer">Royal Kennel Club Health Test Results</a>
+                    {% endif %}
+                  </div>
+                </div>
+                <div class="parent-card">
+                  <h3>{{ result.dam.name }}</h3>
+                  <div class="parent-meta">
+                    Hündin · ZBNr {{ result.dam.zbnr or "—" }} · Alter {% if result.dam.alter is not none %}{{ result.dam.alter }} Jahre{% else %}—{% endif %}<br>
+                    HD {{ result.dam.hd or "—" }} · ED {{ result.dam.ed or "—" }}<br>
+                    ZW {{ result.dam.zuchtwert if result.dam.zuchtwert is not none else "—" }} · Sicherheit {% if result.dam.konfidenz is not none %}{{ result.dam.konfidenz }} %{% else %}—{% endif %}
+                  </div>
+                </div>
+              </div>
+              <div class="assessment-actions">
+                <button type="button" class="secondary-button" id="openSavePairingModalButton">Verpaarung speichern</button>
+              </div>
+            {% else %}
+              <div class="workspace-empty">
+                <strong>Noch keine Verpaarung ausgewählt.</strong><br>
+                Wähle eine Hündin und einen Rüden aus, um ED-Erwartung, COI und weitere Kennzahlen zu sehen.
+              </div>
+            {% endif %}
+          </section>
+        </aside>
+      </div>
     </main>
 
     <div class="planning-drawer-backdrop" id="savedPairingsDrawer" aria-hidden="true">

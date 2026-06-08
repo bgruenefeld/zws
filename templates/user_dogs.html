@@ -228,6 +228,66 @@
         font-weight: 800;
       }
 
+      .status-pill {
+        align-items: center;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 800;
+        padding: 3px 8px;
+      }
+
+      .status-pill.found {
+        background: #eaf7ec;
+        color: #1c5a2d;
+      }
+
+      .status-pill.new {
+        background: #e8f2ff;
+        color: #2563eb;
+      }
+
+      .import-preview {
+        border: 1px solid #dfe5ec;
+        border-radius: 8px;
+        margin-top: 14px;
+        overflow: auto;
+      }
+
+      .import-preview table {
+        border-collapse: collapse;
+        font-size: 12px;
+        min-width: 980px;
+        width: 100%;
+      }
+
+      .import-preview th,
+      .import-preview td {
+        border-bottom: 1px solid #edf1f5;
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .import-preview th {
+        background: #f8fafc;
+        color: #667085;
+        font-weight: 800;
+      }
+
+      .import-summary {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .modal-dialog.import-dialog {
+        max-width: 1320px;
+        width: min(100%, 1320px);
+      }
+
       .empty {
         background: #f8fafc;
         border: 1px dashed #cfd8e3;
@@ -350,6 +410,9 @@
       {% if saved_zbnr %}
         <div class="message success">Der Hund wurde gespeichert: {{ saved_zbnr }}</div>
       {% endif %}
+      {% if imported_count %}
+        <div class="message success">{{ imported_count }} Hunde wurden aus der Ahnentafel importiert.</div>
+      {% endif %}
 
       <section class="panel" aria-labelledby="userDogsTitle">
         <div class="panel-head">
@@ -358,6 +421,7 @@
             <div class="panel-note">{{ user_dogs|length }} Hunde in der Zusatzdatei</div>
           </div>
           <div class="actions">
+            <button class="secondary-button" type="button" id="openImportPedigreeModal">Ahnentafel importieren</button>
             <button class="primary-button" type="button" id="openAddDogModal">Hund hinzufügen</button>
             <a class="secondary-button" href="/search">Zur Hundesuche</a>
           </div>
@@ -537,6 +601,131 @@
       </div>
     </div>
 
+    <div class="modal-backdrop {% if import_modal_open %}open{% endif %}" id="importPedigreeModal" aria-hidden="{{ 'false' if import_modal_open else 'true' }}">
+      <div class="modal-dialog import-dialog" role="dialog" aria-modal="true" aria-labelledby="importPedigreeTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="importPedigreeTitle">Ahnentafel aus Text importieren</h2>
+            <div class="panel-note">Für den ersten Schritt erwartet die App eine vollständige 31-Hunde-Ahnentafel in stabiler Reihenfolge. Gespeichert wird erst nach deiner Prüfung.</div>
+          </div>
+          <button type="button" class="modal-close" id="closeImportPedigreeModal" aria-label="Dialog schließen">×</button>
+        </div>
+
+        <div class="modal-body">
+          {% if import_errors %}
+            <div class="message error">
+              {% for error in import_errors %}
+                <div>{{ error }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <form method="post" action="/user-dogs/import" enctype="multipart/form-data">
+            <div class="form-grid">
+              <label>
+                Geschlecht des Hundes
+                <select name="root_sex">
+                  <option value="" {% if not import_root_sex %}selected{% endif %}>unbekannt</option>
+                  <option value="R" {% if import_root_sex == "R" %}selected{% endif %}>Rüde</option>
+                  <option value="H" {% if import_root_sex == "H" %}selected{% endif %}>Hündin</option>
+                </select>
+              </label>
+              <label class="span-2">
+                Textdatei
+                <input type="file" name="pedigree_file" accept=".txt,text/plain">
+              </label>
+              <label class="span-4">
+                Ahnentafel-Text
+                <textarea name="pedigree_text" placeholder="Text hier einfügen oder eine .txt-Datei auswählen">{{ import_text }}</textarea>
+              </label>
+            </div>
+            <div class="actions">
+              <button class="secondary-button" type="submit">Vorschau erzeugen</button>
+            </div>
+          </form>
+
+          {% if import_preview %}
+            {% set new_count = import_preview | selectattr("status", "equalto", "new") | list | length %}
+            {% set found_count = import_preview | selectattr("status", "equalto", "found") | list | length %}
+            <div class="import-summary">
+              <span class="status-pill new">{{ new_count }} neu</span>
+              <span class="status-pill found">{{ found_count }} vorhanden</span>
+              <span class="panel-note">Bitte prüfe Namen, Jahr, HD/ED und Elternzuordnung vor dem Speichern.</span>
+            </div>
+
+            <form method="post" action="/user-dogs/import-confirm">
+              <input type="hidden" name="import_data" value='{{ import_data_json | e }}'>
+              <div class="import-preview">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Import</th>
+                      <th>Slot</th>
+                      <th>Name</th>
+                      <th>Jahr</th>
+                      <th>Geschlecht</th>
+                      <th>HD</th>
+                      <th>ED</th>
+                      <th>EBV/C</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for dog in import_preview %}
+                      <tr>
+                        <td>
+                          {% if dog.status == "new" or dog.can_add_parent_links %}
+                            <input
+                              type="checkbox"
+                              name="import_slots"
+                              value="{{ dog.slot }}"
+                              {% if dog.selected %}checked{% endif %}
+                              aria-label="{{ dog.name }} {{ 'importieren' if dog.status == 'new' else 'mit Eltern ergänzen' }}"
+                            >
+                          {% else %}
+                            —
+                          {% endif %}
+                        </td>
+                        <td>{{ dog.slot }}</td>
+                        <td><span class="dog-name">{{ dog.name }}</span></td>
+                        <td>{{ dog.birth_year or "—" }}</td>
+                        <td>{{ "Rüde" if dog.geschlecht == "R" else "Hündin" if dog.geschlecht == "H" else "—" }}</td>
+                        <td>{{ dog.hips or "—" }}</td>
+                        <td>{{ dog.ed or dog.elbows or "—" }}</td>
+                        <td>
+                          {% if dog.ebv %}EBV {{ dog.ebv }}{% endif %}
+                          {% if dog.confidence %}{% if dog.ebv %}<br>{% endif %}C {{ dog.confidence }} %{% endif %}
+                          {% if not dog.ebv and not dog.confidence %}—{% endif %}
+                        </td>
+                        <td>
+                          {% if dog.status == "found" %}
+                            <span class="status-pill found">vorhanden</span><br>
+                            <span class="panel-note">{{ dog.match.name }}{% if dog.match.zbnr %} · {{ dog.match.zbnr }}{% endif %}</span>
+                            {% if dog.can_add_parent_links %}
+                              <br><span class="panel-note">Eltern aus Import ergänzen</span>
+                            {% endif %}
+                          {% else %}
+                            <span class="status-pill new">neu</span>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              <div class="actions">
+                <button class="primary-button" type="submit">Ausgewählte Hunde importieren</button>
+              </div>
+            </form>
+          {% endif %}
+        </div>
+
+        <div class="modal-actions">
+          <button class="secondary-button" type="button" id="cancelImportPedigreeModal">Schließen</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       function escapeHtml(value) {
         return String(value ?? '')
@@ -591,19 +780,49 @@
         document.body.classList.remove('modal-open');
       }
 
+      function openImportPedigreeModal() {
+        const modal = document.getElementById('importPedigreeModal');
+        if (!modal) return;
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        setTimeout(() => document.querySelector('#importPedigreeModal textarea[name="pedigree_text"]')?.focus(), 0);
+      }
+
+      function closeImportPedigreeModal() {
+        const modal = document.getElementById('importPedigreeModal');
+        if (!modal) return;
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+      }
+
       document.getElementById('openAddDogModal')?.addEventListener('click', openAddDogModal);
       document.getElementById('closeAddDogModal')?.addEventListener('click', closeAddDogModal);
       document.getElementById('cancelAddDogModal')?.addEventListener('click', closeAddDogModal);
       document.getElementById('addDogModal')?.addEventListener('click', event => {
         if (event.target.id === 'addDogModal') closeAddDogModal();
       });
+      document.getElementById('openImportPedigreeModal')?.addEventListener('click', openImportPedigreeModal);
+      document.getElementById('closeImportPedigreeModal')?.addEventListener('click', closeImportPedigreeModal);
+      document.getElementById('cancelImportPedigreeModal')?.addEventListener('click', closeImportPedigreeModal);
+      document.getElementById('importPedigreeModal')?.addEventListener('click', event => {
+        if (event.target.id === 'importPedigreeModal') closeImportPedigreeModal();
+      });
       document.addEventListener('keydown', event => {
-        if (event.key === 'Escape') closeAddDogModal();
+        if (event.key === 'Escape') {
+          closeAddDogModal();
+          closeImportPedigreeModal();
+        }
       });
 
       if (document.getElementById('addDogModal')?.classList.contains('open')) {
         document.body.classList.add('modal-open');
         setTimeout(() => document.querySelector('#addDogModal input[name="name"]')?.focus(), 0);
+      }
+      if (document.getElementById('importPedigreeModal')?.classList.contains('open')) {
+        document.body.classList.add('modal-open');
+        setTimeout(() => document.querySelector('#importPedigreeModal textarea[name="pedigree_text"]')?.focus(), 0);
       }
     </script>
   </body>

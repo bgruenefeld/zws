@@ -18,6 +18,7 @@ import math
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import pandas as pd
 
@@ -748,7 +749,7 @@ def compute_compact_layout(
     return positions, total_width, total_height
 
 
-def render_card(entry: dict[str, Any], generation: int = 0) -> str:
+def render_card(entry: dict[str, Any], generation: int = 0, max_generations: int = 5) -> str:
     """
     Rendert eine kompakte Hundekarte.
     """
@@ -770,6 +771,15 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
     name = clean(dog.get("Name")) or "Ohne Namen"
     zbnr = clean(dog.get("ZBNr_norm") or dog.get("ZBNr") or lookup_zbnr)
     zbnr_attr = html.escape(zbnr or "", quote=True)
+    father_zbnr = normalize_parent_zbnr(
+        dog.get("vater_zbnr_norm") or dog.get("vater_zbnr")
+    )
+    mother_zbnr = normalize_parent_zbnr(
+        dog.get("mutter_zbnr_norm") or dog.get("mutter_zbnr")
+    )
+    missing_direct_ancestor = generation < max_generations and (
+        not father_zbnr or not mother_zbnr
+    )
 
     birth = first_existing_value(
         dog,
@@ -857,7 +867,19 @@ def render_card(entry: dict[str, Any], generation: int = 0) -> str:
 
     detail_lines = [name, f"Score {epi_score}" if epi_score else "", info_line, health_line, zws_line]
     title = html.escape(" | ".join(line for line in detail_lines if line) + warning_title, quote=True)
-    name_html = f'<div class="name">{html.escape(name)}{epi_score_html}</div>'
+    k9_link_html = ""
+    if missing_direct_ancestor:
+        k9_url = (
+            "https://k9-data.org/search"
+            f"?registeredName={quote(name)}&breed=2"
+        )
+        k9_link_html = (
+            f' <a class="k9-link" href="{html.escape(k9_url, quote=True)}" '
+            'target="_blank" rel="noopener noreferrer" '
+            'title="Bei k9-data suchen">k9</a>'
+        )
+
+    name_html = f'<div class="name">{html.escape(name)}{epi_score_html}{k9_link_html}</div>'
 
     if generation >= 5:
         compact_parts = []
@@ -946,7 +968,7 @@ def render_pedigree_html(
 
     leaf_count = 2 ** max_generations
     row_height = 44
-    column_widths = [300, 300, 300, 315, 315]
+    column_widths = [250, 255, 260, 270, 270]
     active_widths = column_widths[:max_generations]
     total_width = sum(active_widths)
     total_height = leaf_count * row_height
@@ -966,7 +988,7 @@ def render_pedigree_html(
             f"""
             <div class="pedigree-cell"
                  style="grid-column:{generation}; grid-row:{row_start} / {row_end};">
-                {render_card(entry, generation=generation)}
+                {render_card(entry, generation=generation, max_generations=max_generations)}
             </div>
             """
         )
@@ -1016,9 +1038,11 @@ def render_pedigree_html(
         }}
 
         .canvas-wrap {{
-            overflow: auto;
+            display: flex;
+            justify-content: center;
+            overflow: visible;
             background: #f5f7fa;
-            padding: 18px;
+            padding: 12px;
         }}
 
         .canvas {{
@@ -1106,6 +1130,20 @@ def render_pedigree_html(
             flex: 0 0 auto;
             height: 8px;
             width: 8px;
+        }}
+
+        .k9-link {{
+            color: #2563eb;
+            display: inline;
+            font-size: 10px;
+            font-weight: 800;
+            margin-left: 6px;
+            text-decoration: none;
+            white-space: nowrap;
+        }}
+
+        .k9-link:hover {{
+            text-decoration: underline;
         }}
 
         .subline {{
