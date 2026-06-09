@@ -11,6 +11,8 @@ import os
 import re
 import tempfile
 import threading
+import time
+import uuid
 
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, session
 
@@ -30,6 +32,8 @@ SCORES_CSV = APP_DIR / "scores_bereinigt_mit_originalname.csv"
 USER_DOGS_CSV = Path(os.environ.get("USER_DOGS_CSV", APP_DIR / "user_hunde.csv"))
 USER_DOGS_LOCK_FILE = Path(os.environ.get("USER_DOGS_LOCK_FILE", f"{USER_DOGS_CSV}.lock"))
 USER_DOGS_LOCK = threading.Lock()
+PEDIGREE_IMPORT_STATES = {}
+PEDIGREE_IMPORT_STATE_TTL_SECONDS = 30 * 60
 
 
 app = Flask(__name__)
@@ -85,6 +89,62 @@ def is_authenticated():
 
 def is_safe_next_url(value):
     return bool(value) and value.startswith("/") and not value.startswith("//")
+
+
+def current_return_url():
+    return request.full_path.rstrip("?")
+
+
+def redirect_with_imported_count(return_to, imported_count):
+    target = return_to if is_safe_next_url(return_to) else url_for("manage_user_dogs")
+    separator = "&" if "?" in target else "?"
+    return redirect(f"{target}{separator}imported={imported_count}")
+
+
+def cleanup_pedigree_import_states():
+    now = time.time()
+    expired_tokens = [
+        token
+        for token, item in PEDIGREE_IMPORT_STATES.items()
+        if now - item.get("created_at", now) > PEDIGREE_IMPORT_STATE_TTL_SECONDS
+    ]
+    for token in expired_tokens:
+        PEDIGREE_IMPORT_STATES.pop(token, None)
+
+
+def set_pedigree_import_state(**state):
+    cleanup_pedigree_import_states()
+    token = uuid.uuid4().hex
+    PEDIGREE_IMPORT_STATES[token] = {
+        "created_at": time.time(),
+        "state": state,
+    }
+    session["pedigree_import_state_id"] = token
+
+
+def pedigree_import_context(default_return_to=None):
+    cleanup_pedigree_import_states()
+    token = session.pop("pedigree_import_state_id", None)
+    stored_state = PEDIGREE_IMPORT_STATES.pop(token, None) if token else None
+    state = (stored_state or {}).get("state", {})
+    return_to = (
+        state.get("import_return_to")
+        or default_return_to
+        or current_return_url()
+    )
+    if not is_safe_next_url(return_to):
+        return_to = url_for("manage_user_dogs")
+
+    return {
+        "imported_count": request.args.get("imported", ""),
+        "import_errors": state.get("import_errors", []),
+        "import_preview": state.get("import_preview", []),
+        "import_data_json": state.get("import_data_json", ""),
+        "import_modal_open": bool(state.get("import_modal_open") or request.args.get("import_open")),
+        "import_root_sex": state.get("import_root_sex", ""),
+        "import_text": state.get("import_text", ""),
+        "import_return_to": return_to,
+    }
 
 
 @app.before_request
@@ -997,8 +1057,11 @@ def dog_matches_age(row, min_age=None, max_age=None):
 
 def dog_ebv_value(row):
     cached = row.get("_ebv_numeric") if hasattr(row, "get") else None
-    if cached is not None and not pd.isna(cached):
-        return float(cached)
+    if clean_text(cached):
+        try:
+            return float(cached)
+        except Exception:
+            pass
     return pt.to_float_or_none(row.get("EBV") or row.get("ed_zw_0_10_niedrig_gut"))
 
 
@@ -1226,7 +1289,13 @@ def pedigree_metric_generation_depth(index, start_zbnr, minimum=5, maximum=10):
     return max(minimum, min(maximum, deepest_found))
 
 
-def repeated_ancestors_for_display(index, start_zbnr, max_generations=5):
+def repeated_ancestors_for_display(
+    index,
+    start_zbnr,
+    max_generations=5,
+    visible_generations=5,
+    include_positions=False,
+):
     slots = pt.build_positional_pedigree(
         index=index,
         start_zbnr=start_zbnr,
@@ -1260,18 +1329,149 @@ def repeated_ancestors_for_display(index, start_zbnr, max_generations=5):
         if len(positions) < 2:
             continue
         dog = dog_by_zbnr.get(zbnr) or index.get(zbnr) or {}
-        repeated.append(
-            {
-                "zbnr": zbnr,
-                "name": clean_text(dog.get("Name")) or zbnr,
-                "count": len(positions),
-                "generations": sorted({pos["generation"] for pos in positions}),
-                "positions": positions,
-            }
-        )
+        generations = sorted({pos["generation"] for pos in positions})
+        visible_positions = [
+            pos for pos in positions
+            if pos["generation"] <= visible_generations
+        ]
+        visible_generations_list = sorted({pos["generation"] for pos in visible_positions})
+        visible = bool(visible_positions)
+        has_hidden_positions = any(pos["generation"] > visible_generations for pos in positions)
+        if visible and has_hidden_positions:
+            visibility_label = "teilweise nicht sichtbar"
+        elif has_hidden_positions:
+            visibility_label = "nicht sichtbar"
+        else:
+            visibility_label = "sichtbar"
+        item = {
+            "zbnr": zbnr,
+            "name": clean_text(dog.get("Name")) or zbnr,
+            "count": len(positions),
+            "generations": generations,
+            "visible_count": len(visible_positions),
+            "visible_generations": visible_generations_list,
+            "visible": visible,
+            "has_hidden_positions": has_hidden_positions,
+            "visibility_label": visibility_label,
+        }
+        if include_positions:
+            item["positions"] = positions
+        repeated.append(item)
 
     repeated.sort(key=lambda item: (-item["count"], item["name"].casefold()))
     return repeated
+
+
+def ancestor_contributors_for_display(index, start_zbnr, max_generations=10, limit=100):
+    slots = pt.build_positional_pedigree(
+        index=index,
+        start_zbnr=start_zbnr,
+        max_generations=max_generations,
+    )
+    contributors = {}
+
+    for _slot_id, entry in slots.items():
+        generation = entry.get("generation", 0)
+        if generation <= 0:
+            continue
+
+        zbnr = pt.normalize_zbnr(entry.get("zbnr")) or clean_text(entry.get("zbnr"))
+        if not zbnr:
+            continue
+
+        dog = entry.get("dog") or index.get(zbnr) or {}
+        item = contributors.setdefault(
+            zbnr,
+            {
+                "zbnr": zbnr,
+                "name": clean_text(dog.get("Name")) or zbnr,
+                "sex": clean_text(dog.get("Geschlecht") or dog.get("sex")),
+                "count": 0,
+                "blood_percent": 0.0,
+                "generation_counts": {},
+            },
+        )
+        item["count"] += 1
+        item["blood_percent"] += 100 / (2 ** generation)
+        generation_key = str(generation)
+        item["generation_counts"][generation_key] = item["generation_counts"].get(generation_key, 0) + 1
+
+    rows = sorted(
+        contributors.values(),
+        key=lambda item: (-item["blood_percent"], -item["count"], item["name"].casefold()),
+    )
+    return rows[:limit]
+
+
+def avk_analysis_for_display(index, start_zbnr, max_generations=10, visible_generations=5):
+    avk = pt.calculate_avk_for_zbnr(
+        index,
+        start_zbnr,
+        max_generations=max_generations,
+    )
+    visible_avk = pt.calculate_avk_for_zbnr(
+        index,
+        start_zbnr,
+        max_generations=visible_generations,
+    )
+    contributors = ancestor_contributors_for_display(
+        index,
+        start_zbnr,
+        max_generations=max_generations,
+    )
+    repeated = repeated_ancestors_for_display(
+        index,
+        start_zbnr,
+        max_generations=max_generations,
+        visible_generations=visible_generations,
+    )
+
+    return {
+        "max_generations": max_generations,
+        "visible_generations": visible_generations,
+        "visible_avk_known_percent": visible_avk.get("avk_known_percent"),
+        "avk_known_percent": avk.get("avk_known_percent"),
+        "possible_ancestor_positions": avk.get("possible_ancestor_positions"),
+        "known_ancestor_positions": avk.get("known_ancestor_positions"),
+        "unique_known_ancestors": avk.get("unique_known_ancestors"),
+        "ancestor_loss_known": avk.get("ancestor_loss_known"),
+        "deepest_complete_generation_in_data": avk.get("deepest_complete_generation_in_data"),
+        "generation_rows": avk.get("generation_rows", []),
+        "contributors": contributors,
+        "repeated_ancestors": repeated,
+    }
+
+
+def coi_analysis_for_display(index, start_zbnr, min_generations=5, max_generations=10):
+    rows = []
+    start = max(1, int(min_generations or 1))
+    end = max(start, int(max_generations or start))
+
+    for generation in range(start, end + 1):
+        result = pt.calculate_coi_for_zbnr(
+            index,
+            start_zbnr,
+            max_generations=generation,
+        )
+        rows.append(
+            {
+                "generation": generation,
+                "coi_percent": result.get("coi_percent"),
+                "animals_in_calculation": result.get("animals_in_calculation"),
+                "known_animals": result.get("known_animals"),
+                "unknown_founders": result.get("unknown_founders"),
+            }
+        )
+
+    return {
+        "min_generations": start,
+        "max_generations": end,
+        "rows": rows,
+        "note": (
+            "Fehlende Ahnen werden in der COI-Berechnung als unbekannte, "
+            "nicht verwandte Founder behandelt."
+        ),
+    }
 
 
 def extract_embeddable_html(html):
@@ -1507,7 +1707,7 @@ def compare_watchlist():
 def manage_user_dogs():
     errors = []
     saved_zbnr = request.args.get("saved", "")
-    imported_count = request.args.get("imported", "")
+    import_context = pedigree_import_context(default_return_to=url_for("manage_user_dogs"))
     form_values = user_dog_form_defaults()
     prefill_name = clean_text(request.args.get("prefill_name"))
     modal_open = bool(prefill_name)
@@ -1538,13 +1738,7 @@ def manage_user_dogs():
         user_dogs=user_dogs,
         user_dogs_path=user_dog_path_label(),
         modal_open=modal_open,
-        imported_count=imported_count,
-        import_errors=[],
-        import_preview=[],
-        import_data_json="",
-        import_modal_open=False,
-        import_root_sex="",
-        import_text="",
+        **import_context,
     )
 
 
@@ -1553,6 +1747,9 @@ def preview_user_dog_import():
     import_errors = []
     root_sex = clean_text(request.form.get("root_sex")).upper()
     import_text = clean_text(request.form.get("pedigree_text"))
+    return_to = clean_text(request.form.get("import_return_to")) or url_for("manage_user_dogs")
+    if not is_safe_next_url(return_to):
+        return_to = url_for("manage_user_dogs")
     uploaded = request.files.get("pedigree_file")
     if uploaded is not None and clean_text(uploaded.filename):
         try:
@@ -1573,29 +1770,24 @@ def preview_user_dog_import():
         except Exception as exc:
             import_errors.append(str(exc))
 
-    user_dogs = load_user_dogs_df().to_dict(orient="records")
-    user_dogs = sorted(user_dogs, key=lambda dog: clean_text(dog.get("created_at")), reverse=True)
-    return render_template(
-        "user_dogs.html",
-        errors=[],
-        saved_zbnr="",
-        form_values=user_dog_form_defaults(),
-        user_dogs=user_dogs,
-        user_dogs_path=user_dog_path_label(),
-        modal_open=False,
-        imported_count="",
+    set_pedigree_import_state(
         import_errors=import_errors,
         import_preview=import_preview,
         import_data_json=import_data_json,
         import_modal_open=True,
         import_root_sex=root_sex,
         import_text=import_text,
+        import_return_to=return_to,
     )
+    return redirect(return_to)
 
 
 @app.route("/user-dogs/import-confirm", methods=["POST"])
 def confirm_user_dog_import():
     import_errors = []
+    return_to = clean_text(request.form.get("import_return_to")) or url_for("manage_user_dogs")
+    if not is_safe_next_url(return_to):
+        return_to = url_for("manage_user_dogs")
     try:
         preview_items = json.loads(request.form.get("import_data", "[]"))
     except Exception:
@@ -1607,25 +1799,18 @@ def confirm_user_dog_import():
         import_errors.append("Bitte wähle mindestens einen neuen Hund für den Import aus.")
 
     if import_errors:
-        user_dogs = load_user_dogs_df().to_dict(orient="records")
-        user_dogs = sorted(user_dogs, key=lambda dog: clean_text(dog.get("created_at")), reverse=True)
-        return render_template(
-            "user_dogs.html",
-            errors=[],
-            saved_zbnr="",
-            form_values=user_dog_form_defaults(),
-            user_dogs=user_dogs,
-            user_dogs_path=user_dog_path_label(),
-            modal_open=False,
-            imported_count="",
+        set_pedigree_import_state(
             import_errors=import_errors,
             import_preview=preview_items,
             import_data_json=json.dumps(preview_items, ensure_ascii=False),
             import_modal_open=True,
             import_root_sex="",
             import_text="",
+            import_return_to=return_to,
         )
+        return redirect(return_to)
 
+    records = []
     with USER_DOGS_LOCK:
         with locked_user_dogs_file():
             user_df = load_user_dogs_df()
@@ -1646,7 +1831,7 @@ def confirm_user_dog_import():
                 write_user_dogs_df(new_df)
                 update_data_cache_with_user_records(records)
 
-    return redirect(url_for("manage_user_dogs", imported=len(records)))
+    return redirect_with_imported_count(return_to, len(records))
 
 
 @app.route("/dog_suggest")
@@ -1775,6 +1960,7 @@ def pairing():
         "sire_sort_dir": sire_sort_dir,
         "result": None,
         "error": None,
+        **pedigree_import_context(default_return_to=current_return_url()),
     }
 
     if dam_preview is not None:
@@ -1834,17 +2020,24 @@ def pairing():
                 planned_zbnr,
                 max_generations=metric_max_gen,
             )
+            avk_analysis = avk_analysis_for_display(
+                pairing_index,
+                planned_zbnr,
+                max_generations=metric_max_gen,
+                visible_generations=display_max_gen,
+            )
+            coi_analysis = coi_analysis_for_display(
+                pairing_index,
+                planned_zbnr,
+                min_generations=display_max_gen,
+                max_generations=metric_max_gen,
+            )
             pedigree = pt.create_pedigree_html_for_zbnr(
                 df_or_index=pairing_index,
                 start_zbnr=planned_zbnr,
                 max_generations=display_max_gen,
                 include_coi=False,
                 include_avk=False,
-            )
-            repeated_ancestors = repeated_ancestors_for_display(
-                pairing_index,
-                planned_zbnr,
-                max_generations=display_max_gen,
             )
 
             context["result"] = {
@@ -1860,10 +2053,13 @@ def pairing():
                 "coi_display": format_percent_or_dash(coi.get("coi_percent")),
                 "avk_percent": avk.get("avk_known_percent"),
                 "avk_display": format_percent_or_dash(avk.get("avk_known_percent")),
+                "visible_avk_percent": avk_analysis.get("visible_avk_known_percent"),
+                "visible_avk_display": format_percent_or_dash(avk_analysis.get("visible_avk_known_percent")),
                 "complete_generation": avk.get("deepest_complete_generation_in_data"),
                 "metric_generations": metric_max_gen,
                 "display_generations": display_max_gen,
-                "repeated_ancestors": repeated_ancestors,
+                "avk_analysis": avk_analysis,
+                "coi_analysis": coi_analysis,
                 "pedigree_html": extract_embeddable_html(pedigree.get("html", "")),
             }
 
@@ -1899,6 +2095,7 @@ def search_results():
             sort_dir=sort_dir,
             no_results=False,
             search_started=False,
+            **pedigree_import_context(default_return_to=current_return_url()),
         )
     
     q = query.lower()
@@ -2062,6 +2259,7 @@ def search_results():
         sort_dir=sort_dir,
         no_results=(total_matches == 0),
         search_started=True,
+        **pedigree_import_context(default_return_to=current_return_url()),
     )
 
 
@@ -2136,6 +2334,18 @@ def pedigree_metrics():
             zbnr,
             max_generations=max_gen,
         )
+        avk_analysis = avk_analysis_for_display(
+            ZBNR_INDEX,
+            zbnr,
+            max_generations=max_gen,
+            visible_generations=5,
+        )
+        coi_analysis = coi_analysis_for_display(
+            ZBNR_INDEX,
+            zbnr,
+            min_generations=5,
+            max_generations=max_gen,
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -2143,6 +2353,9 @@ def pedigree_metrics():
         {
             "coi_percent": coi.get("coi_percent") if coi else None,
             "avk_known_percent": avk.get("avk_known_percent") if avk else None,
+            "visible_avk_known_percent": (
+                avk_analysis.get("visible_avk_known_percent") if avk_analysis else None
+            ),
             "deepest_complete_generation_in_data": (
                 avk.get("deepest_complete_generation_in_data") if avk else None
             ),
@@ -2150,6 +2363,10 @@ def pedigree_metrics():
                 avk.get("deepest_complete_generation_by_zbnr") if avk else None
             ),
             "metric_generations": max_gen,
+            "visible_generations": 5,
+            "repeated_ancestors": avk_analysis.get("repeated_ancestors", []),
+            "avk_analysis": avk_analysis,
+            "coi_analysis": coi_analysis,
         }
     )
 

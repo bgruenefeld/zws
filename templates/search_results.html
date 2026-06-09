@@ -7,6 +7,8 @@
     <style>
       {% include "_nav_css.html" %}
       {% include "_pedigree_notes_css.html" %}
+      {% include "_pedigree_import_css.html" %}
+      {% include "_avk_analysis_css.html" %}
       * { box-sizing: border-box; }
       body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -712,6 +714,59 @@
         font-weight: 750;
       }
 
+      .ancestor-repeat-panel {
+        background: #fff;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        margin-top: 10px;
+        overflow: hidden;
+      }
+
+      .ancestor-repeat-title {
+        color: #1f3a52;
+        font-size: 13px;
+        font-weight: 800;
+        padding: 9px 12px;
+      }
+
+      .ancestor-repeat-table {
+        border-collapse: collapse;
+        font-size: 12px;
+        width: 100%;
+      }
+
+      .ancestor-repeat-table th,
+      .ancestor-repeat-table td {
+        border-top: 1px solid #edf1f5;
+        padding: 7px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .ancestor-repeat-table th {
+        background: #f8fafc;
+        color: #667085;
+        font-weight: 800;
+      }
+
+      .ancestor-visibility {
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 2px 7px;
+      }
+
+      .ancestor-visibility.hidden {
+        background: #fff4e5;
+        color: #9a4b00;
+      }
+
+      .ancestor-visibility.visible {
+        background: #eef6ff;
+        color: #1d4ed8;
+      }
+
       .overview-note-card {
         background: #fff;
         border: 1px solid #dbe2ea;
@@ -1104,7 +1159,12 @@
         <form class="search-form" method="get" action="/search">
           <input name="q" type="text" value="{{ query }}" placeholder="Hundename oder Zuchtbuchnummer" />
           <button type="submit">Suchen</button>
+          <button type="button" class="import-launch-button" id="openImportPedigreeModal">Ahnentafel importieren</button>
         </form>
+
+        {% if imported_count %}
+          <div class="import-success-message">{{ imported_count }} Hunde wurden aus der Ahnentafel importiert.</div>
+        {% endif %}
 
         <div id="watchlistPanel" class="watchlist-panel" aria-live="polite">
           <div class="watchlist-header">
@@ -1282,7 +1342,8 @@
                 <div class="overview-compact-line" id="pedigreeMetrics">
                   <strong>Pedigree:</strong>
                   COI <span id="coiValue">—</span> ·
-                  AVK <span id="avkValue">—</span> ·
+                  Ahnenverlust Gen. 5 <span id="visibleAvkValue">—</span> ·
+                  tief <span id="avkValue">—</span> <span id="avkDepthLabel"></span> ·
                   vollständig bis <span id="completeGenValue">—</span>
                 </div>
                 <div class="overview-note-card" id="overviewNoteCard">
@@ -1298,9 +1359,26 @@
 
           <section class="detail-content-section" aria-labelledby="pedigreeSectionTitle">
             <h4 class="detail-section-title" id="pedigreeSectionTitle">Ahnentafel</h4>
-            <div class="pedigree-section">
-              <div id="pedigreeArea" class="loading">Wird geladen...</div>
+            <div class="pedigree-tabs" role="tablist" aria-label="Ahnentafel Ansicht">
+              <button type="button" class="pedigree-tab-button active" data-pedigree-tab="pedigree">Ahnentafel</button>
+              <button type="button" class="pedigree-tab-button" data-pedigree-tab="avk">AVK</button>
+              <button type="button" class="pedigree-tab-button" data-pedigree-tab="coi">COI</button>
             </div>
+            <section class="pedigree-tab-panel" data-pedigree-panel="pedigree">
+              <div class="pedigree-section">
+                <div id="pedigreeArea" class="loading">Wird geladen...</div>
+              </div>
+            </section>
+            <section class="pedigree-tab-panel" data-pedigree-panel="avk" hidden>
+              <div id="avkAnalysisArea" class="avk-analysis">
+                <div class="avk-empty">Wähle einen Hund aus, um die AVK-Analyse zu laden.</div>
+              </div>
+            </section>
+            <section class="pedigree-tab-panel" data-pedigree-panel="coi" hidden>
+              <div id="coiAnalysisArea" class="coi-analysis">
+                <div class="avk-empty">Wähle einen Hund aus, um die COI-Analyse zu laden.</div>
+              </div>
+            </section>
           </section>
         </div>
       </div>
@@ -1308,6 +1386,7 @@
     </div>
 
     {% include "_relatives_modal.html" %}
+    {% include "_pedigree_import_modal.html" %}
 
     <script>
       let currentSort = { column: null, direction: 'asc' };
@@ -1617,8 +1696,12 @@
 
       function resetPedigreeMetrics() {
         document.getElementById('coiValue').textContent = 'wird geladen...';
+        document.getElementById('visibleAvkValue').textContent = 'wird geladen...';
         document.getElementById('avkValue').textContent = 'wird geladen...';
+        document.getElementById('avkDepthLabel').textContent = '';
         document.getElementById('completeGenValue').textContent = 'wird geladen...';
+        renderAvkAnalysis(null);
+        renderCoiAnalysis(null);
       }
 
       function formatPercent(value) {
@@ -1627,6 +1710,156 @@
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         }) + ' %';
+      }
+
+      function formatNumber(value) {
+        if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+        return Number(value).toLocaleString('de-DE', { maximumFractionDigits: 0 });
+      }
+
+      function renderAvkAnalysis(data) {
+        const area = document.getElementById('avkAnalysisArea');
+        if (!area) return;
+
+        const analysis = data?.avk_analysis;
+        if (!analysis) {
+          area.innerHTML = '<div class="avk-empty">Wähle einen Hund aus, um die AVK-Analyse zu laden.</div>';
+          return;
+        }
+
+        const maxGenerations = Number(analysis.max_generations || data.metric_generations || 5);
+        const generationRows = Array.isArray(analysis.generation_rows) ? analysis.generation_rows : [];
+        const contributors = Array.isArray(analysis.contributors) ? analysis.contributors : [];
+        const generationHeaders = Array.from({ length: maxGenerations }, (_, index) => index + 1);
+
+        const generationHtml = generationRows.map(row => {
+          const expected = Number(row.expected_positions || 0);
+          const found = Number(row.found_in_data_positions || 0);
+          const percent = expected ? found / expected * 100 : 0;
+          return `
+            <div class="avk-generation-row">
+              <div class="avk-generation-label">Gen ${escapeHtml(row.generation)}</div>
+              <div class="avk-generation-bar">
+                <div class="avk-generation-fill" style="width: ${Math.max(0, Math.min(100, percent))}%;">${percent.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</div>
+              </div>
+              <div class="avk-generation-count">${formatNumber(found)} / ${formatNumber(expected)}</div>
+            </div>
+          `;
+        }).join('');
+
+        const contributorRows = contributors.map(item => {
+          const generationCells = generationHeaders.map(gen => {
+            const count = item.generation_counts?.[String(gen)] || '';
+            return `<td>${escapeHtml(count)}</td>`;
+          }).join('');
+          return `
+            <tr>
+              <td>${escapeHtml(item.name || 'unbekannt')}</td>
+              <td>${escapeHtml(item.zbnr || '')}</td>
+              <td>${escapeHtml(item.sex || '—')}</td>
+              <td>${formatPercent(item.blood_percent)}</td>
+              <td>${escapeHtml(item.count ?? '')}</td>
+              ${generationCells}
+            </tr>
+          `;
+        }).join('');
+
+        area.innerHTML = `
+          <div class="avk-analysis-inner">
+            <div class="avk-summary-card">
+              <div class="avk-summary-label">Ahnenverlust tief bis Gen. ${escapeHtml(maxGenerations)}</div>
+              <div class="avk-summary-value">${formatPercent(analysis.avk_known_percent)}</div>
+              <div class="avk-summary-note">Gen. ${escapeHtml(analysis.visible_generations || 5)}: ${formatPercent(analysis.visible_avk_known_percent)} · vollständig bis Gen. ${escapeHtml(analysis.deepest_complete_generation_in_data ?? '—')}</div>
+            </div>
+
+            <div>
+              <h3 class="avk-section-title">Vollständigkeit der Ahnentafel (${escapeHtml(maxGenerations)} Generationen)</h3>
+              <div class="avk-generation-list">${generationHtml}</div>
+            </div>
+
+            <div class="avk-metrics-box">
+              <div class="avk-metrics-title">Pedigree-Kennzahlen für ${escapeHtml(maxGenerations)} Generationen</div>
+              <div class="avk-metric-line"><span>Bekannte Ahnenpositionen</span><strong>${formatNumber(analysis.known_ancestor_positions)}</strong></div>
+              <div class="avk-metric-line"><span>Unterschiedliche bekannte Ahnen</span><strong>${formatNumber(analysis.unique_known_ancestors)}</strong></div>
+              <div class="avk-metric-line"><span>Mögliche Ahnenpositionen</span><strong>${formatNumber(analysis.possible_ancestor_positions)}</strong></div>
+              <div class="avk-metric-line"><span>Ahnenverlust</span><strong>${formatNumber(analysis.ancestor_loss_known)} (${formatPercent(analysis.avk_known_percent)})</strong></div>
+            </div>
+
+            <div>
+              <h3 class="avk-section-title">Top 100 Ahnenbeiträge (${escapeHtml(maxGenerations)} Generationen)</h3>
+              ${contributors.length ? `
+                <div class="avk-table-wrap">
+                  <table class="avk-contributor-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>ZBNr</th>
+                        <th>Geschlecht</th>
+                        <th>Blut %</th>
+                        <th>Anzahl</th>
+                        ${generationHeaders.map(gen => `<th>${gen}</th>`).join('')}
+                      </tr>
+                    </thead>
+                    <tbody>${contributorRows}</tbody>
+                  </table>
+                </div>
+              ` : '<div class="avk-empty">Keine Ahnenbeiträge vorhanden.</div>'}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderCoiAnalysis(data) {
+        const area = document.getElementById('coiAnalysisArea');
+        if (!area) return;
+
+        const analysis = data?.coi_analysis;
+        if (!analysis) {
+          area.innerHTML = '<div class="avk-empty">Wähle einen Hund aus, um die COI-Analyse zu laden.</div>';
+          return;
+        }
+
+        const rows = Array.isArray(analysis.rows) ? analysis.rows : [];
+        const lastRow = rows.length ? rows[rows.length - 1] : null;
+        const rowHtml = rows.map(row => `
+          <tr>
+            <td>Gen. ${escapeHtml(row.generation)}</td>
+            <td>${formatPercent(row.coi_percent)}</td>
+            <td>${formatNumber(row.animals_in_calculation)}</td>
+            <td>${formatNumber(row.known_animals)}</td>
+            <td>${formatNumber(row.unknown_founders)}</td>
+          </tr>
+        `).join('');
+
+        area.innerHTML = `
+          <div class="avk-analysis-inner">
+            <div class="avk-summary-card coi-summary-card">
+              <div class="avk-summary-label">COI-Verlauf ab Gen. ${escapeHtml(analysis.min_generations || 5)} bis Gen. ${escapeHtml(analysis.max_generations || data.metric_generations || 5)}</div>
+              <div class="avk-summary-value">${lastRow ? formatPercent(lastRow.coi_percent) : '—'}</div>
+              <div class="avk-summary-note">${escapeHtml(analysis.note || 'Fehlende Ahnen werden als unbekannte, nicht verwandte Founder behandelt.')}</div>
+            </div>
+
+            <div>
+              <h3 class="avk-section-title">COI nach Berechnungstiefe</h3>
+              ${rows.length ? `
+                <div class="avk-table-wrap coi-table-wrap">
+                  <table class="avk-contributor-table coi-generation-table">
+                    <thead>
+                      <tr>
+                        <th>Generation</th>
+                        <th>COI</th>
+                        <th>Tiere in Berechnung</th>
+                        <th>Bekannte Tiere</th>
+                        <th>Unbekannte Founder</th>
+                      </tr>
+                    </thead>
+                    <tbody>${rowHtml}</tbody>
+                  </table>
+                </div>
+              ` : '<div class="avk-empty">Keine COI-Werte vorhanden.</div>'}
+            </div>
+          </div>
+        `;
       }
 
       function loadPedigreeMetrics(zbnr) {
@@ -1643,11 +1876,16 @@
             if (selectedMetricsZbnr !== zbnr) return;
 
             document.getElementById('coiValue').textContent = formatPercent(data.coi_percent);
+            document.getElementById('visibleAvkValue').textContent = formatPercent(data.visible_avk_known_percent);
             document.getElementById('avkValue').textContent = formatPercent(data.avk_known_percent);
+            document.getElementById('avkDepthLabel').textContent =
+              data.metric_generations ? '(Gen. ' + data.metric_generations + ')' : '';
 
             const completeGen = data.deepest_complete_generation_in_data;
             document.getElementById('completeGenValue').textContent =
               completeGen !== null && completeGen !== undefined ? 'Gen. ' + completeGen : '—';
+            renderAvkAnalysis(data);
+            renderCoiAnalysis(data);
 
             updateWatchlistMetrics(zbnr, data);
           })
@@ -1655,8 +1893,12 @@
             if (selectedMetricsZbnr !== zbnr) return;
             console.error('Pedigree metrics loading error:', e);
             document.getElementById('coiValue').textContent = '—';
+            document.getElementById('visibleAvkValue').textContent = '—';
             document.getElementById('avkValue').textContent = '—';
+            document.getElementById('avkDepthLabel').textContent = '';
             document.getElementById('completeGenValue').textContent = '—';
+            renderAvkAnalysis(null);
+            renderCoiAnalysis(null);
           });
       }
 
@@ -1746,6 +1988,7 @@
       {% include "_watchlist_script.html" %}
       {% include "_pedigree_notes_script.html" %}
       {% include "_relatives_modal_script.html" %}
+      {% include "_pedigree_import_script.html" %}
 
       function loadPedigree(zbnr) {
         const area = document.getElementById('pedigreeArea');
@@ -1779,6 +2022,20 @@
         });
       }
 
+      function attachPedigreeTabs() {
+        const buttons = document.querySelectorAll('[data-pedigree-tab]');
+        if (!buttons.length) return;
+        buttons.forEach(button => {
+          button.addEventListener('click', () => {
+            const tab = button.dataset.pedigreeTab;
+            buttons.forEach(item => item.classList.toggle('active', item === button));
+            document.querySelectorAll('[data-pedigree-panel]').forEach(panel => {
+              panel.hidden = panel.dataset.pedigreePanel !== tab;
+            });
+          });
+        });
+      }
+
       attachRelativesModalEvents();
       document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') closeRelativesModal();
@@ -1791,6 +2048,7 @@
 
       renderWatchlist();
       updateWatchlistButtons();
+      attachPedigreeTabs();
 
       const firstResult = document.querySelector('#resultsList tr');
       if (firstResult) firstResult.click();

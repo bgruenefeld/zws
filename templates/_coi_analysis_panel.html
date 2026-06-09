@@ -1,0 +1,55 @@
+{% set analysis = coi_analysis %}
+<section class="coi-analysis">
+  <div class="avk-analysis-inner">
+    <div class="avk-summary-card coi-summary-card">
+      <div class="avk-summary-label">COI-Verlauf{% if analysis.max_generations %} ab Gen. {{ analysis.min_generations }} bis Gen. {{ analysis.max_generations }}{% endif %}</div>
+      {% set last_row = analysis.rows[-1] if analysis.rows else none %}
+      <div class="avk-summary-value">
+        {% if last_row and last_row.coi_percent is not none %}
+          {{ "%.2f"|format(last_row.coi_percent)|replace(".", ",") }} %
+        {% else %}
+          —
+        {% endif %}
+      </div>
+      <div class="avk-summary-note">{{ analysis.note }}</div>
+    </div>
+
+    <div>
+      <h3 class="avk-section-title">COI nach Berechnungstiefe</h3>
+      {% if analysis.rows %}
+        <div class="avk-table-wrap coi-table-wrap">
+          <table class="avk-contributor-table coi-generation-table">
+            <thead>
+              <tr>
+                <th>Generation</th>
+                <th>COI</th>
+                <th>Tiere in Berechnung</th>
+                <th>Bekannte Tiere</th>
+                <th>Unbekannte Founder</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in analysis.rows %}
+                <tr>
+                  <td>Gen. {{ row.generation }}</td>
+                  <td>
+                    {% if row.coi_percent is not none %}
+                      {{ "%.2f"|format(row.coi_percent)|replace(".", ",") }} %
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                  <td>{{ row.animals_in_calculation }}</td>
+                  <td>{{ row.known_animals }}</td>
+                  <td>{{ row.unknown_founders }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="avk-empty">Keine COI-Werte vorhanden.</div>
+      {% endif %}
+    </div>
+  </div>
+</section>

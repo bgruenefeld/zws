@@ -1,0 +1,31 @@
+      function openImportPedigreeModal() {
+        const modal = document.getElementById('importPedigreeModal');
+        if (!modal) return;
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        setTimeout(() => document.querySelector('#importPedigreeModal textarea[name="pedigree_text"]')?.focus(), 0);
+      }
+
+      function closeImportPedigreeModal() {
+        const modal = document.getElementById('importPedigreeModal');
+        if (!modal) return;
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+      }
+
+      document.getElementById('openImportPedigreeModal')?.addEventListener('click', openImportPedigreeModal);
+      document.getElementById('closeImportPedigreeModal')?.addEventListener('click', closeImportPedigreeModal);
+      document.getElementById('cancelImportPedigreeModal')?.addEventListener('click', closeImportPedigreeModal);
+      document.getElementById('importPedigreeModal')?.addEventListener('click', event => {
+        if (event.target.id === 'importPedigreeModal') closeImportPedigreeModal();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeImportPedigreeModal();
+      });
+
+      if (document.getElementById('importPedigreeModal')?.classList.contains('open')) {
+        document.body.classList.add('modal-open');
+        setTimeout(() => document.querySelector('#importPedigreeModal textarea[name="pedigree_text"]')?.focus(), 0);
+      }

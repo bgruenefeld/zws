@@ -1,0 +1,175 @@
+      .modal-dialog.import-dialog {
+        max-width: 1320px;
+        width: min(100%, 1320px);
+      }
+
+      .pedigree-import-modal .form-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .pedigree-import-modal label {
+        color: #344054;
+        display: grid;
+        font-size: 13px;
+        font-weight: 700;
+        gap: 6px;
+      }
+
+      .pedigree-import-modal input,
+      .pedigree-import-modal select,
+      .pedigree-import-modal textarea {
+        border: 1px solid #cfd8e3;
+        border-radius: 6px;
+        color: #243447;
+        font: inherit;
+        font-size: 14px;
+        padding: 9px 10px;
+        width: 100%;
+      }
+
+      .pedigree-import-modal textarea {
+        min-height: 92px;
+        resize: vertical;
+      }
+
+      .pedigree-import-modal .span-2 { grid-column: span 2; }
+      .pedigree-import-modal .span-4 { grid-column: 1 / -1; }
+
+      .pedigree-import-modal .actions,
+      .pedigree-import-modal .modal-actions {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+
+      .pedigree-import-modal .primary-button,
+      .pedigree-import-modal .secondary-button,
+      .import-launch-button {
+        border-radius: 6px;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 750;
+        justify-content: center;
+        padding: 9px 13px;
+        text-decoration: none;
+      }
+
+      .pedigree-import-modal .primary-button {
+        background: #2563eb;
+        border: 1px solid #2563eb;
+        color: #fff;
+      }
+
+      .pedigree-import-modal .secondary-button,
+      .import-launch-button {
+        background: #fff;
+        border: 1px solid #cfd8e3;
+        color: #1f3a52;
+      }
+
+      .pedigree-import-modal .message {
+        border-radius: 8px;
+        font-size: 14px;
+        line-height: 1.45;
+        margin-bottom: 14px;
+        padding: 12px;
+      }
+
+      .pedigree-import-modal .message.error {
+        background: #fff1f1;
+        border: 1px solid #f1c3c3;
+        color: #8a2525;
+      }
+
+      .import-success-message {
+        background: #eaf7ec;
+        border: 1px solid #b8e3c1;
+        border-radius: 8px;
+        color: #1c5a2d;
+        font-size: 14px;
+        line-height: 1.45;
+        margin-bottom: 14px;
+        padding: 12px;
+      }
+
+      .pedigree-import-modal .panel-note {
+        color: #667085;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .pedigree-import-modal .dog-name {
+        color: #12233a;
+        font-weight: 800;
+      }
+
+      .pedigree-import-modal .status-pill {
+        align-items: center;
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 800;
+        padding: 3px 8px;
+      }
+
+      .pedigree-import-modal .status-pill.found {
+        background: #eaf7ec;
+        color: #1c5a2d;
+      }
+
+      .pedigree-import-modal .status-pill.new {
+        background: #e8f2ff;
+        color: #2563eb;
+      }
+
+      .pedigree-import-modal .import-summary {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .pedigree-import-modal .import-preview {
+        border: 1px solid #dfe5ec;
+        border-radius: 8px;
+        margin-top: 14px;
+        overflow: auto;
+      }
+
+      .pedigree-import-modal .import-preview table {
+        border-collapse: collapse;
+        font-size: 12px;
+        min-width: 980px;
+        width: 100%;
+      }
+
+      .pedigree-import-modal .import-preview th,
+      .pedigree-import-modal .import-preview td {
+        border-bottom: 1px solid #edf1f5;
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .pedigree-import-modal .import-preview th {
+        background: #f8fafc;
+        color: #667085;
+        font-weight: 800;
+      }
+
+      @media (max-width: 900px) {
+        .pedigree-import-modal .form-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .pedigree-import-modal .span-2,
+        .pedigree-import-modal .span-4 {
+          grid-column: 1 / -1;
+        }
+      }
