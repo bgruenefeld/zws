@@ -88,7 +88,6 @@
       }
 
       .pairing-sidebar .planning-grid,
-      .pairing-sidebar .planner-card-top,
       .pairing-sidebar .planner-fields,
       .pairing-sidebar .sire-filter,
       .pairing-assessment .summary-grid,
@@ -98,7 +97,6 @@
 
       .pairing-sidebar .planning-list,
       .pairing-sidebar .planning-overview-subtitle,
-      .pairing-sidebar .planner-status,
       .pairing-sidebar .hint {
         display: none;
       }
@@ -107,8 +105,7 @@
         padding: 10px;
       }
 
-      .pairing-sidebar .planning-card-actions,
-      .pairing-sidebar .planner-actions {
+      .pairing-sidebar .planning-card-actions {
         display: grid;
         gap: 8px;
         grid-template-columns: 1fr;
@@ -119,27 +116,8 @@
         padding: 12px;
       }
 
-      .pairing-sidebar .planner-card-top {
-        border-bottom: 0;
-        padding-bottom: 0;
-      }
-
       .pairing-sidebar .planner-fields {
-        margin-top: 12px;
-      }
-
-      .pairing-sidebar .dam-summary {
-        align-items: start;
-        grid-template-columns: auto minmax(0, 1fr);
-      }
-
-      .pairing-sidebar .dam-avatar {
-        height: 34px;
-        width: 34px;
-      }
-
-      .pairing-sidebar .dam-title {
-        font-size: 15px;
+        margin-top: 0;
       }
 
       .pairing-sidebar .excluded-ancestor-controls {
@@ -405,102 +383,11 @@
         padding: 16px;
       }
 
-      .planner-card-top {
-        align-items: center;
-        border-bottom: 1px dashed #b9c9dc;
-        display: grid;
-        gap: 16px;
-        grid-template-columns: minmax(300px, 1fr) auto;
-        padding-bottom: 14px;
-      }
-
-      .dam-summary {
-        align-items: center;
-        display: grid;
-        gap: 12px;
-        grid-template-columns: auto minmax(0, 1fr);
-        min-width: 0;
-      }
-
-      .dam-avatar {
-        align-items: center;
-        background: #e8f2ff;
-        border: 1px solid #bad7fb;
-        border-radius: 999px;
-        color: #2563eb;
-        display: inline-flex;
-        font-weight: 800;
-        height: 42px;
-        justify-content: center;
-        width: 42px;
-      }
-
-      .dam-title {
-        color: #12233a;
-        font-size: 17px;
-        font-weight: 800;
-        line-height: 1.25;
-      }
-
-      .dam-chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-top: 6px;
-      }
-
-      .dam-chip {
-        background: #f8fafc;
-        border: 1px solid #dbe2ea;
-        border-radius: 999px;
-        color: #52606d;
-        font-size: 12px;
-        padding: 4px 9px;
-      }
-
-      .dam-chip.good {
-        background: #eaf7ee;
-        border-color: #bde5c8;
-        color: #237a3b;
-      }
-
-      .planner-status {
-        align-items: center;
-        display: grid;
-        gap: 14px;
-        grid-template-columns: auto auto auto;
-      }
-
-      .planner-stat {
-        border-left: 1px solid #dbe2ea;
-        padding-left: 14px;
-      }
-
-      .planner-stat-label {
-        color: #667085;
-        font-size: 11px;
-        font-weight: 750;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-      }
-
-      .planner-stat-value {
-        color: #12233a;
-        font-size: 16px;
-        font-weight: 800;
-        margin-top: 2px;
-      }
-
-      .planner-actions {
-        display: flex;
-        gap: 10px;
-      }
-
       .planner-fields {
         display: grid;
         gap: 12px;
         grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.9fr);
-        margin-top: 14px;
+        margin-top: 0;
       }
 
       label {
@@ -1555,20 +1442,8 @@
       }
 
       @media (max-width: 1100px) {
-        .planner-card-top,
         .planner-fields {
           grid-template-columns: 1fr;
-        }
-
-        .planner-status {
-          grid-template-columns: 1fr;
-        }
-
-        .planner-stat {
-          border-left: 0;
-          border-top: 1px solid #dbe2ea;
-          padding-left: 0;
-          padding-top: 10px;
         }
       }
 
@@ -1723,68 +1598,6 @@
               <h2>Neue Verpaarung</h2>
               <div>Wähle zuerst eine Hündin und suche danach passende Rüden.</div>
             {% endif %}
-          </div>
-
-          <div class="planner-card-top">
-            <div class="dam-summary">
-              <div class="dam-avatar">H</div>
-              <div>
-                <div class="dam-title">
-                  {% if result %}
-                    {{ result.dam.name }}
-                  {% elif dam_summary %}
-                    {{ dam_summary.name }}
-                  {% elif dam_input %}
-                    {{ dam_input }}
-                  {% else %}
-                    Hündin auswählen
-                  {% endif %}
-                </div>
-                <div class="dam-chips">
-                  {% if result %}
-                    <span class="dam-chip">ZBNr {{ result.dam.zbnr or "—" }}</span>
-                    <span class="dam-chip good">ED {{ result.dam.ed or "—" }}</span>
-                    <span class="dam-chip">ZW {{ result.dam.zuchtwert if result.dam.zuchtwert is not none else "—" }}</span>
-                    <span class="dam-chip">Gen. {{ result.complete_generation if result.complete_generation is not none else "—" }} vollständig</span>
-                    {% if result.dam.alter is not none %}<span class="dam-chip">{{ result.dam.alter }} Jahre</span>{% endif %}
-                  {% elif dam_summary %}
-                    <span class="dam-chip">ZBNr {{ dam_summary.zbnr or "—" }}</span>
-                    <span class="dam-chip good">ED {{ dam_summary.ed or "—" }}</span>
-                    <span class="dam-chip">ZW {{ dam_summary.zuchtwert if dam_summary.zuchtwert is not none else "—" }}</span>
-                    {% if dam_summary.alter is not none %}<span class="dam-chip">{{ dam_summary.alter }} Jahre</span>{% endif %}
-                  {% else %}
-                    <span class="dam-chip">Bitte zuerst eine Hündin wählen</span>
-                  {% endif %}
-                </div>
-              </div>
-            </div>
-
-            <div class="planner-status">
-              <div class="planner-stat">
-                <div class="planner-stat-label">Aktive Filter</div>
-                <div class="planner-stat-value">
-                  {% set filters = [] %}
-                  {% if sire_max_age %}{% set _ = filters.append("Alter ≤ " ~ sire_max_age) %}{% endif %}
-                  {% if sire_min_age %}{% set _ = filters.append("Alter ≥ " ~ sire_min_age) %}{% endif %}
-                  {% if sire_max_ebv %}{% set _ = filters.append("ED-ZW ≤ " ~ sire_max_ebv) %}{% endif %}
-                  {% if sire_min_offspring %}{% set _ = filters.append("Nachk. ≥ " ~ sire_min_offspring) %}{% endif %}
-                  {% if avoid_carrier_matches %}{% set _ = filters.append("keine Träger × Träger") %}{% endif %}
-                  {% if excluded_ancestors %}{% set _ = filters.append(excluded_ancestors|length ~ " Ahnen ausgeschlossen") %}{% endif %}
-                  {{ filters | join(" · ") if filters else "keine" }}
-                </div>
-              </div>
-              <div class="planner-stat">
-                <div class="planner-stat-label">Treffer</div>
-                <div class="planner-stat-value">
-                  {% if sire_search == "1" %}{{ sire_total }} Rüden{% else %}—{% endif %}
-                </div>
-              </div>
-              <div class="planner-actions">
-                <button type="button" class="secondary-button" id="focusPairingFilters">Filter ändern</button>
-                <button type="submit">Rüden suchen</button>
-                <a class="reset-link" href="/pairing">Suche zurücksetzen</a>
-              </div>
-            </div>
           </div>
 
           <div class="planner-fields">
@@ -2007,6 +1820,7 @@
           </div>
           <section class="pedigree-tab-panel" data-pedigree-panel="pedigree">
             <div class="pedigree-panel">
+              {% include "_pedigree_legend.html" %}
               {{ result.pedigree_html | safe }}
             </div>
           </section>
@@ -2877,9 +2691,6 @@
       document.getElementById('cancelSavePairingButton')?.addEventListener('click', closeSavePairingModal);
       document.getElementById('savePairingModal')?.addEventListener('click', event => {
         if (event.target.id === 'savePairingModal') closeSavePairingModal();
-      });
-      document.getElementById('focusPairingFilters')?.addEventListener('click', () => {
-        document.querySelector('input[name="sire"]')?.focus();
       });
       document.getElementById('openSavedPairingsDrawerButton')?.addEventListener('click', openSavedPairingsDrawer);
       document.getElementById('closeSavedPairingsDrawer')?.addEventListener('click', closeSavedPairingsDrawer);

@@ -80,6 +80,25 @@
         line-height: 1.45;
       }
 
+      .import-instructions {
+        background: #eef6ff;
+        border: 1px solid #b9d8ff;
+        border-left: 4px solid #2563eb;
+        border-radius: 8px;
+        color: #1f3a52;
+        font-size: 14px;
+        line-height: 1.5;
+        margin-bottom: 14px;
+        padding: 12px 14px;
+      }
+
+      .import-instructions strong {
+        color: #12233a;
+        display: block;
+        font-weight: 850;
+        margin-bottom: 3px;
+      }
+
       .storage-path {
         word-break: break-all;
       }
@@ -619,6 +638,16 @@
               {% endfor %}
             </div>
           {% endif %}
+
+          <div class="import-instructions">
+            <strong>So bereitest du den Import vor:</strong>
+            Wähle zuerst das Geschlecht des Hundes aus. Öffne dann den Hund in der k9-data.org
+            Datenbank, dessen Ahnentafel du importieren möchtest. Wähle dort 5 Generationen sowie
+            ED- und HD-Werte aus. Markiere und kopiere anschließend den Inhalt der Ahnentafel und
+            füge ihn unten in das Feld „Ahnentafel-Text“ ein. Klicke dann auf den Button
+            „Vorschau erzeugen“ und bestätige im folgenden Dialog mit „Ausgewählte Hunde importieren“,
+            um die Hunde zu importieren.
+          </div>
 
           <form method="post" action="/user-dogs/import" enctype="multipart/form-data">
             <div class="form-grid">
