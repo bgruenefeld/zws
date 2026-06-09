@@ -3,6 +3,7 @@ from urllib.parse import quote_plus
 from contextlib import contextmanager
 from collections import defaultdict
 import json
+import logging
 import math
 from datetime import date
 from datetime import datetime
@@ -14,7 +15,7 @@ import threading
 import time
 import uuid
 
-from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, session, g
 
 import pedigree_tools as pt
 import pandas as pd
@@ -38,6 +39,9 @@ PEDIGREE_IMPORT_STATE_TTL_SECONDS = 30 * 60
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or os.environ.get("FLASK_SECRET_KEY") or "dev-secret-change-me"
+
+logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO").upper())
+app.logger.setLevel(os.environ.get("LOG_LEVEL", "INFO").upper())
 
 AUTH_USERNAME = os.environ.get("APP_USERNAME", "admin")
 AUTH_PASSWORD = os.environ.get("APP_PASSWORD", "admin")
@@ -147,6 +151,71 @@ def pedigree_import_context(default_return_to=None):
     }
 
 
+SENSITIVE_LOG_KEYS = {
+    "password",
+    "passwort",
+    "secret",
+    "token",
+    "csrf_token",
+    "import_data",
+    "pedigree_text",
+}
+
+
+def client_ip():
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+    return request.remote_addr or ""
+
+
+def truncate_log_value(value, max_length=160):
+    value = clean_text(value)
+    if len(value) <= max_length:
+        return value
+    return value[: max_length - 1] + "…"
+
+
+def sanitized_multidict_values(values):
+    data = {}
+    for key in values.keys():
+        if key.lower() in SENSITIVE_LOG_KEYS:
+            data[key] = "[redacted]"
+            continue
+
+        items = values.getlist(key)
+        cleaned = [truncate_log_value(item) for item in items if clean_text(item)]
+        if not cleaned:
+            continue
+        data[key] = cleaned[0] if len(cleaned) == 1 else cleaned[:10]
+    return data
+
+
+def log_event(event, **fields):
+    payload = {
+        "event": event,
+        "user": session.get("username") if has_request_context_safe() else None,
+        "path": request.path if has_request_context_safe() else None,
+        "endpoint": request.endpoint if has_request_context_safe() else None,
+        "ip": client_ip() if has_request_context_safe() else None,
+        **fields,
+    }
+    app.logger.info(json.dumps(payload, ensure_ascii=False, default=str))
+
+
+def has_request_context_safe():
+    try:
+        request.path
+        return True
+    except RuntimeError:
+        return False
+
+
+@app.before_request
+def start_request_logging():
+    g.request_started_at = time.perf_counter()
+
+
 @app.before_request
 def require_login():
     public_endpoints = {"login", "static"}
@@ -157,6 +226,26 @@ def require_login():
         return None
 
     return redirect(url_for("login", next=request.full_path if request.query_string else request.path))
+
+
+@app.after_request
+def log_request(response):
+    started_at = getattr(g, "request_started_at", None)
+    duration_ms = (
+        round((time.perf_counter() - started_at) * 1000, 1)
+        if started_at is not None
+        else None
+    )
+    log_event(
+        "request",
+        method=request.method,
+        status=response.status_code,
+        duration_ms=duration_ms,
+        query=sanitized_multidict_values(request.args),
+        form=sanitized_multidict_values(request.form) if request.method != "GET" else {},
+        user_agent=truncate_log_value(request.headers.get("User-Agent", ""), max_length=220),
+    )
+    return response
 
 
 def load_data():
@@ -1664,8 +1753,10 @@ def login():
             session.clear()
             session["authenticated"] = True
             session["username"] = username
+            log_event("login_success", username=username, next_url=next_url)
             return redirect(next_url)
 
+        log_event("login_failed", username=truncate_log_value(username), next_url=next_url)
         error = "Benutzername oder Passwort ist nicht korrekt."
 
     return render_template("login.html", error=error, next_url=next_url)
@@ -1673,6 +1764,8 @@ def login():
 
 @app.route("/logout", methods=["POST"])
 def logout():
+    username = session.get("username")
+    log_event("logout", username=username)
     session.clear()
     return redirect(url_for("login"))
 
@@ -1725,6 +1818,12 @@ def manage_user_dogs():
                     new_df = pd.concat([user_df, pd.DataFrame([record])], ignore_index=True)
                     write_user_dogs_df(new_df)
                     update_data_cache_with_user_records([record])
+                    log_event(
+                        "user_dog_created",
+                        zbnr=record.get("ZBNr"),
+                        name=record.get("Name"),
+                        sex=record.get("Geschlecht"),
+                    )
                     return redirect(url_for("manage_user_dogs", saved=record["ZBNr"]))
             modal_open = True
 
@@ -1758,6 +1857,14 @@ def preview_user_dog_import():
             uploaded.stream.seek(0)
             import_text = uploaded.read().decode("latin-1")
 
+    log_event(
+        "pedigree_import_preview_requested",
+        root_sex=root_sex or "unknown",
+        text_length=len(import_text),
+        file_provided=bool(uploaded is not None and clean_text(uploaded.filename)),
+        return_to=return_to,
+    )
+
     import_preview = []
     import_data_json = ""
     if not clean_text(import_text):
@@ -1779,6 +1886,13 @@ def preview_user_dog_import():
         import_text=import_text,
         import_return_to=return_to,
     )
+    log_event(
+        "pedigree_import_preview_finished",
+        root_sex=root_sex or "unknown",
+        preview_items_count=len(import_preview),
+        errors_count=len(import_errors),
+        return_to=return_to,
+    )
     return redirect(return_to)
 
 
@@ -1795,6 +1909,12 @@ def confirm_user_dog_import():
         import_errors.append("Die Importdaten konnten nicht gelesen werden. Bitte erzeuge die Vorschau erneut.")
 
     selected_slots = request.form.getlist("import_slots")
+    log_event(
+        "pedigree_import_confirm_requested",
+        selected_slots_count=len(selected_slots),
+        preview_items_count=len(preview_items),
+        return_to=return_to,
+    )
     if not selected_slots:
         import_errors.append("Bitte wähle mindestens einen neuen Hund für den Import aus.")
 
@@ -1831,6 +1951,12 @@ def confirm_user_dog_import():
                 write_user_dogs_df(new_df)
                 update_data_cache_with_user_records(records)
 
+    log_event(
+        "pedigree_import_finished",
+        selected_slots_count=len(selected_slots),
+        imported_count=len(records),
+        return_to=return_to,
+    )
     return redirect_with_imported_count(return_to, len(records))
 
 
@@ -1937,6 +2063,22 @@ def pairing():
             dog_summary(row)
             for row in sire_df.iloc[start : start + sire_page_size].to_dict(orient="records")
         ]
+        log_event(
+            "pairing_sire_search",
+            dam=dam_input,
+            sire_query=sire_input,
+            total_matches=sire_total,
+            page=sire_page,
+            page_size=sire_page_size,
+            sort_by=sire_sort_by,
+            sort_dir=sire_sort_dir,
+            min_age=min_age,
+            max_age=max_age,
+            max_ebv=max_ebv,
+            min_offspring=min_offspring,
+            avoid_carrier_matches=avoid_carrier_matches,
+            excluded_ancestors_count=len(excluded_ancestor_zbnrs),
+        )
 
     context = {
         "sire_input": sire_input,
@@ -2185,6 +2327,15 @@ def search_results():
     total_matches = int(matches.shape[0])
     
     if total_matches == 0:
+        log_event(
+            "dog_search",
+            query=query,
+            total_matches=0,
+            page=page,
+            page_size=page_size,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+        )
         return render_template(
             "search_results.html",
             query=query,
@@ -2247,6 +2398,15 @@ def search_results():
         
         results.append(res)
 
+    log_event(
+        "dog_search",
+        query=query,
+        total_matches=total_matches,
+        page=page,
+        page_size=page_size,
+        sort_by=sort_by,
+        sort_dir=sort_dir,
+    )
     return render_template(
         "search_results.html",
         query=query,
