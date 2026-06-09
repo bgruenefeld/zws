@@ -581,6 +581,63 @@
         font-weight: 750;
       }
 
+      .repeated-ancestors {
+        border-top: 1px solid #edf1f5;
+        margin-top: 14px;
+        padding-top: 12px;
+      }
+
+      .repeated-ancestors h3 {
+        color: #12233a;
+        font-size: 14px;
+        margin: 0 0 8px;
+      }
+
+      .repeated-ancestor-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .repeated-ancestor-item {
+        background: #f8fafc;
+        border: 1px solid #e1e7ee;
+        border-radius: 8px;
+        color: #243447;
+        cursor: default;
+        padding: 9px 10px;
+        text-align: left;
+        white-space: normal;
+        width: 100%;
+      }
+
+      .repeated-ancestor-item:hover,
+      .repeated-ancestor-item:focus-visible {
+        background: #eef6ff;
+        border-color: #9ec5fe;
+        outline: none;
+      }
+
+      .repeated-ancestor-name {
+        color: #1f3a52;
+        display: block;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+
+      .repeated-ancestor-meta {
+        color: #667085;
+        display: block;
+        font-size: 11px;
+        line-height: 1.35;
+        margin-top: 3px;
+      }
+
+      .pedigree-panel .card.repeated-ancestor-highlight {
+        background: #fff7d6 !important;
+        box-shadow: inset 0 0 0 2px #d99a00, inset 4px 0 0 #d46b08 !important;
+      }
+
       .parents {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1916,6 +1973,32 @@
                   <div class="metric-label">Vollständig bis</div>
                   <div class="metric-value">{% if result.complete_generation is not none %}Gen. {{ result.complete_generation }}{% else %}—{% endif %}</div>
                 </div>
+                <div class="metric">
+                  <div class="metric-label">COI/AVK gerechnet bis</div>
+                  <div class="metric-value">Gen. {{ result.metric_generations }}</div>
+                </div>
+              </div>
+
+              <div class="repeated-ancestors">
+                <h3>Mehrfach vorkommende Hunde</h3>
+                {% if result.repeated_ancestors %}
+                  <div class="repeated-ancestor-list">
+                    {% for ancestor in result.repeated_ancestors %}
+                      <button
+                        type="button"
+                        class="repeated-ancestor-item"
+                        data-repeat-zbnr="{{ ancestor.zbnr }}"
+                      >
+                        <span class="repeated-ancestor-name">{{ ancestor.name }}</span>
+                        <span class="repeated-ancestor-meta">
+                          {{ ancestor.count }}× · Gen. {{ ancestor.generations | join(", ") }}
+                        </span>
+                      </button>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="workspace-empty">In der sichtbaren Ahnentafel kommt kein Hund mehrfach vor.</div>
+                {% endif %}
               </div>
 
               <div class="parents">
@@ -2077,6 +2160,36 @@
           const zbnr = card.getAttribute('data-zbnr');
           if (!zbnr || zbnr.startsWith('__')) return;
           loadRelativesModal(zbnr, { resetHistory: true });
+        });
+      }
+
+      function attachRepeatedAncestorHighlights() {
+        const panel = document.querySelector('.pedigree-panel');
+        const items = document.querySelectorAll('.repeated-ancestor-item[data-repeat-zbnr]');
+        if (!panel || !items.length) return;
+
+        function clearHighlights() {
+          panel.querySelectorAll('.card.repeated-ancestor-highlight').forEach(card => {
+            card.classList.remove('repeated-ancestor-highlight');
+          });
+        }
+
+        function highlight(zbnr) {
+          clearHighlights();
+          if (!zbnr) return;
+          panel.querySelectorAll('.card[data-zbnr]').forEach(card => {
+            if (card.getAttribute('data-zbnr') === zbnr) {
+              card.classList.add('repeated-ancestor-highlight');
+            }
+          });
+        }
+
+        items.forEach(item => {
+          const zbnr = item.dataset.repeatZbnr || '';
+          item.addEventListener('mouseenter', () => highlight(zbnr));
+          item.addEventListener('focus', () => highlight(zbnr));
+          item.addEventListener('mouseleave', clearHighlights);
+          item.addEventListener('blur', clearHighlights);
         });
       }
 
@@ -2672,6 +2785,7 @@
       attachDamSuggest();
       attachExcludedAncestorPicker();
       attachPairingPedigreeClick();
+      attachRepeatedAncestorHighlights();
     </script>
   </body>
 </html>

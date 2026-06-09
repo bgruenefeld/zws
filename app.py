@@ -1,6 +1,7 @@
 from pathlib import Path
 from urllib.parse import quote_plus
 from contextlib import contextmanager
+from collections import defaultdict
 import json
 import math
 from datetime import date
@@ -121,6 +122,49 @@ def load_data():
 def reload_data():
     global MERGED_DF, ZBNR_INDEX, PAIRING_SEARCH_CACHE_DATE
     MERGED_DF, ZBNR_INDEX = load_data()
+    PAIRING_SEARCH_CACHE_DATE = None
+
+
+def update_data_cache_with_user_records(records):
+    """Ersetzt/ergänzt wenige User-Datensätze im Cache ohne kompletten CSV-Reload."""
+    global MERGED_DF, ZBNR_INDEX, PAIRING_SEARCH_CACHE_DATE
+
+    if not records:
+        return
+
+    records_df = pd.DataFrame(records).fillna("")
+    if records_df.empty:
+        return
+
+    for column in records_df.columns:
+        if column not in MERGED_DF.columns:
+            MERGED_DF[column] = ""
+    for column in MERGED_DF.columns:
+        if column not in records_df.columns:
+            records_df[column] = ""
+
+    records_df = records_df[MERGED_DF.columns].fillna("")
+    records_df = pt.normalize_zbnr_columns(records_df)
+    records_df = attach_epi_scores(records_df)
+
+    record_zbnrs = {
+        pt.normalize_zbnr(value)
+        for value in records_df.get("ZBNr_norm", pd.Series(dtype=str)).fillna("").astype(str)
+        if pt.normalize_zbnr(value)
+    }
+    if not record_zbnrs:
+        return
+
+    current_zbnrs = MERGED_DF.get("ZBNr_norm", pd.Series([""] * len(MERGED_DF), index=MERGED_DF.index))
+    keep_mask = ~current_zbnrs.fillna("").map(lambda value: pt.normalize_zbnr(value) in record_zbnrs)
+    MERGED_DF = pd.concat([MERGED_DF.loc[keep_mask], records_df], ignore_index=True)
+
+    for record in records_df.to_dict(orient="records"):
+        zbnr = pt.normalize_zbnr(record.get("ZBNr_norm") or record.get("ZBNr"))
+        if zbnr:
+            record["ZBNr_norm"] = zbnr
+            ZBNR_INDEX[zbnr] = record
+
     PAIRING_SEARCH_CACHE_DATE = None
 
 
@@ -1167,6 +1211,69 @@ def format_percent_or_dash(value):
         return "—"
 
 
+def pedigree_metric_generation_depth(index, start_zbnr, minimum=5, maximum=10):
+    slots = pt.build_positional_pedigree(
+        index=index,
+        start_zbnr=start_zbnr,
+        max_generations=maximum,
+    )
+    found_generations = [
+        entry["generation"]
+        for entry in slots.values()
+        if entry.get("generation", 0) > 0 and entry.get("found_in_data")
+    ]
+    deepest_found = max(found_generations, default=0)
+    return max(minimum, min(maximum, deepest_found))
+
+
+def repeated_ancestors_for_display(index, start_zbnr, max_generations=5):
+    slots = pt.build_positional_pedigree(
+        index=index,
+        start_zbnr=start_zbnr,
+        max_generations=max_generations,
+    )
+    positions_by_zbnr = defaultdict(list)
+    dog_by_zbnr = {}
+
+    for slot_id, entry in slots.items():
+        generation = entry.get("generation", 0)
+        if generation <= 0:
+            continue
+
+        zbnr = pt.normalize_zbnr(entry.get("zbnr")) or clean_text(entry.get("zbnr"))
+        if not zbnr:
+            continue
+
+        positions_by_zbnr[zbnr].append(
+            {
+                "slot": slot_id,
+                "generation": generation,
+                "role": pt.get_pedigree_role(slot_id),
+                "path": pt.get_pedigree_path(slot_id),
+            }
+        )
+        if zbnr not in dog_by_zbnr and entry.get("dog") is not None:
+            dog_by_zbnr[zbnr] = entry["dog"]
+
+    repeated = []
+    for zbnr, positions in positions_by_zbnr.items():
+        if len(positions) < 2:
+            continue
+        dog = dog_by_zbnr.get(zbnr) or index.get(zbnr) or {}
+        repeated.append(
+            {
+                "zbnr": zbnr,
+                "name": clean_text(dog.get("Name")) or zbnr,
+                "count": len(positions),
+                "generations": sorted({pos["generation"] for pos in positions}),
+                "positions": positions,
+            }
+        )
+
+    repeated.sort(key=lambda item: (-item["count"], item["name"].casefold()))
+    return repeated
+
+
 def extract_embeddable_html(html):
     styles = "".join(re.findall(r"<style[^>]*>.*?</style>", html, re.S | re.I))
     m = re.search(r"<body[^>]*>(.*?)</body>", html, re.S | re.I)
@@ -1417,7 +1524,7 @@ def manage_user_dogs():
                 if not errors:
                     new_df = pd.concat([user_df, pd.DataFrame([record])], ignore_index=True)
                     write_user_dogs_df(new_df)
-                    reload_data()
+                    update_data_cache_with_user_records([record])
                     return redirect(url_for("manage_user_dogs", saved=record["ZBNr"]))
             modal_open = True
 
@@ -1537,7 +1644,7 @@ def confirm_user_dog_import():
                     ].copy()
                 new_df = pd.concat([user_df, pd.DataFrame(records)], ignore_index=True)
                 write_user_dogs_df(new_df)
-                reload_data()
+                update_data_cache_with_user_records(records)
 
     return redirect(url_for("manage_user_dogs", imported=len(records)))
 
@@ -1701,7 +1808,13 @@ def pairing():
                 return render_template("pairing.html", **context)
 
             planned_zbnr, pairing_index = make_pairing_index(sire, dam)
-            max_gen = 5
+            display_max_gen = 5
+            metric_max_gen = pedigree_metric_generation_depth(
+                pairing_index,
+                planned_zbnr,
+                minimum=5,
+                maximum=10,
+            )
 
             sire_ebv = dog_ebv_value(sire)
             dam_ebv = dog_ebv_value(dam)
@@ -1714,19 +1827,24 @@ def pairing():
             coi = pt.calculate_coi_for_zbnr(
                 pairing_index,
                 planned_zbnr,
-                max_generations=max_gen,
+                max_generations=metric_max_gen,
             )
             avk = pt.calculate_avk_for_zbnr(
                 pairing_index,
                 planned_zbnr,
-                max_generations=max_gen,
+                max_generations=metric_max_gen,
             )
             pedigree = pt.create_pedigree_html_for_zbnr(
                 df_or_index=pairing_index,
                 start_zbnr=planned_zbnr,
-                max_generations=max_gen,
+                max_generations=display_max_gen,
                 include_coi=False,
                 include_avk=False,
+            )
+            repeated_ancestors = repeated_ancestors_for_display(
+                pairing_index,
+                planned_zbnr,
+                max_generations=display_max_gen,
             )
 
             context["result"] = {
@@ -1743,6 +1861,9 @@ def pairing():
                 "avk_percent": avk.get("avk_known_percent"),
                 "avk_display": format_percent_or_dash(avk.get("avk_known_percent")),
                 "complete_generation": avk.get("deepest_complete_generation_in_data"),
+                "metric_generations": metric_max_gen,
+                "display_generations": display_max_gen,
+                "repeated_ancestors": repeated_ancestors,
                 "pedigree_html": extract_embeddable_html(pedigree.get("html", "")),
             }
 
@@ -1993,9 +2114,18 @@ def pedigree_metrics():
     if not zbnr:
         return jsonify({"error": "no zbnr provided"}), 400
 
-    max_gen = int(request.args.get("gens", 5))
-
     try:
+        requested_gens = clean_text(request.args.get("gens"))
+        max_gen = (
+            int(requested_gens)
+            if requested_gens
+            else pedigree_metric_generation_depth(
+                ZBNR_INDEX,
+                zbnr,
+                minimum=5,
+                maximum=10,
+            )
+        )
         coi = pt.calculate_coi_for_zbnr(
             ZBNR_INDEX,
             zbnr,
@@ -2019,6 +2149,7 @@ def pedigree_metrics():
             "deepest_complete_generation_by_zbnr": (
                 avk.get("deepest_complete_generation_by_zbnr") if avk else None
             ),
+            "metric_generations": max_gen,
         }
     )
 

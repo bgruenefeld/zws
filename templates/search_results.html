@@ -1602,7 +1602,7 @@
       function fetchPedigreeMetricsForWatchlistDog(zbnr) {
         if (!zbnr) return;
 
-        fetch('/pedigree_metrics?zbnr=' + encodeURIComponent(zbnr) + '&gens=5')
+        fetch('/pedigree_metrics?zbnr=' + encodeURIComponent(zbnr))
           .then(r => {
             return r.json().then(data => {
               if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
@@ -1630,7 +1630,7 @@
       }
 
       function loadPedigreeMetrics(zbnr) {
-        const url = '/pedigree_metrics?zbnr=' + encodeURIComponent(zbnr) + '&gens=5';
+        const url = '/pedigree_metrics?zbnr=' + encodeURIComponent(zbnr);
 
         fetch(url)
           .then(r => {
