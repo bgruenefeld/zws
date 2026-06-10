@@ -1,24 +1,85 @@
 (function () {
   const storageKey = window.WATCHLIST_STORAGE_KEY || 'zwsDogWatchlist';
+  const apiUrl = '/api/watchlist';
+  let watchlistSyncTimer = null;
+
+  function localReadWatchlist() {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter(dog => dog && dog.zbnr) : [];
+    } catch (error) {
+      console.warn('Merkliste konnte nicht gelesen werden:', error);
+      return [];
+    }
+  }
+
+  function localWriteWatchlist(dogs) {
+    localStorage.setItem(storageKey, JSON.stringify(dogs));
+  }
+
+  function mergeWatchlists(serverDogs, localDogs) {
+    const byZbnr = new Map();
+    (serverDogs || []).forEach(dog => {
+      if (dog?.zbnr) byZbnr.set(String(dog.zbnr), dog);
+    });
+    (localDogs || []).forEach(dog => {
+      const zbnr = String(dog?.zbnr || '').trim();
+      if (!zbnr) return;
+      const existing = byZbnr.get(zbnr);
+      const localTime = Date.parse(dog?.saved_at || dog?.savedAt || '') || 0;
+      const serverTime = Date.parse(existing?.saved_at || existing?.savedAt || '') || 0;
+      if (!existing || localTime >= serverTime) byZbnr.set(zbnr, dog);
+    });
+    return Array.from(byZbnr.values());
+  }
+
+  function syncWatchlistToServer(dogs) {
+    window.clearTimeout(watchlistSyncTimer);
+    watchlistSyncTimer = window.setTimeout(() => {
+      fetch(apiUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: dogs || localReadWatchlist() }),
+        keepalive: true
+      }).catch(error => {
+        console.warn('Merkliste konnte nicht in SQLite gespeichert werden:', error);
+      });
+    }, 120);
+  }
+
+  function loadWatchlistFromServer() {
+    fetch(apiUrl)
+      .then(r => r.json().then(data => {
+        if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+        return data;
+      }))
+      .then(data => {
+        const merged = mergeWatchlists(data.items || [], localReadWatchlist());
+        localWriteWatchlist(merged);
+        window.dispatchEvent(new CustomEvent('watchlist:changed'));
+        window.updateNavWatchlistCount?.();
+        window.renderWatchlist?.();
+        window.updateWatchlistButtons?.();
+        syncWatchlistToServer(merged);
+      })
+      .catch(error => {
+        console.warn('Merkliste konnte nicht aus SQLite geladen werden:', error);
+      });
+  }
 
   if (!window.readWatchlist) {
     window.readWatchlist = function readWatchlist() {
-      try {
-        const raw = localStorage.getItem(storageKey);
-        const parsed = raw ? JSON.parse(raw) : [];
-        return Array.isArray(parsed) ? parsed.filter(dog => dog && dog.zbnr) : [];
-      } catch (error) {
-        console.warn('Merkliste konnte nicht gelesen werden:', error);
-        return [];
-      }
+      return localReadWatchlist();
     };
   }
 
   if (!window.writeWatchlist) {
     window.writeWatchlist = function writeWatchlist(dogs) {
-      localStorage.setItem(storageKey, JSON.stringify(dogs));
+      localWriteWatchlist(dogs);
       window.dispatchEvent(new CustomEvent('watchlist:changed'));
       window.updateNavWatchlistCount?.();
+      syncWatchlistToServer(dogs);
     };
   }
 
@@ -200,4 +261,5 @@
   document.getElementById('clearWatchlist')?.addEventListener('click', window.clearWatchlist);
   window.renderWatchlist();
   window.updateWatchlistButtons();
+  loadWatchlistFromServer();
 })();

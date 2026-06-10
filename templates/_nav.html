@@ -36,7 +36,21 @@
       badge.textContent = String(readNavWatchlistCount());
     };
 
+    function updateNavWatchlistCountFromServer() {
+      fetch('/api/watchlist')
+        .then(r => r.json())
+        .then(data => {
+          if (!Array.isArray(data.items)) return;
+          const localCount = readNavWatchlistCount();
+          const serverCount = data.items.filter(dog => dog && dog.zbnr).length;
+          const badge = document.getElementById('navWatchlistCount');
+          if (badge && serverCount > localCount) badge.textContent = String(serverCount);
+        })
+        .catch(() => {});
+    }
+
     window.updateNavWatchlistCount();
+    updateNavWatchlistCountFromServer();
     window.addEventListener('storage', event => {
       if (event.key === storageKey) window.updateNavWatchlistCount();
     });

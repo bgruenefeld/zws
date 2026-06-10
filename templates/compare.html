@@ -307,6 +307,8 @@
 
     <script>
       const WATCHLIST_STORAGE_KEY = 'zwsDogWatchlist';
+      const WATCHLIST_API_URL = '/api/watchlist';
+      let watchlistSyncTimer = null;
       let selectedPedigreeZbnr = null;
 
       function readWatchlist() {
@@ -324,6 +326,56 @@
         localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(dogs));
         window.dispatchEvent(new CustomEvent('watchlist:changed'));
         window.updateNavWatchlistCount?.();
+        syncWatchlistToServer(dogs);
+      }
+
+      function mergeWatchlists(serverDogs, localDogs) {
+        const byZbnr = new Map();
+        (serverDogs || []).forEach(dog => {
+          if (dog?.zbnr) byZbnr.set(String(dog.zbnr), dog);
+        });
+        (localDogs || []).forEach(dog => {
+          const zbnr = String(dog?.zbnr || '').trim();
+          if (!zbnr) return;
+          const existing = byZbnr.get(zbnr);
+          const localTime = Date.parse(dog?.saved_at || dog?.savedAt || '') || 0;
+          const serverTime = Date.parse(existing?.saved_at || existing?.savedAt || '') || 0;
+          if (!existing || localTime >= serverTime) byZbnr.set(zbnr, dog);
+        });
+        return Array.from(byZbnr.values());
+      }
+
+      function syncWatchlistToServer(dogs) {
+        window.clearTimeout(watchlistSyncTimer);
+        watchlistSyncTimer = window.setTimeout(() => {
+          fetch(WATCHLIST_API_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: dogs || readWatchlist() }),
+            keepalive: true
+          }).catch(error => {
+            console.warn('Merkliste konnte nicht in SQLite gespeichert werden:', error);
+          });
+        }, 120);
+      }
+
+      function loadWatchlistFromServer() {
+        fetch(WATCHLIST_API_URL)
+          .then(r => r.json().then(data => {
+            if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+            return data;
+          }))
+          .then(data => {
+            const merged = mergeWatchlists(data.items || [], readWatchlist());
+            localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(merged));
+            window.dispatchEvent(new CustomEvent('watchlist:changed'));
+            window.updateNavWatchlistCount?.();
+            renderComparePage();
+            syncWatchlistToServer(merged);
+          })
+          .catch(error => {
+            console.warn('Merkliste konnte nicht aus SQLite geladen werden:', error);
+          });
       }
 
       function removeFromWatchlist(zbnr) {
@@ -553,6 +605,7 @@
 
       document.getElementById('clearWatchlist')?.addEventListener('click', clearWatchlist);
       renderComparePage();
+      loadWatchlistFromServer();
     </script>
   </body>
 </html>

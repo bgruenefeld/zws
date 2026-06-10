@@ -1,9 +1,11 @@
 (function () {
   const storageKey = 'zwsDogPedigreeNotes.v1';
+  const apiUrl = '/api/dog-notes';
   let activeZbnr = '';
   let activeDogName = '';
   let activeCard = null;
   let annotateQueued = false;
+  let noteSyncTimer = null;
 
   function noteEscapeHtml(value) {
     return String(value ?? '')
@@ -26,6 +28,49 @@
   function writeNotes(notes) {
     localStorage.setItem(storageKey, JSON.stringify(notes));
     window.dispatchEvent(new CustomEvent('pedigree-notes:changed'));
+    syncNotesToServer(notes);
+  }
+
+  function mergeNotes(serverNotes, localNotes) {
+    const merged = { ...(serverNotes || {}) };
+    Object.entries(localNotes || {}).forEach(([zbnr, localEntry]) => {
+      const serverEntry = merged[zbnr];
+      const localTime = Date.parse(localEntry?.updatedAt || '') || 0;
+      const serverTime = Date.parse(serverEntry?.updatedAt || '') || 0;
+      if (!serverEntry || localTime >= serverTime) merged[zbnr] = localEntry;
+    });
+    return merged;
+  }
+
+  function syncNotesToServer(notes) {
+    window.clearTimeout(noteSyncTimer);
+    noteSyncTimer = window.setTimeout(() => {
+      fetch(apiUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: notes || readNotes() }),
+        keepalive: true
+      }).catch(error => {
+        console.warn('Notizen konnten nicht in SQLite gespeichert werden:', error);
+      });
+    }, 120);
+  }
+
+  function loadNotesFromServer() {
+    fetch(apiUrl)
+      .then(r => r.json().then(data => {
+        if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+        return data;
+      }))
+      .then(data => {
+        const merged = mergeNotes(data.items || {}, readNotes());
+        localStorage.setItem(storageKey, JSON.stringify(merged));
+        window.dispatchEvent(new CustomEvent('pedigree-notes:changed'));
+        syncNotesToServer(merged);
+      })
+      .catch(error => {
+        console.warn('Notizen konnten nicht aus SQLite geladen werden:', error);
+      });
   }
 
   function noteForZbnr(zbnr) {
@@ -134,6 +179,7 @@
     if (text) {
       notes[activeZbnr] = {
         text,
+        dogName: activeDogName,
         updatedAt: new Date().toISOString()
       };
       if (status) status.textContent = 'Gespeichert.';
@@ -208,4 +254,5 @@
   const observer = new MutationObserver(queueRefresh);
   observer.observe(document.body, { childList: true, subtree: true });
   queueRefresh();
+  loadNotesFromServer();
 })();

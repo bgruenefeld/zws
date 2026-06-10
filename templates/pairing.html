@@ -2088,6 +2088,8 @@
 
     <script>
       const savedPairingsKey = 'zws.savedPairings.v1';
+      const savedPairingsApiUrl = '/api/saved-pairings';
+      let savedPairingsSyncTimer = null;
       const currentPairingData = {% if result %}{{ {
         "defaultName": result.dam.name ~ " × " ~ result.sire.name
       } | tojson }}{% else %}null{% endif %};
@@ -2317,6 +2319,55 @@
 
       function writeSavedPairings(items) {
         localStorage.setItem(savedPairingsKey, JSON.stringify(items));
+        syncSavedPairingsToServer(items);
+      }
+
+      function mergeSavedPairings(serverItems, localItems) {
+        const byId = new Map();
+        (serverItems || []).forEach(item => {
+          const id = String(item?.id || '').trim();
+          if (id) byId.set(id, item);
+        });
+        (localItems || []).forEach(item => {
+          const id = String(item?.id || '').trim();
+          if (!id) return;
+          const existing = byId.get(id);
+          const localTime = Date.parse(item?.savedAt || '') || 0;
+          const serverTime = Date.parse(existing?.savedAt || '') || 0;
+          if (!existing || localTime >= serverTime) byId.set(id, item);
+        });
+        return Array.from(byId.values());
+      }
+
+      function syncSavedPairingsToServer(items) {
+        window.clearTimeout(savedPairingsSyncTimer);
+        savedPairingsSyncTimer = window.setTimeout(() => {
+          fetch(savedPairingsApiUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: items || readSavedPairings() }),
+            keepalive: true
+          }).catch(error => {
+            console.warn('Gespeicherte Verpaarungen konnten nicht in SQLite gespeichert werden:', error);
+          });
+        }, 120);
+      }
+
+      function loadSavedPairingsFromServer() {
+        fetch(savedPairingsApiUrl)
+          .then(r => r.json().then(data => {
+            if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+            return data;
+          }))
+          .then(data => {
+            const merged = mergeSavedPairings(data.items || [], readSavedPairings());
+            localStorage.setItem(savedPairingsKey, JSON.stringify(merged));
+            renderSavedPairings();
+            syncSavedPairingsToServer(merged);
+          })
+          .catch(error => {
+            console.warn('Gespeicherte Verpaarungen konnten nicht aus SQLite geladen werden:', error);
+          });
       }
 
       function currentPairingUrl() {
@@ -2913,6 +2964,7 @@
       });
 
       renderSavedPairings();
+      loadSavedPairingsFromServer();
       renderWatchlistSires();
       attachWatchlistSires();
       attachDamSuggest();

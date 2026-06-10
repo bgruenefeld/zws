@@ -5,6 +5,7 @@ from collections import defaultdict
 import json
 import logging
 import math
+import sqlite3
 from datetime import date
 from datetime import datetime
 import hmac
@@ -33,6 +34,8 @@ SCORES_CSV = APP_DIR / "scores_bereinigt_mit_originalname.csv"
 USER_DOGS_CSV = Path(os.environ.get("USER_DOGS_CSV", APP_DIR / "user_hunde.csv"))
 USER_DOGS_LOCK_FILE = Path(os.environ.get("USER_DOGS_LOCK_FILE", f"{USER_DOGS_CSV}.lock"))
 USER_DOGS_LOCK = threading.Lock()
+DEFAULT_SQLITE_PATH = Path("/var/data/zws.sqlite") if Path("/var/data").exists() else APP_DIR / "zws.sqlite"
+APP_DATABASE = Path(os.environ.get("APP_DATABASE") or os.environ.get("ZWS_SQLITE_PATH") or DEFAULT_SQLITE_PATH)
 PEDIGREE_IMPORT_STATES = {}
 PEDIGREE_IMPORT_STATE_TTL_SECONDS = 30 * 60
 
@@ -45,6 +48,7 @@ app.logger.setLevel(os.environ.get("LOG_LEVEL", "INFO").upper())
 
 AUTH_USERNAME = os.environ.get("APP_USERNAME", "admin")
 AUTH_PASSWORD = os.environ.get("APP_PASSWORD", "admin")
+AUTH_USERS_JSON = os.environ.get("APP_USERS_JSON", "")
 
 USER_DOG_COLUMNS = [
     "ZBNr",
@@ -89,6 +93,126 @@ USER_DOG_COLUMNS = [
 
 def is_authenticated():
     return session.get("authenticated") is True
+
+
+def configured_users():
+    users = {}
+    if AUTH_USERS_JSON:
+        try:
+            parsed = json.loads(AUTH_USERS_JSON)
+            if isinstance(parsed, dict):
+                iterable = [
+                    {"username": username, "password": password}
+                    for username, password in parsed.items()
+                ]
+            else:
+                iterable = parsed if isinstance(parsed, list) else []
+
+            for item in iterable:
+                username = clean_text(item.get("username")) if isinstance(item, dict) else ""
+                password = str(item.get("password", "")) if isinstance(item, dict) else ""
+                if username and password:
+                    users[username] = password
+        except Exception:
+            app.logger.exception("APP_USERS_JSON konnte nicht gelesen werden")
+
+    if not users and AUTH_USERNAME and AUTH_PASSWORD:
+        users[AUTH_USERNAME] = AUTH_PASSWORD
+    return users
+
+
+def authenticate_static_user(username, password):
+    username = str(username or "")
+    password = str(password or "")
+    users = configured_users()
+    for configured_username, configured_password in users.items():
+        if hmac.compare_digest(username, configured_username) and hmac.compare_digest(password, configured_password):
+            return configured_username
+    return None
+
+
+def current_user_id():
+    return clean_text(session.get("username")) or "anonymous"
+
+
+def get_db():
+    if "sqlite_db" not in g:
+        APP_DATABASE.parent.mkdir(parents=True, exist_ok=True)
+        connection = sqlite3.connect(APP_DATABASE, timeout=15)
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys = ON")
+        connection.execute("PRAGMA journal_mode = WAL")
+        g.sqlite_db = connection
+    return g.sqlite_db
+
+
+@app.teardown_appcontext
+def close_db(error=None):
+    connection = g.pop("sqlite_db", None)
+    if connection is not None:
+        connection.close()
+
+
+def init_personalization_db():
+    connection = sqlite3.connect(APP_DATABASE, timeout=15)
+    try:
+        connection.execute("PRAGMA journal_mode = WAL")
+        connection.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS watchlist (
+                user_id TEXT NOT NULL,
+                zbnr TEXT NOT NULL,
+                dog_json TEXT NOT NULL,
+                saved_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, zbnr)
+            );
+
+            CREATE TABLE IF NOT EXISTS dog_notes (
+                user_id TEXT NOT NULL,
+                zbnr TEXT NOT NULL,
+                dog_name TEXT,
+                note TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, zbnr)
+            );
+
+            CREATE TABLE IF NOT EXISTS saved_pairings (
+                user_id TEXT NOT NULL,
+                pairing_id TEXT NOT NULL,
+                pairing_json TEXT NOT NULL,
+                saved_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, pairing_id)
+            );
+            """
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+def utc_now_iso():
+    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+
+def payload_list(value, max_items=500):
+    if not isinstance(value, list):
+        return []
+    return value[:max_items]
+
+
+def payload_dict(value, max_items=1000):
+    if not isinstance(value, dict):
+        return {}
+    return dict(list(value.items())[:max_items])
+
+
+def read_json_body():
+    return request.get_json(silent=True) or {}
+
+
+init_personalization_db()
 
 
 def is_safe_next_url(value):
@@ -1820,14 +1944,13 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        username_ok = hmac.compare_digest(username, AUTH_USERNAME)
-        password_ok = hmac.compare_digest(password, AUTH_PASSWORD)
+        authenticated_username = authenticate_static_user(username, password)
 
-        if username_ok and password_ok:
+        if authenticated_username:
             session.clear()
             session["authenticated"] = True
-            session["username"] = username
-            log_event("login_success", username=username, next_url=next_url)
+            session["username"] = authenticated_username
+            log_event("login_success", username=authenticated_username, next_url=next_url)
             return redirect(next_url)
 
         log_event("login_failed", username=truncate_log_value(username), next_url=next_url)
@@ -1880,6 +2003,177 @@ def client_event():
 
     log_event(event, **sanitized_client_event_payload(payload))
     return jsonify({"ok": True})
+
+
+@app.route("/api/watchlist", methods=["GET", "PUT"])
+def api_watchlist():
+    user_id = current_user_id()
+    db = get_db()
+
+    if request.method == "GET":
+        rows = db.execute(
+            "SELECT dog_json FROM watchlist WHERE user_id = ? ORDER BY saved_at ASC",
+            (user_id,),
+        ).fetchall()
+        dogs = []
+        for row in rows:
+            try:
+                dog = json.loads(row["dog_json"])
+                if isinstance(dog, dict) and dog.get("zbnr"):
+                    dogs.append(dog)
+            except json.JSONDecodeError:
+                continue
+        return jsonify({"ok": True, "items": dogs})
+
+    items = payload_list(read_json_body().get("items"))
+    now = utc_now_iso()
+    normalized_items = []
+    seen = set()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        zbnr = clean_text(item.get("zbnr"))
+        if not zbnr or zbnr in seen:
+            continue
+        seen.add(zbnr)
+        dog = dict(item)
+        dog["zbnr"] = zbnr
+        dog.setdefault("saved_at", now)
+        normalized_items.append(dog)
+
+    with db:
+        db.execute("DELETE FROM watchlist WHERE user_id = ?", (user_id,))
+        db.executemany(
+            """
+            INSERT INTO watchlist (user_id, zbnr, dog_json, saved_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    user_id,
+                    item["zbnr"],
+                    json.dumps(item, ensure_ascii=False),
+                    clean_text(item.get("saved_at")) or now,
+                    now,
+                )
+                for item in normalized_items
+            ],
+        )
+    log_event("watchlist_saved", count=len(normalized_items))
+    return jsonify({"ok": True, "items": normalized_items})
+
+
+@app.route("/api/dog-notes", methods=["GET", "PUT"])
+def api_dog_notes():
+    user_id = current_user_id()
+    db = get_db()
+
+    if request.method == "GET":
+        rows = db.execute(
+            "SELECT zbnr, dog_name, note, updated_at FROM dog_notes WHERE user_id = ? ORDER BY updated_at DESC",
+            (user_id,),
+        ).fetchall()
+        notes = {
+            row["zbnr"]: {
+                "text": row["note"],
+                "dogName": row["dog_name"] or "",
+                "updatedAt": row["updated_at"],
+            }
+            for row in rows
+            if row["zbnr"]
+        }
+        return jsonify({"ok": True, "items": notes})
+
+    notes = payload_dict(read_json_body().get("items"))
+    now = utc_now_iso()
+    normalized_notes = {}
+    for zbnr, entry in notes.items():
+        key = clean_text(zbnr)
+        if not key:
+            continue
+        if isinstance(entry, dict):
+            text = clean_text(entry.get("text"))
+            dog_name = clean_text(entry.get("dogName"))
+            updated_at = clean_text(entry.get("updatedAt")) or now
+        else:
+            text = clean_text(entry)
+            dog_name = ""
+            updated_at = now
+        if text:
+            normalized_notes[key] = {"text": text, "dogName": dog_name, "updatedAt": updated_at}
+
+    with db:
+        db.execute("DELETE FROM dog_notes WHERE user_id = ?", (user_id,))
+        db.executemany(
+            """
+            INSERT INTO dog_notes (user_id, zbnr, dog_name, note, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                (user_id, zbnr, entry.get("dogName", ""), entry["text"], entry.get("updatedAt") or now)
+                for zbnr, entry in normalized_notes.items()
+            ],
+        )
+    log_event("dog_notes_saved", count=len(normalized_notes))
+    return jsonify({"ok": True, "items": normalized_notes})
+
+
+@app.route("/api/saved-pairings", methods=["GET", "PUT"])
+def api_saved_pairings():
+    user_id = current_user_id()
+    db = get_db()
+
+    if request.method == "GET":
+        rows = db.execute(
+            "SELECT pairing_json FROM saved_pairings WHERE user_id = ? ORDER BY saved_at DESC",
+            (user_id,),
+        ).fetchall()
+        items = []
+        for row in rows:
+            try:
+                item = json.loads(row["pairing_json"])
+                if isinstance(item, dict) and item.get("id"):
+                    items.append(item)
+            except json.JSONDecodeError:
+                continue
+        return jsonify({"ok": True, "items": items})
+
+    items = payload_list(read_json_body().get("items"))
+    now = utc_now_iso()
+    normalized_items = []
+    seen = set()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        pairing_id = clean_text(item.get("id")) or str(uuid.uuid4())
+        if pairing_id in seen:
+            continue
+        seen.add(pairing_id)
+        saved = dict(item)
+        saved["id"] = pairing_id
+        saved.setdefault("savedAt", now)
+        normalized_items.append(saved)
+
+    with db:
+        db.execute("DELETE FROM saved_pairings WHERE user_id = ?", (user_id,))
+        db.executemany(
+            """
+            INSERT INTO saved_pairings (user_id, pairing_id, pairing_json, saved_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    user_id,
+                    item["id"],
+                    json.dumps(item, ensure_ascii=False),
+                    clean_text(item.get("savedAt")) or now,
+                    now,
+                )
+                for item in normalized_items
+            ],
+        )
+    log_event("saved_pairings_saved", count=len(normalized_items))
+    return jsonify({"ok": True, "items": normalized_items})
 
 
 @app.route("/user-dogs", methods=["GET", "POST"])

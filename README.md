@@ -12,18 +12,22 @@ Voraussetzungen:
 Konfiguration:
 - `APP_USERNAME`: Benutzername fuer den Login
 - `APP_PASSWORD`: Passwort fuer den Login
+- `APP_USERS_JSON`: optionale statische Mehrnutzer-Konfiguration, z. B. `{"bernd":"geheim","gast":"passwort"}`
 - `SECRET_KEY`: geheimer Schluessel fuer Flask-Sessions
 - `USER_DOGS_CSV`: Pfad zur CSV-Datei fuer manuell hinzugefuegte Hunde
 - `USER_DOGS_LOCK_FILE`: optionaler Pfad zur Lock-Datei fuer Schreibzugriffe
+- `APP_DATABASE`: Pfad zur SQLite-Datei fuer Merkliste, Notizen und gespeicherte Verpaarungen
 
 Beispiel lokal:
 `APP_USERNAME=bernd APP_PASSWORD=geheim SECRET_KEY=dev-secret python app.py`
 
 Beispiel Render mit Persistent Disk:
 `USER_DOGS_CSV=/var/data/user_hunde.csv`
+`APP_DATABASE=/var/data/zws.sqlite`
 
 Die Datei `user_hunde.csv` wird automatisch angelegt, sobald der erste eigene Hund gespeichert wird. Auf Render sollte der Pfad auf die gemountete Persistent Disk zeigen, nicht in das normale App-Verzeichnis.
 Die Lock-Datei wird standardmaessig daneben angelegt, z. B. `/var/data/user_hunde.csv.lock`.
+Die SQLite-Datei wird automatisch angelegt. Damit Merkliste, Notizen und gespeicherte Verpaarungen Deployments ueberleben, sollte `APP_DATABASE` ebenfalls auf die Persistent Disk zeigen.
 
 Die App nutzt `pedigree_tools.py` aus demselben Verzeichnis und die CSV-Dateien:
 - `drc-Hunde-mit-eltern-rkey.csv`
