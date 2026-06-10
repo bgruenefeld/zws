@@ -1,7 +1,15 @@
+      .pedigree-tabbar {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        margin-top: 12px;
+      }
+
       .pedigree-tabs {
         display: flex;
         gap: 8px;
-        margin-top: 12px;
+        margin-top: 0;
       }
 
       .pedigree-tab-button {
@@ -24,6 +32,119 @@
 
       .pedigree-tab-panel[hidden] {
         display: none;
+      }
+
+      .pedigree-history-actions {
+        display: flex;
+        gap: 8px;
+        margin-left: auto;
+      }
+
+      .pedigree-history-button {
+        align-items: center;
+        background: #fff;
+        border: 1px solid #cfd8e3;
+        border-radius: 6px;
+        color: #1f3a52;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 800;
+        gap: 5px;
+        height: 34px;
+        justify-content: center;
+        line-height: 1;
+        padding: 0 10px;
+        white-space: nowrap;
+      }
+
+      .pedigree-history-button:hover:not(:disabled),
+      .pedigree-history-button:focus-visible {
+        background: #eef6ff;
+        border-color: #9ec5fe;
+        outline: none;
+      }
+
+      .pedigree-history-button:disabled {
+        color: #98a2b3;
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .pedigree-history-card {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #d8dee6;
+        border-radius: 8px;
+        color: #52606d;
+        display: flex;
+        gap: 10px;
+        justify-content: space-between;
+        line-height: 1.3;
+        margin-top: 8px;
+        min-height: 38px;
+        padding: 7px 10px;
+      }
+
+      .pedigree-history-main {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        min-width: 0;
+      }
+
+      .pedigree-history-main strong {
+        color: #1f3a52;
+        font-weight: 850;
+      }
+
+      .pedigree-history-origin {
+        color: #667085;
+        font-size: 12px;
+      }
+
+      .pedigree-breadcrumb {
+        color: #667085;
+        flex: 1;
+        font-size: 12px;
+        min-width: 120px;
+        overflow: hidden;
+        text-align: right;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .pedigree-breadcrumb strong {
+        color: #1f3a52;
+      }
+
+      @media (max-width: 700px) {
+        .pedigree-tabbar,
+        .pedigree-history-card {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .pedigree-history-actions {
+          margin-left: 0;
+        }
+
+        .pedigree-history-button span {
+          display: none;
+        }
+
+        .pedigree-history-button {
+          font-size: 15px;
+          height: 32px;
+          width: 34px;
+        }
+
+        .pedigree-breadcrumb {
+          text-align: left;
+          width: 100%;
+        }
       }
 
       .pedigree-legend {

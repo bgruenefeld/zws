@@ -354,9 +354,6 @@ def is_unknown_parent_id(value: Any) -> bool:
     if zl in {"?", "??", "unbekannt", "unknown", "none", "null"}:
         return True
 
-    if zl.startswith("?-"):
-        return True
-
     return False
 
 
@@ -879,7 +876,30 @@ def render_card(entry: dict[str, Any], generation: int = 0, max_generations: int
             'title="Bei k9-data suchen">k9</a>'
         )
 
-    name_html = f'<div class="name">{html.escape(name)}{epi_score_html}{k9_link_html}</div>'
+    drilldown_html = ""
+    if zbnr:
+        drilldown_html = f"""
+        <button
+            type="button"
+            class="pedigree-drilldown"
+            data-zbnr="{zbnr_attr}"
+            title="Ahnentafel dieses Hundes anzeigen"
+            aria-label="Ahnentafel von {html.escape(name, quote=True)} anzeigen"
+        >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 5v14"></path>
+                <path d="M6 9h12"></path>
+                <path d="M6 15h12"></path>
+                <circle cx="12" cy="5" r="2"></circle>
+                <circle cx="6" cy="9" r="2"></circle>
+                <circle cx="18" cy="9" r="2"></circle>
+                <circle cx="6" cy="15" r="2"></circle>
+                <circle cx="18" cy="15" r="2"></circle>
+            </svg>
+        </button>
+        """
+
+    name_html = f'<div class="name">{html.escape(name)}{drilldown_html}{epi_score_html}{k9_link_html}</div>'
 
     if generation >= 5:
         compact_parts = []
@@ -1077,6 +1097,7 @@ def render_pedigree_html(
             height: 100%;
             overflow: hidden;
             padding: 9px 12px;
+            position: relative;
             width: 100%;
         }}
 
@@ -1099,6 +1120,47 @@ def render_pedigree_html(
         .card.missing {{
             color: #7f8b99;
             opacity: 0.75;
+        }}
+
+        .pedigree-drilldown {{
+            align-items: center;
+            background: #fff;
+            border: 1px solid #cfd8e3;
+            border-radius: 999px;
+            color: #2563eb;
+            cursor: pointer;
+            display: inline-flex;
+            height: 18px;
+            justify-content: center;
+            margin-left: 5px;
+            opacity: 0;
+            padding: 0;
+            transform: translateY(2px);
+            transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+            width: 18px;
+        }}
+
+        .card:hover .pedigree-drilldown,
+        .card:focus-within .pedigree-drilldown,
+        .pedigree-drilldown:focus-visible {{
+            opacity: 1;
+        }}
+
+        .pedigree-drilldown:hover,
+        .pedigree-drilldown:focus-visible {{
+            background: #e8f2ff;
+            border-color: #9ec5fe;
+            outline: none;
+        }}
+
+        .pedigree-drilldown svg {{
+            fill: none;
+            height: 12px;
+            stroke: currentColor;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 2;
+            width: 12px;
         }}
 
         .name {{

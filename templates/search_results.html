@@ -1359,10 +1359,23 @@
 
           <section class="detail-content-section" aria-labelledby="pedigreeSectionTitle">
             <h4 class="detail-section-title" id="pedigreeSectionTitle">Ahnentafel</h4>
-            <div class="pedigree-tabs" role="tablist" aria-label="Ahnentafel Ansicht">
-              <button type="button" class="pedigree-tab-button active" data-pedigree-tab="pedigree">Ahnentafel</button>
-              <button type="button" class="pedigree-tab-button" data-pedigree-tab="avk">AVK</button>
-              <button type="button" class="pedigree-tab-button" data-pedigree-tab="coi">COI</button>
+            <div class="pedigree-tabbar">
+              <div class="pedigree-tabs" role="tablist" aria-label="Ahnentafel Ansicht">
+                <button type="button" class="pedigree-tab-button active" data-pedigree-tab="pedigree">Ahnentafel</button>
+                <button type="button" class="pedigree-tab-button" data-pedigree-tab="avk">AVK</button>
+                <button type="button" class="pedigree-tab-button" data-pedigree-tab="coi">COI</button>
+              </div>
+              <div class="pedigree-history-actions" aria-label="Ahnentafel-Navigation">
+                <button type="button" class="pedigree-history-button" id="pedigreeBackButton" title="Eine Ahnentafel zurück" disabled>← <span>Zurück</span></button>
+                <button type="button" class="pedigree-history-button" id="pedigreeStartButton" title="Zum Ausgangshund" disabled>↤ <span>Zum Ausgangshund</span></button>
+              </div>
+            </div>
+            <div class="pedigree-history-card" id="pedigreeHistoryCard">
+              <div class="pedigree-history-main">
+                <span>Ahnentafel von: <strong id="pedigreeCurrentLabel">—</strong></span>
+                <span class="pedigree-history-origin">Ausgang: <strong id="pedigreeOriginLabel">—</strong></span>
+              </div>
+              <div class="pedigree-breadcrumb" id="pedigreeBreadcrumb"></div>
             </div>
             <section class="pedigree-tab-panel" data-pedigree-panel="pedigree">
               <div class="pedigree-section">
@@ -1511,6 +1524,10 @@
         }
 
         // Load pedigree
+        pedigreeHistory = [];
+        currentPedigreeState = { zbnr: zbnrLink, label: dogName || '' };
+        updatePedigreeBackButton();
+        setPedigreeTitle('');
         loadPedigreeMetrics(zbnrLink);
         loadPedigree(zbnrLink);
 
@@ -1991,6 +2008,52 @@
       {% include "_relatives_modal_script.html" %}
       {% include "_pedigree_import_script.html" %}
 
+      let pedigreeHistory = [];
+      let currentPedigreeState = null;
+
+      function pedigreeStateLabel(state) {
+        const label = String(state?.label || '').trim();
+        const zbnr = String(state?.zbnr || '').trim();
+        return label || zbnr || '—';
+      }
+
+      function renderPedigreeHistory() {
+        const trail = [...pedigreeHistory, currentPedigreeState].filter(Boolean);
+        const currentLabel = document.getElementById('pedigreeCurrentLabel');
+        const originLabel = document.getElementById('pedigreeOriginLabel');
+        const breadcrumb = document.getElementById('pedigreeBreadcrumb');
+        const current = currentPedigreeState || trail[trail.length - 1] || null;
+        const origin = trail[0] || current || null;
+
+        if (currentLabel) currentLabel.textContent = pedigreeStateLabel(current);
+        if (originLabel) originLabel.textContent = pedigreeStateLabel(origin);
+        if (breadcrumb) {
+          breadcrumb.textContent = trail.length
+            ? trail.map(pedigreeStateLabel).join(' › ')
+            : 'Noch kein Verlauf';
+        }
+      }
+
+      function updatePedigreeBackButton() {
+        const backButton = document.getElementById('pedigreeBackButton');
+        const startButton = document.getElementById('pedigreeStartButton');
+        const disabled = pedigreeHistory.length === 0;
+        if (backButton) {
+          backButton.disabled = disabled;
+          backButton.title = disabled ? 'Keine vorherige Ahnentafel' : 'Zurück zur vorherigen Ahnentafel';
+        }
+        if (startButton) {
+          startButton.disabled = disabled;
+          startButton.title = disabled ? 'Kein Ausgangshund in der Historie' : 'Zum Ausgangshund';
+        }
+        renderPedigreeHistory();
+      }
+
+      function setPedigreeTitle(label) {
+        const title = document.getElementById('pedigreeSectionTitle');
+        if (title) title.textContent = label ? 'Ahnentafel: ' + label : 'Ahnentafel';
+      }
+
       function loadPedigree(zbnr) {
         const area = document.getElementById('pedigreeArea');
         area.innerHTML = '<div class="loading">Wird geladen...</div>';
@@ -2012,9 +2075,60 @@
           });
       }
 
+      function openPedigreeFromCard(zbnr, label) {
+        if (!zbnr) return;
+        if (currentPedigreeState?.zbnr) {
+          pedigreeHistory.push(currentPedigreeState);
+        }
+        currentPedigreeState = { zbnr, label: label || '' };
+        updatePedigreeBackButton();
+        selectedMetricsZbnr = zbnr;
+        resetPedigreeMetrics();
+        loadPedigreeMetrics(zbnr);
+        loadPedigree(zbnr);
+        setPedigreeTitle(label);
+
+        document.querySelector('[data-pedigree-tab="pedigree"]')?.click();
+      }
+
+      function restorePedigreeState(state) {
+        if (!state?.zbnr) return;
+        currentPedigreeState = state;
+        selectedMetricsZbnr = state.zbnr;
+        resetPedigreeMetrics();
+        loadPedigreeMetrics(state.zbnr);
+        loadPedigree(state.zbnr);
+        setPedigreeTitle(state.label);
+        updatePedigreeBackButton();
+        document.querySelector('[data-pedigree-tab="pedigree"]')?.click();
+      }
+
+      document.getElementById('pedigreeBackButton')?.addEventListener('click', () => {
+        const previous = pedigreeHistory.pop();
+        restorePedigreeState(previous);
+      });
+
+      document.getElementById('pedigreeStartButton')?.addEventListener('click', () => {
+        if (!pedigreeHistory.length) return;
+        const first = pedigreeHistory[0];
+        pedigreeHistory = [];
+        restorePedigreeState(first);
+      });
+
       const pedigreeArea = document.getElementById('pedigreeArea');
       if (pedigreeArea) {
         pedigreeArea.addEventListener('click', function (event) {
+          const drilldownButton = event.target.closest('.pedigree-drilldown[data-zbnr]');
+          if (drilldownButton && this.contains(drilldownButton)) {
+            event.preventDefault();
+            event.stopPropagation();
+            const zbnr = drilldownButton.getAttribute('data-zbnr');
+            const card = drilldownButton.closest('.card[data-zbnr]');
+            const label = card?.querySelector('.name')?.childNodes?.[0]?.textContent?.trim() || '';
+            openPedigreeFromCard(zbnr, label);
+            return;
+          }
+
           const card = event.target.closest('.card[data-zbnr]');
           if (!card || !this.contains(card)) return;
 

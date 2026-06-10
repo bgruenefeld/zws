@@ -203,6 +203,80 @@ def log_event(event, **fields):
     app.logger.info(json.dumps(payload, ensure_ascii=False, default=str))
 
 
+def event_duration_ms(started_at):
+    if started_at is None:
+        return None
+    try:
+        return round((time.perf_counter() - started_at) * 1000, 1)
+    except Exception:
+        return None
+
+
+def safe_float(value):
+    if value is None:
+        return None
+    try:
+        number = float(value)
+    except Exception:
+        return None
+    if not math.isfinite(number):
+        return None
+    return number
+
+
+def dog_log_identity(row):
+    if row is None:
+        return {"dog_name": None, "zbnr": None}
+    return {
+        "dog_name": clean_text(row.get("Name")) or None,
+        "zbnr": clean_text(row.get("ZBNr_norm") or row.get("ZBNr")) or None,
+    }
+
+
+def dog_log_name(index, zbnr):
+    normalized = pt.normalize_zbnr(zbnr) or clean_text(zbnr)
+    row = index.get(normalized) or index.get(clean_text(zbnr)) or {}
+    return clean_text(row.get("Name")) or None
+
+
+def pedigree_completeness_percent(avk_result):
+    if not avk_result:
+        return None
+    known = safe_float(avk_result.get("known_ancestor_positions"))
+    possible = safe_float(avk_result.get("possible_ancestor_positions"))
+    if known is None or possible in {None, 0}:
+        return None
+    return round(known / possible * 100, 2)
+
+
+CLIENT_LOG_EVENTS = {
+    "saved_pairing_created",
+    "saved_pairing_loaded",
+}
+
+
+def sanitized_client_event_payload(payload):
+    if not isinstance(payload, dict):
+        return {}
+    allowed = {
+        "name",
+        "defaultName",
+        "url",
+        "is_update",
+        "saved_count",
+        "source",
+    }
+    result = {}
+    for key in allowed:
+        if key in payload:
+            value = payload.get(key)
+            if isinstance(value, (bool, int, float)) or value is None:
+                result[key] = value
+            else:
+                result[key] = truncate_log_value(value, max_length=220)
+    return result
+
+
 def has_request_context_safe():
     try:
         request.path
@@ -1793,7 +1867,19 @@ def info():
 
 @app.route("/compare")
 def compare_watchlist():
+    log_event("comparison_opened")
     return render_template("compare.html")
+
+
+@app.route("/client-event", methods=["POST"])
+def client_event():
+    payload = request.get_json(silent=True) or {}
+    event = clean_text(payload.get("event"))
+    if event not in CLIENT_LOG_EVENTS:
+        return jsonify({"ok": False, "error": "unsupported event"}), 400
+
+    log_event(event, **sanitized_client_event_payload(payload))
+    return jsonify({"ok": True})
 
 
 @app.route("/user-dogs", methods=["GET", "POST"])
@@ -2107,6 +2193,23 @@ def pairing():
 
     if dam_preview is not None:
         context["dam_summary"] = dog_summary(dam_preview)
+        dam_identity = dog_log_identity(dam_preview)
+        log_event(
+            "pairing_dam_selected",
+            dam_name=dam_identity.get("dog_name"),
+            dam_zbnr=dam_identity.get("zbnr"),
+            dam_input=truncate_log_value(dam_input),
+        )
+
+    if selected_sire_row is not None:
+        sire_identity = dog_log_identity(selected_sire_row)
+        log_event(
+            "pairing_sire_selected",
+            sire_name=sire_identity.get("dog_name"),
+            sire_zbnr=sire_identity.get("zbnr"),
+            sire_input=truncate_log_value(sire_input),
+            selected_sire=truncate_log_value(selected_sire),
+        )
 
     if selected_sire or dam_input:
         sire = selected_sire_row
@@ -2118,6 +2221,7 @@ def pairing():
             elif selected_sire and sire is None:
                 context["error"] = "Rüde nicht gefunden oder falsches Geschlecht."
         else:
+            pairing_result_started_at = time.perf_counter()
             if not dog_matches_age(sire, min_age=min_age, max_age=max_age):
                 context["error"] = "Der ausgewählte Rüde passt nicht zum angegebenen Altersfilter."
                 return render_template("pairing.html", **context)
@@ -2204,6 +2308,27 @@ def pairing():
                 "coi_analysis": coi_analysis,
                 "pedigree_html": extract_embeddable_html(pedigree.get("html", "")),
             }
+            dam_identity = dog_log_identity(dam)
+            sire_identity = dog_log_identity(sire)
+            log_event(
+                "pairing_result_rendered",
+                dam_name=dam_identity.get("dog_name"),
+                dam_zbnr=dam_identity.get("zbnr"),
+                sire_name=sire_identity.get("dog_name"),
+                sire_zbnr=sire_identity.get("zbnr"),
+                coi=safe_float(coi.get("coi_percent")),
+                avk=safe_float(avk.get("avk_known_percent")),
+                pedigree_completeness=pedigree_completeness_percent(avk),
+                complete_generation=avk.get("deepest_complete_generation_in_data"),
+                generations=metric_max_gen,
+                expected_ebv=safe_float(planned_ebv),
+                offspring_zw=safe_float(planned_ebv),
+                dam_ebv=safe_float(dam_ebv),
+                sire_ebv=safe_float(sire_ebv),
+                warnings_count=0,
+                carrier_warning=False,
+                duration_ms=event_duration_ms(pairing_result_started_at),
+            )
 
     return render_template("pairing.html", **context)
 
@@ -2430,6 +2555,7 @@ def pedigree():
         return redirect(url_for("search"))
 
     max_gen = int(request.args.get("gens", 5))
+    started_at = time.perf_counter()
 
     res = pt.create_pedigree_html_for_zbnr(
         df_or_index=ZBNR_INDEX,
@@ -2440,6 +2566,13 @@ def pedigree():
     )
 
     html = res.get("html", "<p>Keine Daten</p>")
+    log_event(
+        "pedigree_opened",
+        zbnr=pt.normalize_zbnr(zbnr) or clean_text(zbnr),
+        dog_name=dog_log_name(ZBNR_INDEX, zbnr),
+        generations=max_gen,
+        duration_ms=event_duration_ms(started_at),
+    )
 
     return Response(html, mimetype="text/html")
 
@@ -2472,6 +2605,7 @@ def pedigree_metrics():
     if not zbnr:
         return jsonify({"error": "no zbnr provided"}), 400
 
+    started_at = time.perf_counter()
     try:
         requested_gens = clean_text(request.args.get("gens"))
         max_gen = (
@@ -2509,6 +2643,17 @@ def pedigree_metrics():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+    log_event(
+        "pedigree_metrics_rendered",
+        zbnr=pt.normalize_zbnr(zbnr) or clean_text(zbnr),
+        dog_name=dog_log_name(ZBNR_INDEX, zbnr),
+        coi=safe_float(coi.get("coi_percent") if coi else None),
+        avk=safe_float(avk.get("avk_known_percent") if avk else None),
+        completeness=pedigree_completeness_percent(avk),
+        complete_generation=avk.get("deepest_complete_generation_in_data") if avk else None,
+        generations=max_gen,
+        duration_ms=event_duration_ms(started_at),
+    )
     return jsonify(
         {
             "coi_percent": coi.get("coi_percent") if coi else None,
@@ -2619,6 +2764,7 @@ def pedigree_fragment():
         return "", 400
 
     max_gen = int(request.args.get("gens", 5))
+    started_at = time.perf_counter()
 
     try:
         res = pt.create_pedigree_html_for_zbnr(
@@ -2642,6 +2788,13 @@ def pedigree_fragment():
         else:
             body = html
 
+        log_event(
+            "pedigree_opened",
+            zbnr=pt.normalize_zbnr(zbnr) or clean_text(zbnr),
+            dog_name=dog_log_name(ZBNR_INDEX, zbnr),
+            generations=max_gen,
+            duration_ms=event_duration_ms(started_at),
+        )
         return Response(styles + body, mimetype="text/html")
     except Exception as e:
         import traceback

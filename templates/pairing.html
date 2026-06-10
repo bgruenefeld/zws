@@ -169,9 +169,10 @@
       }
 
       .pairing-center #sireCandidatePanel {
+        display: grid;
+        gap: 12px;
         margin: 0;
-        max-height: 330px;
-        overflow: auto;
+        overflow: hidden;
         padding: 14px;
       }
 
@@ -184,9 +185,17 @@
       }
 
       .pairing-center .candidate-table thead th {
+        background: #f8fafc;
+        background-clip: padding-box;
+        box-shadow: 0 1px 0 #edf1f5;
         position: sticky;
         top: 0;
-        z-index: 2;
+        z-index: 3;
+      }
+
+      .candidate-table-wrap {
+        max-height: 260px;
+        overflow: auto;
       }
 
       .pedigree-work-card {
@@ -1725,73 +1734,75 @@
           </div>
 
           {% if sire_candidates %}
-            <table class="candidate-table">
-              <thead>
-                <tr>
-                  <th>{{ sort_link("Name", "name") }}</th>
-                  <th>{{ sort_link("ZBNr", "zbnr") }}</th>
-                  <th>{{ sort_link("Alter", "alter") }}</th>
-                  <th>ED</th>                   
-                  <th>{{ sort_link("Nachkommen", "nachkommen") }}</th>
-                  <th>{{ sort_link("ED-EBV/ C[%]", "zuchtwert") }}</th>
-                  <th>Merkliste</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for dog in sire_candidates %}
-                  {% set dogData = {
-                    'name': dog.name or 'unbekannt',
-                    'zbnr': dog.zbnr or '',
-                    'geschlecht': dog.geschlecht or 'R',
-                    'wurfdatum': dog.wurfdatum or '',
-                    'hd': dog.hd or '',
-                    'ed': dog.ed or '',
-                    'zuchtwert': dog.zuchtwert if dog.zuchtwert is not none else None,
-                    'konfidenz': dog.konfidenz if dog.konfidenz is not none else None,
-                    'anz_nachkommen': dog.anz_nachkommen,
-                    'prcd_pra': dog.prcd_pra or '',
-                    'hnpk': dog.hnpk or '',
-                    'sd2': dog.sd2 or '',
-                    'cnm': dog.cnm or '',
-                    'eic': dog.eic or '',
-                    'zs': dog.zs or '',
-                    'stgd_status': dog.stgd_status or ''
-                  } %}
+            <div class="candidate-table-wrap">
+              <table class="candidate-table">
+                <thead>
                   <tr>
-                    <td>
-                      {{ dog.name or "unbekannt" }}
-                      {% if dog.kc_health_url %}
-                        <br>
-                        <a class="external-health-link" href="{{ dog.kc_health_url }}" target="_blank" rel="noopener noreferrer">Royal Kennel Club</a>
-                      {% endif %}
-                    </td>
-                    <td>{{ dog.zbnr or "—" }}</td>
-                    <td>{% if dog.alter is not none %}{{ dog.alter }} Jahre{% else %}—{% endif %}</td>
-                    <td>{{ dog.ed or "—" }}</td>                    
-                    <td>{% if dog.anz_nachkommen is not none %}{{ dog.anz_nachkommen }}{% else %}—{% endif %}</td>
-                    <td>
-                      {% if dog.zuchtwert is not none %}{{ dog.zuchtwert }}{% else %}—{% endif %}
-                      {% if dog.konfidenz is not none %} ({{ dog.konfidenz }} %){% endif %}
-                    </td>
-                    <td class="row-action-cell">
-                      <button
-                        type="button"
-                        class="small-action-button watchlist-toggle"
-                        data-zbnr="{{ dog.zbnr }}"
-                        data-dog='{{ dogData | tojson }}'
-                        onclick="toggleWatchlistFromButton(event, this)"
-                      >Merken</button>
-                    </td>
-                    <td>
-                      <a class="candidate-action" href="{{ url_for('pairing', sire=sire_input, selected_sire=dog.zbnr, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', excluded_ancestor_zbnrs=excluded_ancestor_zbnrs, sire_search='1', sire_page=sire_page, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">
-                        Auswählen
-                      </a>
-                    </td>
+                    <th>{{ sort_link("Name", "name") }}</th>
+                    <th>{{ sort_link("ZBNr", "zbnr") }}</th>
+                    <th>{{ sort_link("Alter", "alter") }}</th>
+                    <th>ED</th>
+                    <th>{{ sort_link("Nachkommen", "nachkommen") }}</th>
+                    <th>{{ sort_link("ED-EBV/ C[%]", "zuchtwert") }}</th>
+                    <th>Merkliste</th>
+                    <th></th>
                   </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {% for dog in sire_candidates %}
+                    {% set dogData = {
+                      'name': dog.name or 'unbekannt',
+                      'zbnr': dog.zbnr or '',
+                      'geschlecht': dog.geschlecht or 'R',
+                      'wurfdatum': dog.wurfdatum or '',
+                      'hd': dog.hd or '',
+                      'ed': dog.ed or '',
+                      'zuchtwert': dog.zuchtwert if dog.zuchtwert is not none else None,
+                      'konfidenz': dog.konfidenz if dog.konfidenz is not none else None,
+                      'anz_nachkommen': dog.anz_nachkommen,
+                      'prcd_pra': dog.prcd_pra or '',
+                      'hnpk': dog.hnpk or '',
+                      'sd2': dog.sd2 or '',
+                      'cnm': dog.cnm or '',
+                      'eic': dog.eic or '',
+                      'zs': dog.zs or '',
+                      'stgd_status': dog.stgd_status or ''
+                    } %}
+                    <tr>
+                      <td>
+                        {{ dog.name or "unbekannt" }}
+                        {% if dog.kc_health_url %}
+                          <br>
+                          <a class="external-health-link" href="{{ dog.kc_health_url }}" target="_blank" rel="noopener noreferrer">Royal Kennel Club</a>
+                        {% endif %}
+                      </td>
+                      <td>{{ dog.zbnr or "—" }}</td>
+                      <td>{% if dog.alter is not none %}{{ dog.alter }} Jahre{% else %}—{% endif %}</td>
+                      <td>{{ dog.ed or "—" }}</td>
+                      <td>{% if dog.anz_nachkommen is not none %}{{ dog.anz_nachkommen }}{% else %}—{% endif %}</td>
+                      <td>
+                        {% if dog.zuchtwert is not none %}{{ dog.zuchtwert }}{% else %}—{% endif %}
+                        {% if dog.konfidenz is not none %} ({{ dog.konfidenz }} %){% endif %}
+                      </td>
+                      <td class="row-action-cell">
+                        <button
+                          type="button"
+                          class="small-action-button watchlist-toggle"
+                          data-zbnr="{{ dog.zbnr }}"
+                          data-dog='{{ dogData | tojson }}'
+                          onclick="toggleWatchlistFromButton(event, this)"
+                        >Merken</button>
+                      </td>
+                      <td>
+                        <a class="candidate-action" href="{{ url_for('pairing', sire=sire_input, selected_sire=dog.zbnr, dam=dam_input, sire_min_age=sire_min_age, sire_max_age=sire_max_age, sire_max_ebv=sire_max_ebv, sire_min_offspring=sire_min_offspring, avoid_carrier_matches='1' if avoid_carrier_matches else '', excluded_ancestor_zbnrs=excluded_ancestor_zbnrs, sire_search='1', sire_page=sire_page, sire_sort_by=sire_sort_by, sire_sort_dir=sire_sort_dir) }}">
+                          Auswählen
+                        </a>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
 
             {% if sire_page_count > 1 %}
               <nav class="pager" aria-label="Rüden Trefferseiten">
@@ -1834,10 +1845,23 @@
               <div class="pairing-result-subtitle">{{ result.dam.name }} × {{ result.sire.name }}</div>
             </div>
           </div>
-          <div class="pedigree-tabs" role="tablist" aria-label="Ahnentafel Ansicht">
-            <button type="button" class="pedigree-tab-button active" data-pedigree-tab="pedigree">Ahnentafel</button>
-            <button type="button" class="pedigree-tab-button" data-pedigree-tab="avk">AVK</button>
-            <button type="button" class="pedigree-tab-button" data-pedigree-tab="coi">COI</button>
+          <div class="pedigree-tabbar">
+            <div class="pedigree-tabs" role="tablist" aria-label="Ahnentafel Ansicht">
+              <button type="button" class="pedigree-tab-button active" data-pedigree-tab="pedigree">Ahnentafel</button>
+              <button type="button" class="pedigree-tab-button" data-pedigree-tab="avk">AVK</button>
+              <button type="button" class="pedigree-tab-button" data-pedigree-tab="coi">COI</button>
+            </div>
+            <div class="pedigree-history-actions" aria-label="Ahnentafel-Navigation">
+              <button type="button" class="pedigree-history-button" id="pairingPedigreeBackButton" title="Eine Ahnentafel zurück" disabled>← <span>Zurück</span></button>
+              <button type="button" class="pedigree-history-button" id="pairingPedigreeStartButton" title="Zum Ausgangshund" disabled>↤ <span>Zum Ausgangshund</span></button>
+            </div>
+          </div>
+          <div class="pedigree-history-card" id="pairingPedigreeHistoryCard">
+            <div class="pedigree-history-main">
+              <span>Ahnentafel von: <strong id="pairingPedigreeCurrentLabel">Geplante Verpaarung</strong></span>
+              <span class="pedigree-history-origin">Ausgang: <strong id="pairingPedigreeOriginLabel">Geplante Verpaarung</strong></span>
+            </div>
+            <div class="pedigree-breadcrumb" id="pairingPedigreeBreadcrumb"></div>
           </div>
           <section class="pedigree-tab-panel" data-pedigree-panel="pedigree">
             <div class="pedigree-panel">
@@ -2077,16 +2101,128 @@
           .replace(/'/g, '&#39;');
       }
 
+      function logClientEvent(event, payload = {}) {
+        const body = JSON.stringify({ event, ...payload });
+        if (navigator.sendBeacon) {
+          const blob = new Blob([body], { type: 'application/json' });
+          navigator.sendBeacon('/client-event', blob);
+          return;
+        }
+
+        fetch('/client-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          keepalive: true
+        }).catch(() => {});
+      }
+
       {% include "_watchlist_script.html" %}
       {% include "_pedigree_notes_script.html" %}
       {% include "_relatives_modal_script.html" %}
       {% include "_pedigree_import_script.html" %}
+
+      let pairingPedigreeHistory = [];
+
+      function pairingPedigreeLabelFromTitle(title) {
+        const cleanTitle = String(title || '').trim();
+        if (!cleanTitle || cleanTitle === 'Ahnentafel der geplanten Verpaarung') return 'Geplante Verpaarung';
+        return cleanTitle.replace(/^Ahnentafel:\s*/i, '').trim() || 'Ahnentafel';
+      }
+
+      function pairingPedigreeSnapshotLabel(snapshot) {
+        return String(snapshot?.label || '').trim() || pairingPedigreeLabelFromTitle(snapshot?.title);
+      }
+
+      function renderPairingPedigreeHistory() {
+        const currentSnapshot = currentPairingPedigreeSnapshot();
+        const trail = [...pairingPedigreeHistory, currentSnapshot].filter(Boolean);
+        const currentLabel = document.getElementById('pairingPedigreeCurrentLabel');
+        const originLabel = document.getElementById('pairingPedigreeOriginLabel');
+        const breadcrumb = document.getElementById('pairingPedigreeBreadcrumb');
+        const current = currentSnapshot || trail[trail.length - 1] || null;
+        const origin = trail[0] || current || null;
+
+        if (currentLabel) currentLabel.textContent = pairingPedigreeSnapshotLabel(current);
+        if (originLabel) originLabel.textContent = pairingPedigreeSnapshotLabel(origin);
+        if (breadcrumb) {
+          breadcrumb.textContent = trail.length
+            ? trail.map(pairingPedigreeSnapshotLabel).join(' › ')
+            : 'Noch kein Verlauf';
+        }
+      }
+
+      function updatePairingPedigreeBackButton() {
+        const backButton = document.getElementById('pairingPedigreeBackButton');
+        const startButton = document.getElementById('pairingPedigreeStartButton');
+        const disabled = pairingPedigreeHistory.length === 0;
+        if (backButton) {
+          backButton.disabled = disabled;
+          backButton.title = disabled ? 'Keine vorherige Ahnentafel' : 'Zurück zur vorherigen Ahnentafel';
+        }
+        if (startButton) {
+          startButton.disabled = disabled;
+          startButton.title = disabled ? 'Kein Ausgangshund in der Historie' : 'Zum Ausgangshund';
+        }
+        renderPairingPedigreeHistory();
+      }
+
+      function currentPairingPedigreeSnapshot() {
+        const panel = document.querySelector('.pedigree-panel');
+        const title = document.getElementById('plannedPedigreeTitle');
+        const titleText = title?.textContent || 'Ahnentafel der geplanten Verpaarung';
+        return {
+          html: panel?.innerHTML || '',
+          title: titleText,
+          label: pairingPedigreeLabelFromTitle(titleText)
+        };
+      }
+
+      function restorePairingPedigreeSnapshot(snapshot) {
+        const panel = document.querySelector('.pedigree-panel');
+        const title = document.getElementById('plannedPedigreeTitle');
+        if (!panel || !snapshot) return;
+        panel.innerHTML = snapshot.html || '';
+        if (title) title.textContent = snapshot.title || 'Ahnentafel';
+        updatePairingPedigreeBackButton();
+        document.querySelector('[data-pedigree-tab="pedigree"]')?.click();
+      }
 
       function attachPairingPedigreeClick() {
         const panel = document.querySelector('.pedigree-panel');
         if (!panel) return;
 
         panel.addEventListener('click', event => {
+          const drilldownButton = event.target.closest('.pedigree-drilldown[data-zbnr]');
+          if (drilldownButton && panel.contains(drilldownButton)) {
+            event.preventDefault();
+            event.stopPropagation();
+            const zbnr = drilldownButton.getAttribute('data-zbnr');
+            if (!zbnr || zbnr.startsWith('__')) return;
+
+            const label = drilldownButton.closest('.card[data-zbnr]')?.querySelector('.name')?.childNodes?.[0]?.textContent?.trim() || '';
+            pairingPedigreeHistory.push(currentPairingPedigreeSnapshot());
+            const title = document.getElementById('plannedPedigreeTitle');
+            if (title) title.textContent = label ? 'Ahnentafel: ' + label : 'Ahnentafel';
+            updatePairingPedigreeBackButton();
+            panel.innerHTML = '<div class="loading">Wird geladen...</div>';
+            fetch('/pedigree_fragment?zbnr=' + encodeURIComponent(zbnr) + '&gens=5')
+              .then(r => r.text().then(html => {
+                if (!r.ok) throw new Error(html || ('HTTP ' + r.status));
+                return html;
+              }))
+              .then(html => {
+                panel.innerHTML = html;
+                if (title) title.textContent = label ? 'Ahnentafel: ' + label : 'Ahnentafel';
+                updatePairingPedigreeBackButton();
+                document.querySelector('[data-pedigree-tab="pedigree"]')?.click();
+              })
+              .catch(error => {
+                panel.innerHTML = '<div class="workspace-empty">Fehler beim Laden der Ahnentafel: ' + escapeHtml(error.message) + '</div>';
+              });
+            return;
+          }
+
           const card = event.target.closest('.card[data-zbnr]');
           if (!card || !panel.contains(card)) return;
 
@@ -2094,6 +2230,20 @@
           if (!zbnr || zbnr.startsWith('__')) return;
           loadRelativesModal(zbnr, { resetHistory: true });
         });
+
+        document.getElementById('pairingPedigreeBackButton')?.addEventListener('click', () => {
+          const previous = pairingPedigreeHistory.pop();
+          restorePairingPedigreeSnapshot(previous);
+        });
+
+        document.getElementById('pairingPedigreeStartButton')?.addEventListener('click', () => {
+          if (!pairingPedigreeHistory.length) return;
+          const first = pairingPedigreeHistory[0];
+          pairingPedigreeHistory = [];
+          restorePairingPedigreeSnapshot(first);
+        });
+
+        updatePairingPedigreeBackButton();
       }
 
       function attachRepeatedAncestorHighlights() {
@@ -2498,6 +2648,13 @@
 
         writeSavedPairings(items);
         renderSavedPairings();
+        logClientEvent('saved_pairing_created', {
+          name: item.name,
+          defaultName: currentPairingData.defaultName,
+          url: item.url,
+          is_update: existingIndex >= 0,
+          saved_count: items.length
+        });
 
         const status = document.getElementById('savePairingStatus');
         if (status) status.textContent = 'Gespeichert.';
@@ -2739,8 +2896,15 @@
       document.addEventListener('click', event => {
         const openButton = event.target.closest('.saved-open');
         if (openButton) {
+          const url = openButton.dataset.url || '#';
+          const item = readSavedPairings().find(entry => entry.url === url) || {};
+          logClientEvent('saved_pairing_loaded', {
+            name: item.name || '',
+            url,
+            source: 'saved_pairings_drawer'
+          });
           closeSavedPairingsDrawer();
-          window.location.href = openButton.dataset.url || '#';
+          window.location.href = url;
           return;
         }
 
