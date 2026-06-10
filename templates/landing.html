@@ -112,6 +112,15 @@
         width: 42px;
       }
 
+      .entry-icon svg {
+        height: 22px;
+        stroke: currentColor;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2;
+        width: 22px;
+      }
+
       .entry-card h2 {
         color: #12233a;
         font-size: 19px;
@@ -155,10 +164,10 @@
 
     <header>
       <div class="container hero">
-        <div class="eyebrow">Datenbasierte Zuchtplanung für Labrador Retriever</div>
-        <h1>Ein Werkzeug, um Gesundheitsdaten in der Zucht besser einzuordnen.</h1>
+        <h3>Der Planer - datenbasierte Zuchtplanung für Labrador Retriever</h3>
+        <div class="eyebrow">Ein Werkzeug, um Gesundheitsdaten in der Zucht besser zu nutzen.</div>
         <p>
-          Diese Anwendung bündelt Ahnentafeln, Gesundheitsdaten, Zuchtwerte und Verpaarungskennzahlen,
+          Der Planer bündelt Ahnentafeln, Gesundheitsdaten, Zuchtwerte und Verpaarungskennzahlen,
           damit bei der Paarungsplanung alle relevanten Informationen auf einen Blick verfügbar sind. 
           So können züchterische Entscheidungen bewusster getroffen und die Gesundheit der Hunde langfristig verbessert
           werden.
@@ -168,7 +177,7 @@
 
     <main>
       <div class="container">
-        <section class="intro-panel">
+        <!-- <section class="intro-panel">
           <p>
             Motivation dieser App ist es, vorhandene Daten nicht nur als einzelne Hundeeinträge zu betrachten,
             sondern im Zusammenhang von Verwandtschaft, Nachkommen, Röntgenquote und geplanter Verpaarung. 
@@ -177,11 +186,16 @@
             Sie ersetzt natürlich keine weitere züchterische Bewertung, hilft aber dabei, relevante Informationen schneller zu finden, darzustellen
             und einfacher gegeneinander abzuwägen.
           </p>
-        </section>
+        </section> -->
 
         <section class="entry-grid" aria-label="Bereiche der Anwendung">
           <a class="entry-card" href="/search">
-            <span class="entry-icon">S</span>
+            <span class="entry-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m20 20-4.5-4.5"></path>
+              </svg>
+            </span>
             <h2>Hundesuche</h2>
             <p>
               Suche nach Hundename. Verschaffe dir einen schnellen Überblick über Ahnentafeln,
@@ -192,7 +206,15 @@
           </a>
 
           <a class="entry-card" href="/pairing">
-            <span class="entry-icon">P</span>
+            <span class="entry-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M6 4v16"></path>
+                <path d="M18 4v16"></path>
+                <path d="M6 8h5a4 4 0 0 1 4 4v0a4 4 0 0 0 4 4h-1"></path>
+                <circle cx="6" cy="4" r="2"></circle>
+                <circle cx="18" cy="20" r="2"></circle>
+              </svg>
+            </span>
             <h2>Verpaarung planen</h2>
             <p>
              Wähle Hündin und Rüde, vergleiche Kandidaten und Ahnentafeln. Erhalte eine Übersicht über die erwarteten Werte der Nachkommen hinsichtlich
@@ -202,7 +224,13 @@
           </a>
 
           <a class="entry-card" href="/info">
-            <span class="entry-icon">I</span>
+            <span class="entry-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 11v5"></path>
+                <path d="M12 8h.01"></path>
+              </svg>
+            </span>
             <h2>Zuchtwert verstehen</h2>
             <p>
               Lies nach, wie Zuchtwertschätzung einzuordnen ist, was Sicherheit bedeutet
