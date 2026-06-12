@@ -1,5 +1,5 @@
 from pathlib import Path
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 from contextlib import contextmanager
 from collections import defaultdict
 import json
@@ -416,7 +416,7 @@ def start_request_logging():
 
 @app.before_request
 def require_login():
-    public_endpoints = {"login", "static"}
+    public_endpoints = {"login", "static", "umfrage"}
     if request.endpoint in public_endpoints:
         return None
 
@@ -1407,6 +1407,13 @@ def dog_has_excluded_ancestor(row, excluded_zbnrs, max_generations=5):
     return bool(ancestor_zbnrs_for_dog(row, max_generations=max_generations) & set(excluded_zbnrs))
 
 
+def dog_has_any_carrier_status(row):
+    for _key, column in GENETIC_TEST_FIELDS:
+        if column in row and is_carrier_status(row.get(column)):
+            return True
+    return False
+
+
 def parse_excluded_ancestor_values(values):
     result = []
     seen = set()
@@ -1971,6 +1978,11 @@ def logout():
 def landing():
     """Welcome page with entry points into the app."""
     return render_template("landing.html")
+
+
+@app.route("/umfrage")
+def umfrage():
+    return app.send_static_file("umfrage.html")
 
 
 @app.route("/dogs", methods=["GET", "POST"])
@@ -2630,8 +2642,48 @@ def pairing():
 @app.route("/search", methods=["GET"])
 def search_results():
     """Search results page."""
+    ensure_pairing_search_columns()
     query = request.args.get("q", "").strip()
     page = request.args.get("page", "1")
+    filter_sex = request.args.get("sex", "").strip().upper()
+    if filter_sex not in {"H", "R"}:
+        filter_sex = ""
+    filter_min_age = request.args.get("min_age", "").strip()
+    filter_max_age = request.args.get("max_age", "").strip()
+    filter_max_ebv = request.args.get("max_ebv", "").strip()
+    filter_min_offspring = request.args.get("min_offspring", "").strip()
+    avoid_carrier_matches = request.args.get("avoid_carrier_matches", "").strip() == "1"
+    excluded_ancestor_zbnrs = parse_excluded_ancestor_values(request.args.getlist("excluded_ancestor_zbnrs"))
+    min_age = parse_int_filter(filter_min_age)
+    max_age = parse_int_filter(filter_max_age)
+    max_ebv = parse_int_filter(filter_max_ebv)
+    min_offspring = parse_int_filter(filter_min_offspring)
+    has_search_filters = any(
+        [
+            filter_sex,
+            filter_min_age,
+            filter_max_age,
+            filter_max_ebv,
+            filter_min_offspring,
+            avoid_carrier_matches,
+            excluded_ancestor_zbnrs,
+        ]
+    )
+    search_params = {
+        "q": query,
+        "sex": filter_sex,
+        "min_age": filter_min_age,
+        "max_age": filter_max_age,
+        "max_ebv": filter_max_ebv,
+        "min_offspring": filter_min_offspring,
+        "excluded_ancestor_zbnrs": excluded_ancestor_zbnrs,
+    }
+    if avoid_carrier_matches:
+        search_params["avoid_carrier_matches"] = "1"
+    search_query_string = urlencode(
+        {key: value for key, value in search_params.items() if value not in ("", [], None)},
+        doseq=True,
+    )
     try:
         page = max(1, int(page))
     except ValueError:
@@ -2643,7 +2695,19 @@ def search_results():
     if sort_dir not in {"asc", "desc"}:
         sort_dir = "asc"
 
-    if not query:
+    filter_context = {
+        "filter_min_age": filter_min_age,
+        "filter_max_age": filter_max_age,
+        "filter_max_ebv": filter_max_ebv,
+        "filter_min_offspring": filter_min_offspring,
+        "filter_sex": filter_sex,
+        "avoid_carrier_matches": avoid_carrier_matches,
+        "excluded_ancestor_zbnrs": excluded_ancestor_zbnrs,
+        "excluded_ancestors": excluded_ancestor_summaries(excluded_ancestor_zbnrs),
+        "search_query_string": search_query_string,
+    }
+
+    if not query and not has_search_filters:
         return render_template(
             "search_results.html",
             query="",
@@ -2656,6 +2720,7 @@ def search_results():
             sort_dir=sort_dir,
             no_results=False,
             search_started=False,
+            **filter_context,
             **pedigree_import_context(default_return_to=current_return_url()),
         )
     
@@ -2663,12 +2728,31 @@ def search_results():
     df = MERGED_DF
 
     # search in Name and ZBNr columns
-    mask = (
-        df["Name"].fillna("").str.lower().str.contains(q, na=False)
-        | df["ZBNr"].fillna("").str.lower().str.contains(q, na=False)
-    )
+    if q:
+        mask = (
+            df["Name"].fillna("").str.lower().str.contains(q, na=False)
+            | df["ZBNr"].fillna("").str.lower().str.contains(q, na=False)
+        )
+        matches = df[mask].copy()
+    else:
+        matches = df.copy()
 
-    matches = df[mask].copy()
+    if filter_sex:
+        matches = matches[matches["_sex_clean"] == filter_sex]
+    matches = apply_age_filter(matches, min_age=min_age, max_age=max_age)
+    if max_ebv is not None:
+        matches = matches[matches["_ebv_numeric"].notna() & (matches["_ebv_numeric"] <= max_ebv)]
+    if min_offspring is not None:
+        matches = matches[
+            matches["_offspring_numeric"].notna() & (matches["_offspring_numeric"] >= min_offspring)
+        ]
+    if avoid_carrier_matches:
+        matches = matches.loc[~matches.apply(dog_has_any_carrier_status, axis=1)]
+    if excluded_ancestor_zbnrs:
+        excluded = set(excluded_ancestor_zbnrs)
+        matches = matches.loc[
+            ~matches.apply(lambda row: bool(ancestor_zbnrs_for_dog(row) & excluded), axis=1)
+        ]
     
     # Build sort helper columns
     matches["sort_zbnr"] = (
@@ -2754,6 +2838,13 @@ def search_results():
             page_size=page_size,
             sort_by=sort_by,
             sort_dir=sort_dir,
+            min_age=min_age,
+            max_age=max_age,
+            max_ebv=max_ebv,
+            min_offspring=min_offspring,
+            sex=filter_sex,
+            avoid_carrier_matches=avoid_carrier_matches,
+            excluded_ancestors_count=len(excluded_ancestor_zbnrs),
         )
         return render_template(
             "search_results.html",
@@ -2767,6 +2858,8 @@ def search_results():
             sort_dir=sort_dir,
             no_results=True,
             search_started=True,
+            **filter_context,
+            **pedigree_import_context(default_return_to=current_return_url()),
         )
     
     page_count = max(1, math.ceil(total_matches / page_size))
@@ -2825,6 +2918,13 @@ def search_results():
         page_size=page_size,
         sort_by=sort_by,
         sort_dir=sort_dir,
+        min_age=min_age,
+        max_age=max_age,
+        max_ebv=max_ebv,
+        min_offspring=min_offspring,
+        sex=filter_sex,
+        avoid_carrier_matches=avoid_carrier_matches,
+        excluded_ancestors_count=len(excluded_ancestor_zbnrs),
     )
     return render_template(
         "search_results.html",
@@ -2838,6 +2938,7 @@ def search_results():
         sort_dir=sort_dir,
         no_results=(total_matches == 0),
         search_started=True,
+        **filter_context,
         **pedigree_import_context(default_return_to=current_return_url()),
     )
 
