@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gesundheitsmonitoring Labrador Retriever – Prototyp</title>
+  <style>
+    :root {
+      --bg: #f4f7f6;
+      --panel: #ffffff;
+      --text: #1f2933;
+      --muted: #667085;
+      --line: #d8e0dd;
+      --brand: #1f6f5b;
+      --brand-dark: #165142;
+      --brand-soft: #e3f2ed;
+      --accent: #c48a35;
+      --danger: #9f2d2d;
+      --shadow: 0 12px 28px rgba(31, 41, 51, .08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #edf4f2 0%, var(--bg) 42%, #ffffff 100%);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    header {
+      background: radial-gradient(circle at top left, #2a8c73 0%, var(--brand) 38%, var(--brand-dark) 100%);
+      color: white;
+      padding: 42px 28px 56px;
+    }
+
+    .header-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.4fr .8fr;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(30px, 4vw, 52px);
+      line-height: 1.05;
+      letter-spacing: -.03em;
+    }
+
+    .lead {
+      margin: 0;
+      color: rgba(255,255,255,.88);
+      font-size: 18px;
+      max-width: 780px;
+    }
+
+    .hero-card {
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: var(--radius);
+      padding: 22px;
+      backdrop-filter: blur(8px);
+    }
+
+    .hero-card strong { display: block; margin-bottom: 8px; font-size: 18px; }
+    .hero-card p { margin: 0; color: rgba(255,255,255,.86); }
+
+    main {
+      max-width: 1180px;
+      margin: -28px auto 60px;
+      padding: 0 22px;
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    nav {
+      position: sticky;
+      top: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    nav h2 {
+      font-size: 15px;
+      margin: 0 0 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .nav-link {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 15px;
+    }
+
+    .nav-link:hover { background: var(--brand-soft); color: var(--brand-dark); }
+    .nav-link span:last-child { color: var(--muted); }
+
+    .content { display: grid; gap: 22px; }
+
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 22px 24px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(90deg, #ffffff, #f8fbfa);
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -.01em;
+    }
+
+    .section-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 680px;
+    }
+
+    .badge {
+      align-self: flex-start;
+      white-space: nowrap;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: var(--brand-dark);
+      padding: 7px 11px;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .section-body { padding: 24px; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    label, .label {
+      font-weight: 650;
+      font-size: 14px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: -4px;
+    }
+
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%;
+      border: 1px solid #cfd8d4;
+      border-radius: 12px;
+      padding: 11px 12px;
+      font: inherit;
+      background: #fff;
+      color: var(--text);
+    }
+
+    textarea { min-height: 96px; resize: vertical; }
+
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 11px;
+      border: 1px solid #cfd8d4;
+      border-radius: 999px;
+      background: #fff;
+      font-size: 14px;
+    }
+
+    .pill input { margin: 0; }
+
+    .info-box {
+      border-left: 5px solid var(--brand);
+      background: var(--brand-soft);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 22px;
+    }
+
+    .info-box strong { display: block; margin-bottom: 5px; }
+    .info-box p { margin: 0; color: #335047; }
+
+    .warning-box {
+      border-left: 5px solid var(--accent);
+      background: #fff7e8;
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-top: 18px;
+    }
+
+    .divider { height: 1px; background: var(--line); margin: 22px 0; }
+
+    .disease-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .disease-item {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .disease-item input { margin-top: 4px; }
+
+    details {
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: #fbfdfc;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    summary {
+      cursor: pointer;
+      padding: 16px 18px;
+      font-weight: 750;
+      color: var(--brand-dark);
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; float: right; color: var(--muted); }
+    details[open] summary::after { content: "–"; }
+
+    .details-body {
+      padding: 0 18px 18px;
+      border-top: 1px solid var(--line);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px;
+      text-align: center;
+    }
+
+    th:first-child, td:first-child { text-align: left; }
+    th { background: #f4f8f6; }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 22px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-weight: 750;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .primary { background: var(--brand); color: white; }
+    .secondary { background: var(--brand-soft); color: var(--brand-dark); }
+
+    footer {
+      max-width: 1180px;
+      margin: 0 auto 50px;
+      padding: 0 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .header-inner, main { grid-template-columns: 1fr; }
+      nav { position: static; }
+      .grid-2, .grid-3, .disease-list { grid-template-columns: 1fr; }
+      .section-head { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div>
+        <div class="eyebrow">DRC · Anonyme Jahreserhebung · Prototyp</div>
+        <h1>Gesundheitsmonitoring Labrador Retriever</h1>
+        <p class="lead">Kompakter HTML-Prototyp für eine anonyme Besitzer- und Züchterbefragung. Ziel ist eine wiederholbare, rassebezogene Erfassung von Gesundheit, Erkrankungen, HD/ED-Befunden und Gentests als Selbstauskunft.</p>
+      </div>
+      <div class="hero-card">
+        <strong>Wichtig für die Anonymität</strong>
+        <p>Keine Namen, keine Zuchtbuchnummern, keine Chipnummern, keine Dokumente. Offizielle Befunde und Gentests werden nur als freiwillige Selbstauskunft abgefragt.</p>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <nav aria-label="Abschnitte">
+      <h2>Fragebogen</h2>
+      <a class="nav-link" href="#teil-a"><span>A Allgemeines</span><span>01</span></a>
+      <a class="nav-link" href="#teil-b"><span>B Fortpflanzung</span><span>02</span></a>
+      <a class="nav-link" href="#teil-c"><span>C Nutzung</span><span>03</span></a>
+      <a class="nav-link" href="#teil-d"><span>D Haltung</span><span>04</span></a>
+      <a class="nav-link" href="#teil-e"><span>E Befunde & Gentests</span><span>05</span></a>
+      <a class="nav-link" href="#teil-f"><span>F Erkrankungen</span><span>06</span></a>
+      <a class="nav-link" href="#teil-g"><span>G Abschluss</span><span>07</span></a>
+    </nav>
+
+    <div class="content">
+      <section class="section" id="teil-a">
+        <div class="section-head">
+          <div>
+            <h2>Teil A – Allgemeine Angaben zum Hund</h2>
+            <p>Nur wenige Stammdaten, damit die Auswertung nach Rasse, Alter, Geschlecht und Lebensstatus möglich bleibt.</p>
+          </div>
+          <span class="badge">anonym</span>
+        </div>
+        <div class="section-body">
+          <div class="info-box">
+            <strong>Bitte für jeden Hund einen eigenen Fragebogen ausfüllen.</strong>
+            <p>Auch gesunde und bereits verstorbene Hunde sind wichtig, damit die Ergebnisse nicht in Richtung kranker Hunde verzerrt werden.</p>
+          </div>
+
+          <div class="grid-3">
+            <div class="field">
+              <label for="rasse">Rasse</label>
+              <select id="rasse">
+                <option>Labrador Retriever</option>
+                <option>Golden Retriever</option>
+                <option>Flat Coated Retriever</option>
+                <option>Curly Coated Retriever</option>
+                <option>Chesapeake Bay Retriever</option>
+                <option>Nova Scotia Duck Tolling Retriever</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="geburtsjahr">Geburtsjahr</label>
+              <input id="geburtsjahr" type="number" placeholder="z. B. 2019" />
+            </div>
+            <div class="field">
+              <label for="geschlecht">Geschlecht</label>
+              <select id="geschlecht">
+                <option>Rüde</option>
+                <option>Hündin</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="grid-2">
+            <div class="field">
+              <span class="label">Fellfarbe bei Labrador Retrievern</span>
+              <div class="options">
+                <label class="pill"><input type="radio" name="farbe" /> Schwarz</label>
+                <label class="pill"><input type="radio" name="farbe" /> Gelb</label>
+                <label class="pill"><input type="radio" name="farbe" /> Braun</label>
+                <label class="pill"><input type="radio" name="farbe" /> Keine Angabe</label>
+              </div>
+            </div>
+            <div class="field">
+              <span class="label">Zuchtrichtung, soweit bekannt</span>
+              <div class="options">
+                <label class="pill"><input type="radio" name="linie" /> Arbeitslinie</label>
+                <label class="pill"><input type="radio" name="linie" /> Showlinie</label>
+                <label class="pill"><input type="radio" name="linie" /> Dual Purpose</label>
+                <label class="pill"><input type="radio" name="linie" /> Unbekannt</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="grid-2">
+            <div class="field">
+              <span class="label">Lebt der Hund noch?</span>
+              <div class="options">
+                <label class="pill"><input type="radio" name="lebt" /> Ja</label>
+                <label class="pill"><input type="radio" name="lebt" /> Nein</label>
+              </div>
+            </div>
+            <div class="field">
+              <label for="todalter">Falls verstorben: Alter beim Tod</label>
+              <input id="todalter" type="text" placeholder="z. B. 12 Jahre" />
+            </div>
+          </div>
+
+          <div class="grid-2" style="margin-top:18px;">
+            <div class="field">
+              <label for="todesart">Todesart</label>
+              <select id="todesart">
+                <option>Nicht zutreffend</option>
+                <option>Euthanasie</option>
+                <option>Natürlicher Tod</option>
+                <option>Unfall</option>
+                <option>Nicht bekannt</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="hauptursache">Hauptursache für Tod oder Euthanasie</label>
+              <input id="hauptursache" type="text" placeholder="Freitext ohne identifizierende Angaben" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="teil-b">
+        <div class="section-head">
+          <div>
+            <h2>Teil B – Fortpflanzung und Zuchteinsatz</h2>
+            <p>Erfasst werden Kastration, Zuchtzulassung, Zuchteinsatz und bekannte Erkrankungen bei Nachkommen.</p>
+          </div>
+          <span class="badge">Zuchtbezug</span>
+        </div>
+        <div class="section-body">
+          <div class="grid-2">
+            <div class="field">
+              <span class="label">Ist der Hund kastriert?</span>
+              <div class="options">
+                <label class="pill"><input type="radio" name="kastriert" /> Nein</label>
+                <label class="pill"><input type="radio" name="kastriert" /> Ja</label>
+                <label class="pill"><input type="radio" name="kastriert" /> Keine Angabe</label>
+              </div>
+            </div>
+            <div class="field">
+              <label for="kastrationart">Art der Kastration</label>
+              <select id="kastrationart">
+                <option>Nicht zutreffend</option>
+                <option>Operativ</option>
+                <option>Chemisch</option>
+                <option>Zuerst chemisch, später operativ</option>
+                <option>Nicht bekannt</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2" style="margin-top:18px;">
+            <div class="field">
+              <span class="label">Wurde der Hund zur Zucht eingesetzt?</span>
+              <div class="options">
+                <label class="pill"><input type="radio" name="zucht" /> Ja</label>
+                <label class="pill"><input type="radio" name="zucht" /> Nein</label>
+                <label class="pill"><input type="radio" name="zucht" /> Nicht bekannt</label>
+              </div>
+            </div>
+            <div class="field">
+              <span class="label">Hat oder hatte der Hund eine Zuchtzulassung?</span>
+              <div class="options">
+                <label class="pill"><input type="radio" name="zzl" /> Ja</label>
+                <label class="pill"><input type="radio" name="zzl" /> Nein</label>
+                <label class="pill"><input type="radio" name="zzl" /> Nicht bekannt</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="field">
+            <label for="nachkommen">Bekannte Erkrankungen bei Nachkommen</label>
+            <textarea id="nachkommen" placeholder="Bitte keine Namen, Zuchtbuchnummern oder sonstige identifizierende Angaben eintragen."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="teil-c">
+        <div class="section-head">
+          <div>
+            <h2>Teil C – Nutzung des Hundes</h2>
+            <p>Mehrfachnennungen sind möglich, da viele Labradore parallel Familienhund, Dummyhund, Jagdhund oder Zuchthund sind.</p>
+          </div>
+          <span class="badge">Mehrfachauswahl</span>
+        </div>
+        <div class="section-body">
+          <div class="disease-list">
+            <label class="disease-item"><input type="checkbox" /> Familienhund</label>
+            <label class="disease-item"><input type="checkbox" /> Jagdhund</label>
+            <label class="disease-item"><input type="checkbox" /> Dummyarbeit</label>
+            <label class="disease-item"><input type="checkbox" /> Workingtest / Retrieverprüfung</label>
+            <label class="disease-item"><input type="checkbox" /> Rettungshund</label>
+            <label class="disease-item"><input type="checkbox" /> Therapiehund</label>
+            <label class="disease-item"><input type="checkbox" /> Begleit-/Assistenzhund</label>
+            <label class="disease-item"><input type="checkbox" /> Zucht</label>
+          </div>
+          <div class="field" style="margin-top:18px;">
+            <label for="pruefungen">Welche Prüfungsarten sind vorhanden?</label>
+            <textarea id="pruefungen" placeholder="z. B. APD, BLP, Dummy A/F/O, Workingtest, jagdliche Prüfungen"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="teil-d">
+        <div class="section-head">
+          <div>
+            <h2>Teil D – Körpergewicht, Kondition und Haltung</h2>
+            <p>Diese Angaben helfen bei der Interpretation von orthopädischen, metabolischen und dermatologischen Erkrankungen.</p>
+          </div>
+          <span class="badge">optional</span>
+        </div>
+        <div class="section-body">
+          <div class="grid-3">
+            <div class="field">
+              <label for="gewicht">Gewicht in kg</label>
+              <input id="gewicht" type="number" placeholder="z. B. 28" />
+            </div>
+            <div class="field">
+              <label for="kondition">Körperkondition</label>
+              <select id="kondition">
+                <option>Keine Angabe</option>
+                <option>Untergewichtig</option>
+                <option>Idealgewichtig</option>
+                <option>Leicht übergewichtig</option>
+                <option>Deutlich übergewichtig</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="fuetterung">Hauptfütterungsform</label>
+              <select id="fuetterung">
+                <option>Keine Angabe</option>
+                <option>Trockenfutter</option>
+                <option>Nassfutter</option>
+                <option>BARF</option>
+                <option>Selbst gekocht</option>
+                <option>Diätfutter</option>
+                <option>Mischform</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="teil-e">
+        <div class="section-head">
+          <div>
+            <h2>Teil E – Offizielle Gesundheitsuntersuchungen und Gentests</h2>
+            <p>Da die Erhebung anonym ist, werden zentrale Befunde als freiwillige Selbstauskunft erfasst.</p>
+          </div>
+          <span class="badge">Selbstauskunft</span>
+        </div>
+        <div class="section-body">
+          <div class="warning-box">
+            <strong>Keine Dokumente hochladen.</strong>
+            Diese Angaben ersetzen keinen offiziellen Befund, ermöglichen aber eine rassebezogene Auswertung in einer anonymen Umfrage.
+          </div>
+
+          <details open>
+            <summary>HD-Befund</summary>
+            <div class="details-body">
+              <div class="grid-2">
+                <div class="field">
+                  <label for="hd-befund">Offizieller HD-Befund</label>
+                  <select id="hd-befund">
+                    <option>Nicht untersucht / keine Angabe</option>
+                    <option>A1</option><option>A2</option>
+                    <option>B1</option><option>B2</option>
+                    <option>C1</option><option>C2</option>
+                    <option>D1</option><option>D2</option>
+                    <option>E1</option><option>E2</option>
+                    <option>Ergebnis bekannt, Grad nicht erinnerlich</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <span class="label">Klinische Hüftbeschwerden?</span>
+                  <div class="options">
+                    <label class="pill"><input type="radio" name="hd-klinisch" /> Ja</label>
+                    <label class="pill"><input type="radio" name="hd-klinisch" /> Nein</label>
+                    <label class="pill"><input type="radio" name="hd-klinisch" /> Nicht bekannt</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details>
+            <summary>ED-Befund</summary>
+            <div class="details-body">
+              <div class="grid-2">
+                <div class="field">
+                  <label for="ed-rechts">ED rechts</label>
+                  <select id="ed-rechts">
+                    <option>Nicht untersucht / keine Angabe</option>
+                    <option>Frei</option><option>Grenzfall</option><option>Grad I</option><option>Grad II</option><option>Grad III</option>
+                    <option>Ergebnis bekannt, Grad nicht erinnerlich</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="ed-links">ED links</label>
+                  <select id="ed-links">
+                    <option>Nicht untersucht / keine Angabe</option>
+                    <option>Frei</option><option>Grenzfall</option><option>Grad I</option><option>Grad II</option><option>Grad III</option>
+                    <option>Ergebnis bekannt, Grad nicht erinnerlich</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Augenuntersuchung</summary>
+            <div class="details-body">
+              <div class="grid-2">
+                <div class="field">
+                  <span class="label">Offizielle Augenuntersuchung durchgeführt?</span>
+                  <div class="options">
+                    <label class="pill"><input type="radio" name="augen" /> Ja</label>
+                    <label class="pill"><input type="radio" name="augen" /> Nein</label>
+                    <label class="pill"><input type="radio" name="augen" /> Nicht bekannt</label>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="augenbefund">Letzter Augenbefund</label>
+                  <select id="augenbefund">
+                    <option>Keine Angabe</option>
+                    <option>Frei</option>
+                    <option>Nicht frei</option>
+                    <option>Nicht bekannt</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Gentests Labrador Retriever</summary>
+            <div class="details-body">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Gentest</th>
+                    <th>Frei</th>
+                    <th>Träger</th>
+                    <th>Betroffen</th>
+                    <th>Nicht getestet</th>
+                    <th>Unbekannt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>EIC</td><td><input type="radio" name="eic"></td><td><input type="radio" name="eic"></td><td><input type="radio" name="eic"></td><td><input type="radio" name="eic"></td><td><input type="radio" name="eic"></td></tr>
+                  <tr><td>CNM</td><td><input type="radio" name="cnm"></td><td><input type="radio" name="cnm"></td><td><input type="radio" name="cnm"></td><td><input type="radio" name="cnm"></td><td><input type="radio" name="cnm"></td></tr>
+                  <tr><td>prcd-PRA</td><td><input type="radio" name="pra"></td><td><input type="radio" name="pra"></td><td><input type="radio" name="pra"></td><td><input type="radio" name="pra"></td><td><input type="radio" name="pra"></td></tr>
+                  <tr><td>HNPK</td><td><input type="radio" name="hnpk"></td><td><input type="radio" name="hnpk"></td><td><input type="radio" name="hnpk"></td><td><input type="radio" name="hnpk"></td><td><input type="radio" name="hnpk"></td></tr>
+                  <tr><td>SD2</td><td><input type="radio" name="sd2"></td><td><input type="radio" name="sd2"></td><td><input type="radio" name="sd2"></td><td><input type="radio" name="sd2"></td><td><input type="radio" name="sd2"></td></tr>
+                  <tr><td>STGD / Stargardt</td><td><input type="radio" name="stgd"></td><td><input type="radio" name="stgd"></td><td><input type="radio" name="stgd"></td><td><input type="radio" name="stgd"></td><td><input type="radio" name="stgd"></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="section" id="teil-f">
+        <div class="section-head">
+          <div>
+            <h2>Teil F – Erkrankungen</h2>
+            <p>Erkrankungen werden nach Organsystemen erfasst. Für jede angegebene Erkrankung folgen Standardfragen zu Alter, tierärztlicher Bestätigung und betroffenen Verwandten.</p>
+          </div>
+          <span class="badge">Kernteil</span>
+        </div>
+        <div class="section-body">
+          <div class="info-box">
+            <strong>Standardfragen bei jeder Erkrankung</strong>
+            <p>Erstmaliges Auftreten · tierärztlich bestätigt · Diagnosequelle · verwandte Hunde betroffen. Bitte keine Namen oder Zuchtbuchnummern eintragen.</p>
+          </div>
+
+          <details open>
+            <summary>F1 Atmungstrakt</summary>
+            <div class="details-body disease-list">
+              <label class="disease-item"><input type="checkbox" /> Keine Erkrankung</label>
+              <label class="disease-item"><input type="checkbox" /> Larynxparalyse</label>
+              <label class="disease-item"><input type="checkbox" /> Pneumonie</label>
+              <label class="disease-item"><input type="checkbox" /> Zwingerhusten</label>
+              <label class="disease-item"><input type="checkbox" /> Chronischer Husten</label>
+              <label class="disease-item"><input type="checkbox" /> Belastungsintoleranz</label>
+            </div>
+          </details>
+
+          <details>
+            <summary>F2 Augen</summary>
+            <div class="details-body disease-list">
+              <label class="disease-item"><input type="checkbox" /> Keine Erkrankung</label>
+              <label class="disease-item"><input type="checkbox" /> PRA</label>
+              <label class="disease-item"><input type="checkbox" /> Distichiasis</label>
+              <label class="disease-item"><input type="checkbox" /> Katarakt</label>
+              <label class="disease-item"><input type="checkbox" /> Goniodysplasie</label>
+              <label class="disease-item"><input type="checkbox" /> Konjunktivitis</label>
+              <label class="disease-item"><input type="checkbox" /> Konjunktivitis follicularis</label>
+              <label class="disease-item"><input type="checkbox" /> Sonstige</label>
+            </div>
+          </details>
+
+          <details>
+            <summary>F4 Bewegungsapparat</summary>
+            <div class="details-body disease-list">
+              <label class="disease-item"><input type="checkbox" /> Keine Erkrankung</label>
+              <label class="disease-item"><input type="checkbox" /> Arthrose</label>
+              <label class="disease-item"><input type="checkbox" /> Arthritis</label>
+              <label class="disease-item"><input type="checkbox" /> Spondylose</label>
+              <label class="disease-item"><input type="checkbox" /> Kreuzbandriss</label>
+              <label class="disease-item"><input type="checkbox" /> OCD</label>
+              <label class="disease-item"><input type="checkbox" /> HD</label>
+              <label class="disease-item"><input type="checkbox" /> ED</label>
+              <label class="disease-item"><input type="checkbox" /> Cauda-equina-Syndrom</label>
+              <label class="disease-item"><input type="checkbox" /> Bandscheibenvorfall</label>
+            </div>
+          </details>
+
+          <details>
+            <summary>F8 Haut, Fell und Ohren</summary>
+            <div class="details-body disease-list">
+              <label class="disease-item"><input type="checkbox" /> Keine Erkrankung</label>
+              <label class="disease-item"><input type="checkbox" /> Otitis externa</label>
+              <label class="disease-item"><input type="checkbox" /> Hot Spot</label>
+              <label class="disease-item"><input type="checkbox" /> Futtermittelallergie</label>
+              <label class="disease-item"><input type="checkbox" /> Atopische Dermatitis / CAD</label>
+              <label class="disease-item"><input type="checkbox" /> Allergie allgemein</label>
+              <label class="disease-item"><input type="checkbox" /> Othämatom</label>
+              <label class="disease-item"><input type="checkbox" /> Ichthyose</label>
+            </div>
+          </details>
+
+          <details>
+            <summary>Weitere Organsysteme</summary>
+            <div class="details-body disease-list">
+              <label class="disease-item"><input type="checkbox" /> Geschlechtstrakt Hündin</label>
+              <label class="disease-item"><input type="checkbox" /> Geschlechtstrakt Rüde</label>
+              <label class="disease-item"><input type="checkbox" /> Harntrakt</label>
+              <label class="disease-item"><input type="checkbox" /> Herz-Kreislauf</label>
+              <label class="disease-item"><input type="checkbox" /> Nervensystem</label>
+              <label class="disease-item"><input type="checkbox" /> Endokrinologie</label>
+              <label class="disease-item"><input type="checkbox" /> Tumorerkrankungen</label>
+              <label class="disease-item"><input type="checkbox" /> Magen-Darm</label>
+            </div>
+          </details>
+
+          <div class="divider"></div>
+          <div class="grid-3">
+            <div class="field">
+              <label for="erstalter">Beispiel: Alter bei Erstauftreten</label>
+              <input id="erstalter" type="text" placeholder="z. B. 3 Jahre" />
+            </div>
+            <div class="field">
+              <label for="bestaetigt">Tierärztlich bestätigt?</label>
+              <select id="bestaetigt">
+                <option>Ja</option>
+                <option>Nein</option>
+                <option>Weiß nicht</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="verwandte">Verwandte betroffen?</label>
+              <select id="verwandte">
+                <option>Nein</option>
+                <option>Ja</option>
+                <option>Weiß nicht</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="teil-g">
+        <div class="section-head">
+          <div>
+            <h2>Teil G – Abschluss und Einwilligung</h2>
+            <p>Abschluss der anonymen Befragung mit Hinweis auf fehlende Identifikationsdaten und rassebezogene Auswertung.</p>
+          </div>
+          <span class="badge">Datenschutz</span>
+        </div>
+        <div class="section-body">
+          <label class="disease-item"><input type="checkbox" /> Ich bestätige, dass ich die Angaben nach bestem Wissen gemacht habe.</label>
+          <label class="disease-item" style="margin-top:10px;"><input type="checkbox" /> Ich bestätige, dass ich keine personenbezogenen Angaben, Hundename, Zuchtbuchnummer, Chipnummer oder Dokumente übermittelt habe.</label>
+          <label class="disease-item" style="margin-top:10px;"><input type="checkbox" /> Ich bin damit einverstanden, dass meine anonymen Angaben für rassebezogene Gesundheitsauswertungen verwendet werden.</label>
+          <div class="actions">
+            <button class="primary" type="button">Umfrage absenden</button>
+            <button class="secondary" type="button">Zwischenstand speichern</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <p><strong>Prototyp:</strong> Diese HTML-Datei dient nur der Abstimmung von Struktur, Inhalt und Nutzerführung. Sie speichert keine Daten und enthält keine Backend-Logik.</p>
+  </footer>
+</body>
+</html>

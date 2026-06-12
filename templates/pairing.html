@@ -563,6 +563,29 @@
         margin: 0 0 8px;
       }
 
+      .pairing-saved-comment {
+        border-top: 1px solid #edf1f5;
+        margin-top: 14px;
+        padding-top: 12px;
+      }
+
+      .pairing-saved-comment h3 {
+        color: #12233a;
+        font-size: 14px;
+        margin: 0 0 6px;
+      }
+
+      .pairing-saved-comment-text {
+        background: #f8fafc;
+        border: 1px solid #e1e7ee;
+        border-radius: 8px;
+        color: #344054;
+        font-size: 13px;
+        line-height: 1.45;
+        padding: 10px;
+        white-space: pre-wrap;
+      }
+
       .repeated-ancestor-list {
         display: grid;
         gap: 8px;
@@ -771,6 +794,89 @@
         font-size: 13px;
         font-weight: 700;
         margin-right: auto;
+      }
+
+      .compare-modal-dialog {
+        max-width: 1500px;
+        width: min(100%, 1500px);
+      }
+
+      .compare-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(285px, 1fr));
+      }
+
+      .compare-card {
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        display: grid;
+        gap: 12px;
+        min-width: 0;
+        padding: 12px;
+      }
+
+      .compare-card-head {
+        border-bottom: 1px solid #edf1f5;
+        padding-bottom: 10px;
+      }
+
+      .compare-card-head h3 {
+        color: #12233a;
+        font-size: 16px;
+        margin: 0 0 4px;
+      }
+
+      .compare-parents,
+      .compare-metrics {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: 1fr;
+      }
+
+      .compare-parent,
+      .compare-metric {
+        background: #f8fafc;
+        border: 1px solid #e1e7ee;
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      .compare-parent-title,
+      .compare-metric-label {
+        color: #667085;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+      }
+
+      .compare-parent-name {
+        color: #12233a;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.3;
+      }
+
+      .compare-parent-meta,
+      .compare-comment,
+      .compare-unavailable {
+        color: #667085;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .compare-metric-value {
+        color: #1f3a52;
+        font-size: 20px;
+        font-weight: 800;
+      }
+
+      .compare-comment {
+        border-top: 1px solid #edf1f5;
+        padding-top: 10px;
+        white-space: pre-wrap;
       }
 
       .candidate-table {
@@ -1262,7 +1368,7 @@
         background: #fff;
         box-shadow: 18px 0 48px rgba(15, 23, 42, 0.22);
         display: grid;
-        grid-template-rows: auto auto minmax(0, 1fr);
+        grid-template-rows: auto auto auto minmax(0, 1fr);
         height: 100%;
         margin-right: auto;
         max-width: 430px;
@@ -1310,6 +1416,21 @@
         padding: 7px 9px;
       }
 
+      .saved-compare-bar {
+        align-items: center;
+        border-bottom: 1px solid #edf1f5;
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+        padding: 10px 14px;
+      }
+
+      .saved-compare-count {
+        color: #667085;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
       .planning-drawer-list {
         display: grid;
         gap: 7px;
@@ -1323,6 +1444,30 @@
         display: grid;
         gap: 8px;
         padding: 9px 10px;
+      }
+
+      .planning-drawer-item-head {
+        align-items: flex-start;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: auto minmax(0, 1fr);
+      }
+
+      .saved-compare-check {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #dbe2ea;
+        border-radius: 6px;
+        display: inline-flex;
+        height: 28px;
+        justify-content: center;
+        width: 28px;
+      }
+
+      .saved-compare-check input {
+        height: 15px;
+        margin: 0;
+        width: 15px;
       }
 
       .planning-drawer-actions {
@@ -1549,7 +1694,8 @@
         .parents,
         .relatives-grid,
         .planning-grid,
-        .planning-drawer-controls {
+        .planning-drawer-controls,
+        .planning-drawer-item-head {
           grid-template-columns: 1fr;
         }
 
@@ -1978,6 +2124,11 @@
                 {% endif %}
               </div>
 
+              <div class="pairing-saved-comment" id="currentPairingComment" hidden>
+                <h3>Gespeicherter Kommentar</h3>
+                <div class="pairing-saved-comment-text" id="currentPairingCommentText"></div>
+              </div>
+
               <div class="assessment-actions">
                 <button type="button" class="secondary-button" id="openSavePairingModalButton">Verpaarung speichern</button>
               </div>
@@ -2016,10 +2167,29 @@
             </select>
           </label>
         </div>
+        <div class="saved-compare-bar">
+          <span class="saved-compare-count" id="savedPairingsCompareCount">0 ausgewählt</span>
+          <button type="button" class="secondary-button" id="openSavedPairingsCompareButton" disabled>Auswahl vergleichen</button>
+        </div>
         <div class="planning-drawer-list" id="savedPairingsDrawerList">
           <div class="planning-empty">Noch keine gespeicherte Verpaarung.</div>
         </div>
       </aside>
+    </div>
+
+    <div class="modal-backdrop" id="comparePairingsModal" aria-hidden="true">
+      <div class="modal-dialog compare-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="comparePairingsModalTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="comparePairingsModalTitle">Verpaarungen vergleichen</h2>
+            <div class="pairing-result-subtitle" id="comparePairingsModalSubtitle">Ausgewählte gespeicherte Verpaarungen</div>
+          </div>
+          <button type="button" class="modal-close" id="comparePairingsModalClose" aria-label="Vergleich schließen">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="compare-grid" id="comparePairingsGrid"></div>
+        </div>
+      </div>
     </div>
 
     <div class="planning-drawer-backdrop" id="watchlistSiresDrawer" aria-hidden="true">
@@ -2090,8 +2260,20 @@
       const savedPairingsKey = 'zws.savedPairings.v1';
       const savedPairingsApiUrl = '/api/saved-pairings';
       let savedPairingsSyncTimer = null;
+      const selectedSavedPairingIds = new Set();
       const currentPairingData = {% if result %}{{ {
-        "defaultName": result.dam.name ~ " × " ~ result.sire.name
+        "defaultName": result.dam.name ~ " × " ~ result.sire.name,
+        "result": {
+          "dam": result.dam,
+          "sire": result.sire,
+          "planned_ebv_display": result.planned_ebv_display,
+          "coi_display": result.coi_display,
+          "visible_avk_display": result.visible_avk_display,
+          "avk_display": result.avk_display,
+          "complete_generation": result.complete_generation,
+          "metric_generations": result.metric_generations,
+          "display_generations": result.display_generations
+        }
       } | tojson }}{% else %}null{% endif %};
 
       function escapeHtml(value) {
@@ -2410,12 +2592,19 @@
 
       function savedPairingDrawerItem(item) {
         const description = item.description ? `<div class="saved-description">${escapeHtml(item.description)}</div>` : '';
+        const id = String(item.id || '');
+        const checked = selectedSavedPairingIds.has(id) ? 'checked' : '';
         return `
           <div class="planning-drawer-item">
-            <div>
-              <div class="planning-item-title">${escapeHtml(item.name || 'Unbenannte Verpaarung')}</div>
-              <div class="planning-item-meta">gespeichert am ${escapeHtml(savedPairingDate(item) || '—')}</div>
-              ${description}
+            <div class="planning-drawer-item-head">
+              <label class="saved-compare-check" title="Für Vergleich auswählen">
+                <input type="checkbox" class="saved-compare-select" data-id="${escapeHtml(id)}" ${checked} aria-label="${escapeHtml(item.name || 'Verpaarung')} für Vergleich auswählen">
+              </label>
+              <div>
+                <div class="planning-item-title">${escapeHtml(item.name || 'Unbenannte Verpaarung')}</div>
+                <div class="planning-item-meta">gespeichert am ${escapeHtml(savedPairingDate(item) || '—')}</div>
+                ${description}
+              </div>
             </div>
             <div class="planning-drawer-actions">
               <button type="button" class="secondary-button saved-open" data-url="${escapeHtml(item.url || '#')}">Öffnen</button>
@@ -2622,6 +2811,18 @@
         nameInput.focus();
       }
 
+      function renderCurrentPairingComment() {
+        const wrapper = document.getElementById('currentPairingComment');
+        const text = document.getElementById('currentPairingCommentText');
+        if (!wrapper || !text) return;
+
+        const currentUrl = currentPairingUrl();
+        const existing = readSavedPairings().find(item => item.url === currentUrl);
+        const description = String(existing?.description || '').trim();
+        wrapper.hidden = !description;
+        text.textContent = description;
+      }
+
       function closeSavePairingModal() {
         const modal = document.getElementById('savePairingModal');
         if (!modal) return;
@@ -2637,9 +2838,18 @@
         const subtitle = document.getElementById('savedPairingsSubtitle');
         const drawerSubtitle = document.getElementById('savedPairingsDrawerSubtitle');
         const drawerButton = document.getElementById('openSavedPairingsDrawerButton');
+        const compareCount = document.getElementById('savedPairingsCompareCount');
+        const compareButton = document.getElementById('openSavedPairingsCompareButton');
         if (!drawerList || !count || !drawerSubtitle) return;
+        renderCurrentPairingComment();
 
         const items = readSavedPairings().sort((a, b) => String(b.savedAt || '').localeCompare(String(a.savedAt || '')));
+        const availableIds = new Set(items.map(item => String(item.id || '')).filter(Boolean));
+        Array.from(selectedSavedPairingIds).forEach(id => {
+          if (!availableIds.has(id)) selectedSavedPairingIds.delete(id);
+        });
+        if (compareCount) compareCount.textContent = countLabel(selectedSavedPairingIds.size, 'ausgewählt', 'ausgewählt');
+        if (compareButton) compareButton.disabled = selectedSavedPairingIds.size < 2;
         count.textContent = String(items.length);
         const label = countLabel(items.length, 'Planung gespeichert', 'Planungen gespeichert');
         if (subtitle) subtitle.textContent = label;
@@ -2688,6 +2898,7 @@
           name: name || 'Unbenannte Verpaarung',
           description,
           url,
+          result: currentPairingData.result,
           savedAt: new Date().toISOString()
         };
 
@@ -2715,8 +2926,103 @@
       function deleteSavedPairing(id) {
         if (!window.confirm('Diese gespeicherte Verpaarung wirklich löschen?')) return;
         const items = readSavedPairings().filter(item => item.id !== id);
+        selectedSavedPairingIds.delete(String(id || ''));
         writeSavedPairings(items);
         renderSavedPairings();
+      }
+
+      function compareParentCard(parent, role) {
+        if (!parent) return '';
+        const age = parent.alter != null ? parent.alter + ' Jahre' : '—';
+        const zuchtwert = parent.zuchtwert != null ? parent.zuchtwert : '—';
+        const confidence = parent.konfidenz != null ? parent.konfidenz + ' %' : '—';
+        return `
+          <div class="compare-parent">
+            <div class="compare-parent-title">${escapeHtml(role)}</div>
+            <div class="compare-parent-name">${escapeHtml(parent.name || 'unbekannt')}</div>
+            <div class="compare-parent-meta">
+              ZBNr ${escapeHtml(parent.zbnr || '—')} · Alter ${escapeHtml(age)}<br>
+              HD ${escapeHtml(parent.hd || '—')} · ED ${escapeHtml(parent.ed || '—')}<br>
+              ZW ${escapeHtml(zuchtwert)} · Sicherheit ${escapeHtml(confidence)}
+            </div>
+          </div>
+        `;
+      }
+
+      function compareMetric(label, value) {
+        return `
+          <div class="compare-metric">
+            <div class="compare-metric-label">${escapeHtml(label)}</div>
+            <div class="compare-metric-value">${escapeHtml(value ?? '—')}</div>
+          </div>
+        `;
+      }
+
+      function comparePairingCard(item) {
+        const result = item?.result;
+        const description = String(item?.description || '').trim();
+        if (!result) {
+          return `
+            <section class="compare-card">
+              <div class="compare-card-head">
+                <h3>${escapeHtml(item?.name || 'Unbenannte Verpaarung')}</h3>
+                <div class="planning-item-meta">${escapeHtml(savedPairingDate(item) || '—')}</div>
+              </div>
+              <div class="compare-unavailable">
+                Für diese gespeicherte Verpaarung liegen noch keine Bewertungsdaten vor. Öffne sie einmal und speichere sie erneut, dann kann sie vollständig verglichen werden.
+              </div>
+              ${description ? `<div class="compare-comment">${escapeHtml(description)}</div>` : ''}
+            </section>
+          `;
+        }
+
+        const completeGeneration = result.complete_generation != null ? 'Gen. ' + result.complete_generation : '—';
+        return `
+          <section class="compare-card">
+            <div class="compare-card-head">
+              <h3>${escapeHtml(item?.name || 'Unbenannte Verpaarung')}</h3>
+              <div class="planning-item-meta">${escapeHtml(savedPairingDate(item) || '—')}</div>
+            </div>
+            <div class="compare-parents">
+              ${compareParentCard(result.dam, 'Hündin')}
+              ${compareParentCard(result.sire, 'Rüde')}
+            </div>
+            <div class="compare-metrics">
+              ${compareMetric('Erwarteter ED-Zuchtwert', result.planned_ebv_display)}
+              ${compareMetric('COI', result.coi_display)}
+              ${compareMetric('Ahnenverlust Gen. ' + (result.display_generations ?? '—'), result.visible_avk_display)}
+              ${compareMetric('Ahnenverlust tief', result.avk_display)}
+              ${compareMetric('Vollständig bis', completeGeneration)}
+              ${compareMetric('COI/Ahnenverlust gerechnet bis', 'Gen. ' + (result.metric_generations ?? '—'))}
+            </div>
+            ${description ? `<div class="compare-comment">${escapeHtml(description)}</div>` : ''}
+          </section>
+        `;
+      }
+
+      function openComparePairingsModal() {
+        const modal = document.getElementById('comparePairingsModal');
+        const grid = document.getElementById('comparePairingsGrid');
+        const subtitle = document.getElementById('comparePairingsModalSubtitle');
+        if (!modal || !grid) return;
+
+        const selectedItems = readSavedPairings().filter(item => selectedSavedPairingIds.has(String(item.id || '')));
+        if (selectedItems.length < 2) return;
+
+        grid.innerHTML = selectedItems.map(comparePairingCard).join('');
+        if (subtitle) subtitle.textContent = countLabel(selectedItems.length, 'Verpaarung ausgewählt', 'Verpaarungen ausgewählt');
+        closeSavedPairingsDrawer();
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+      }
+
+      function closeComparePairingsModal() {
+        const modal = document.getElementById('comparePairingsModal');
+        if (!modal) return;
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
       }
 
       function openSavedPairingsDrawer() {
@@ -2917,6 +3223,7 @@
         if (event.key === 'Escape') {
           closeRelativesModal();
           closeSavePairingModal();
+          closeComparePairingsModal();
           closeSavedPairingsDrawer();
           closeWatchlistSiresDrawer();
         }
@@ -2937,6 +3244,11 @@
       });
       document.getElementById('savedPairingsSearch')?.addEventListener('input', renderSavedPairings);
       document.getElementById('savedPairingsSort')?.addEventListener('change', renderSavedPairings);
+      document.getElementById('openSavedPairingsCompareButton')?.addEventListener('click', openComparePairingsModal);
+      document.getElementById('comparePairingsModalClose')?.addEventListener('click', closeComparePairingsModal);
+      document.getElementById('comparePairingsModal')?.addEventListener('click', event => {
+        if (event.target.id === 'comparePairingsModal') closeComparePairingsModal();
+      });
       document.getElementById('openWatchlistSiresDrawerButton')?.addEventListener('click', openWatchlistSiresDrawer);
       document.getElementById('closeWatchlistSiresDrawer')?.addEventListener('click', closeWatchlistSiresDrawer);
       document.getElementById('watchlistSiresDrawer')?.addEventListener('click', event => {
@@ -2961,6 +3273,20 @@
 
         const deleteButton = event.target.closest('.saved-delete');
         if (deleteButton) deleteSavedPairing(deleteButton.dataset.id);
+      });
+
+      document.addEventListener('change', event => {
+        const checkbox = event.target.closest('.saved-compare-select');
+        if (!checkbox) return;
+
+        const id = String(checkbox.dataset.id || '');
+        if (!id) return;
+        if (checkbox.checked) {
+          selectedSavedPairingIds.add(id);
+        } else {
+          selectedSavedPairingIds.delete(id);
+        }
+        renderSavedPairings();
       });
 
       renderSavedPairings();

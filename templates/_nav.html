@@ -11,6 +11,12 @@
       <a href="/pairing">Verpaarungen planen</a>
       <a href="/user-dogs">Eigene Hunde</a>
       <a href="/info">Informationen zur Zuchtwertschätzung</a>
+      {% set nav_username = session.get("username", "") %}
+      {% if nav_username %}
+        <span class="app-nav__user" title="Angemeldet als {{ nav_username }}" aria-label="Angemeldet als {{ nav_username }}">
+          {{ nav_username[:1] | upper }}
+        </span>
+      {% endif %}
       <form class="app-nav__logout" method="post" action="/logout">
         <button type="submit">Abmelden</button>
       </form>

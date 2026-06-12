@@ -64,7 +64,9 @@
       
       .search-form {
         display: flex;
+        flex-wrap: wrap;
         gap: 10px;
+        position: relative;
       }
       
       .search-form input {
@@ -97,6 +99,217 @@
       .search-form button:hover {
         background: #3a7bc8;
       }
+
+      .search-loading-overlay {
+        align-items: center;
+        background: rgba(248, 250, 252, 0.86);
+        border: 1px solid #d8dee6;
+        border-radius: 999px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+        color: #1f3a52;
+        display: none;
+        font-size: 13px;
+        font-weight: 800;
+        gap: 10px;
+        padding: 10px 16px;
+        position: absolute;
+        right: 18px;
+        top: 52px;
+        z-index: 3;
+      }
+
+      body.search-loading .search-loading-overlay {
+        display: inline-flex;
+      }
+
+      .search-loading-overlay--inline {
+        flex: 1 0 100%;
+        justify-self: flex-start;
+        margin-top: 4px;
+        position: static;
+      }
+
+      .search-loading-spinner {
+        animation: search-spin 0.75s linear infinite;
+        border: 3px solid #d7e7fb;
+        border-top-color: #2563eb;
+        border-radius: 999px;
+        height: 20px;
+        width: 20px;
+      }
+
+      @keyframes search-spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .secondary-button {
+        background: #fff;
+        border: 1px solid #cfd8e3;
+        border-radius: 6px;
+        color: #1f3a52;
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .secondary-button:hover {
+        background: #f5f8fb;
+        border-color: #9fb2c6;
+      }
+
+      .search-filter-details {
+        flex: 1 0 100%;
+        margin-top: 8px;
+      }
+
+      .search-filter-details summary {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #d8dee6;
+        border-radius: 7px;
+        color: #1f3a52;
+        cursor: pointer;
+        display: inline-flex;
+        font-size: 13px;
+        font-weight: 800;
+        gap: 6px;
+        min-height: 36px;
+        padding: 8px 11px;
+      }
+
+      .search-filter-details summary:hover {
+        background: #eef6ff;
+        border-color: #bad7fb;
+      }
+
+      .search-filter-grid {
+        align-items: end;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: minmax(120px, 0.9fr) minmax(90px, 0.75fr) minmax(90px, 0.75fr) minmax(100px, 0.9fr) minmax(120px, 1fr) minmax(190px, 1.4fr) minmax(260px, 2fr);
+        margin-top: 12px;
+      }
+
+      .search-filter-grid label {
+        color: #344054;
+        display: grid;
+        font-size: 12px;
+        font-weight: 700;
+        gap: 5px;
+      }
+
+      .search-filter-grid input,
+      .search-filter-grid select {
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        font: inherit;
+        font-size: 13px;
+        min-height: 36px;
+        padding: 8px 10px;
+        width: 100%;
+      }
+
+      .search-filter-grid input:focus,
+      .search-filter-grid select:focus {
+        border-color: #4a90e2;
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        outline: none;
+      }
+
+      .search-filter-grid .checkbox-field {
+        align-items: center;
+        border: 1px solid #d8dee6;
+        border-radius: 7px;
+        display: flex;
+        flex-direction: row;
+        font-size: 12px;
+        gap: 8px;
+        min-height: 36px;
+        padding: 8px 10px;
+      }
+
+      .search-filter-grid .checkbox-field input {
+        min-height: 0;
+        width: auto;
+      }
+
+      .excluded-ancestor-field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .excluded-ancestor-controls {
+        align-items: end;
+        display: grid;
+        gap: 6px;
+        grid-template-columns: minmax(0, 1fr) auto;
+      }
+
+      .excluded-ancestor-controls .secondary-button {
+        min-height: 36px;
+        padding: 8px 10px;
+      }
+
+      .excluded-ancestor-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        min-height: 0;
+      }
+
+      .excluded-ancestor-chip {
+        align-items: center;
+        background: #f1f5f9;
+        border: 1px solid #d8dee6;
+        border-radius: 999px;
+        color: #1f3a52;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 700;
+        gap: 5px;
+        padding: 4px 7px;
+      }
+
+      .excluded-ancestor-remove {
+        align-items: center;
+        background: #e8eef5;
+        border: 0;
+        border-radius: 999px;
+        color: #52606d;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 900;
+        height: 18px;
+        justify-content: center;
+        line-height: 1;
+        padding: 0;
+        width: 18px;
+      }
+
+      .excluded-ancestor-remove:hover {
+        background: #dbe7f3;
+        color: #1f3a52;
+      }
+
+      @media (max-width: 1100px) {
+        .search-filter-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 720px) {
+        .search-filter-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .excluded-ancestor-controls {
+          grid-template-columns: 1fr;
+        }
+      }
       
       /* Results Section */
       .results-section {
@@ -104,8 +317,10 @@
         border: 1px solid #e0e0e0;
         border-radius: 8px;
         grid-column: 1 / -1;
+        min-height: 120px;
         padding: 18px;
         overflow: auto;
+        position: relative;
       }
 
       .results-header {
@@ -1160,6 +1375,64 @@
           <input name="q" type="text" value="{{ query }}" placeholder="Hundename oder Zuchtbuchnummer" />
           <button type="submit">Suchen</button>
           <button type="button" class="import-launch-button" id="openImportPedigreeModal">Ahnentafel importieren</button>
+          {% if not search_started %}
+            <div class="search-loading-overlay search-loading-overlay--inline" id="searchLoadingOverlay" role="status" aria-live="polite" aria-hidden="true">
+              <span class="search-loading-spinner" aria-hidden="true"></span>
+              Trefferliste wird geladen...
+            </div>
+          {% endif %}
+          <details class="search-filter-details">
+            <summary>Filter</summary>
+            <div class="search-filter-grid">
+              <label>
+                Geschlecht
+                <select name="sex">
+                  <option value="" {% if not filter_sex %}selected{% endif %}>Alle</option>
+                  <option value="H" {% if filter_sex == "H" %}selected{% endif %}>Hündinnen</option>
+                  <option value="R" {% if filter_sex == "R" %}selected{% endif %}>Rüden</option>
+                </select>
+              </label>
+              <label>
+                Alter von
+                <input name="min_age" value="{{ filter_min_age }}" type="number" min="0" max="25" placeholder="Jahre">
+              </label>
+              <label>
+                Alter bis
+                <input name="max_age" value="{{ filter_max_age }}" type="number" min="0" max="25" placeholder="Jahre">
+              </label>
+              <label>
+                Max. ED-ZW
+                <input name="max_ebv" value="{{ filter_max_ebv }}" type="number" min="-100" step="1" placeholder="z. B. -5">
+              </label>
+              <label>
+                Mind. Nachkommen
+                <input name="min_offspring" value="{{ filter_min_offspring }}" type="number" min="0" step="1" placeholder="z. B. 5">
+              </label>
+              <label class="checkbox-field" title="In der Hundesuche wird damit nach bekannten Gentest-Trägern gefiltert, da keine konkrete Hündin gewählt ist.">
+                <input name="avoid_carrier_matches" value="1" type="checkbox" {% if avoid_carrier_matches %}checked{% endif %}>
+                Träger × Träger bei Gentests ausschließen
+              </label>
+              <div class="excluded-ancestor-field">
+                <div class="excluded-ancestor-controls">
+                  <label>
+                    Unerwünschte Hunde in der Ahnentafel
+                    <input id="excludedAncestorSearch" list="excludedAncestorSuggestions" placeholder="Name oder ZBNr suchen" autocomplete="off">
+                    <datalist id="excludedAncestorSuggestions"></datalist>
+                  </label>
+                  <button type="button" class="secondary-button" id="addExcludedAncestorButton">Hinzufügen</button>
+                </div>
+                <div class="excluded-ancestor-list" id="excludedAncestorList">
+                  {% for dog in excluded_ancestors %}
+                    <span class="excluded-ancestor-chip" data-zbnr="{{ dog.zbnr }}" data-label="{{ dog.label }}">
+                      {{ dog.label }}
+                      <button type="button" class="excluded-ancestor-remove" aria-label="{{ dog.label }} entfernen">×</button>
+                      <input type="hidden" name="excluded_ancestor_zbnrs" value="{{ dog.zbnr }}">
+                    </span>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </details>
         </form>
 
         {% if imported_count %}
@@ -1182,6 +1455,10 @@
       <div class="workspace">
         <!-- Results Section -->
         <div class="results-section">
+        <div class="search-loading-overlay" id="searchLoadingOverlay" role="status" aria-live="polite" aria-hidden="true">
+          <span class="search-loading-spinner" aria-hidden="true"></span>
+          Trefferliste wird geladen...
+        </div>
         <div class="results-header">
           <h2>Treffer</h2>
           <div class="results-count">
@@ -1200,16 +1477,17 @@
             <a class="small-action-button" href="{{ url_for('manage_user_dogs', prefill_name=query) }}">Hund hinzufügen</a>
           </div>
         {% else %}
+          {% set search_base = search_query_string ~ '&' if search_query_string else '' %}
           <table class="results-table">
             <thead>
               <tr>
-                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=name&sort_dir={{ 'desc' if sort_by == 'name' and sort_dir == 'asc' else 'asc' }}">Name{% if sort_by == 'name' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
-                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=zbnr&sort_dir={{ 'desc' if sort_by == 'zbnr' and sort_dir == 'asc' else 'asc' }}">ZBNr{% if sort_by == 'zbnr' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
-                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=birth_year&sort_dir={{ 'desc' if sort_by == 'birth_year' and sort_dir == 'asc' else 'asc' }}">Geburtsjahr{% if sort_by == 'birth_year' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
-                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=ed&sort_dir={{ 'desc' if sort_by == 'ed' and sort_dir == 'asc' else 'asc' }}">ED{% if sort_by == 'ed' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
-                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=zuchtwert&sort_dir={{ 'desc' if sort_by == 'zuchtwert' and sort_dir == 'asc' else 'asc' }}">ED-EBV/ C[%]{% if sort_by == 'zuchtwert' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
-                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=hd&sort_dir={{ 'desc' if sort_by == 'hd' and sort_dir == 'asc' else 'asc' }}">HD{% if sort_by == 'hd' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
-                <th><a href="/search?q={{ query_encoded }}&page=1&sort_by=nachkommen&sort_dir={{ 'desc' if sort_by == 'nachkommen' and sort_dir == 'asc' else 'asc' }}">Nachkommen{% if sort_by == 'nachkommen' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                <th><a href="/search?{{ search_base }}page=1&sort_by=name&sort_dir={{ 'desc' if sort_by == 'name' and sort_dir == 'asc' else 'asc' }}">Name{% if sort_by == 'name' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                <th><a href="/search?{{ search_base }}page=1&sort_by=zbnr&sort_dir={{ 'desc' if sort_by == 'zbnr' and sort_dir == 'asc' else 'asc' }}">ZBNr{% if sort_by == 'zbnr' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                <th><a href="/search?{{ search_base }}page=1&sort_by=birth_year&sort_dir={{ 'desc' if sort_by == 'birth_year' and sort_dir == 'asc' else 'asc' }}">Geburtsjahr{% if sort_by == 'birth_year' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                <th><a href="/search?{{ search_base }}page=1&sort_by=ed&sort_dir={{ 'desc' if sort_by == 'ed' and sort_dir == 'asc' else 'asc' }}">ED{% if sort_by == 'ed' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                <th><a href="/search?{{ search_base }}page=1&sort_by=zuchtwert&sort_dir={{ 'desc' if sort_by == 'zuchtwert' and sort_dir == 'asc' else 'asc' }}">ED-EBV/ C[%]{% if sort_by == 'zuchtwert' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                <th><a href="/search?{{ search_base }}page=1&sort_by=hd&sort_dir={{ 'desc' if sort_by == 'hd' and sort_dir == 'asc' else 'asc' }}">HD{% if sort_by == 'hd' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
+                <th><a href="/search?{{ search_base }}page=1&sort_by=nachkommen&sort_dir={{ 'desc' if sort_by == 'nachkommen' and sort_dir == 'asc' else 'asc' }}">Nachkommen{% if sort_by == 'nachkommen' %} {{ '▲' if sort_dir == 'asc' else '▼' }}{% endif %}</a></th>
                 <th>Merkliste</th>
               </tr>
             </thead>
@@ -1286,8 +1564,8 @@
           {% if page_count > 1 %}
             <div class="pagination">
               {% if page > 1 %}
-                <a href="/search?q={{ query_encoded }}&page=1&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">« Erste</a>
-                <a href="/search?q={{ query_encoded }}&page={{ page - 1 }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">‹ Zurück</a>
+                <a href="/search?{{ search_base }}page=1&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">« Erste</a>
+                <a href="/search?{{ search_base }}page={{ page - 1 }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">‹ Zurück</a>
               {% endif %}
 
               {% set page_start = (page - 2) if (page - 2) > 0 else 1 %}
@@ -1297,13 +1575,13 @@
                 {% if p == page %}
                   <span class="current">{{ p }}</span>
                 {% else %}
-                  <a href="/search?q={{ query_encoded }}&page={{ p }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">{{ p }}</a>
+                  <a href="/search?{{ search_base }}page={{ p }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">{{ p }}</a>
                 {% endif %}
               {% endfor %}
 
               {% if page < page_count %}
-                <a href="/search?q={{ query_encoded }}&page={{ page + 1 }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">Weiter ›</a>
-                <a href="/search?q={{ query_encoded }}&page={{ page_count }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">Letzte »</a>
+                <a href="/search?{{ search_base }}page={{ page + 1 }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">Weiter ›</a>
+                <a href="/search?{{ search_base }}page={{ page_count }}&sort_by={{ sort_by }}&sort_dir={{ sort_dir }}">Letzte »</a>
               {% endif %}
             </div>
           {% endif %}
@@ -2168,6 +2446,106 @@
         restorePedigreeState(first);
       });
 
+      function attachExcludedAncestorPicker() {
+        const input = document.getElementById('excludedAncestorSearch');
+        const datalist = document.getElementById('excludedAncestorSuggestions');
+        const list = document.getElementById('excludedAncestorList');
+        const addButton = document.getElementById('addExcludedAncestorButton');
+        if (!input || !datalist || !list || !addButton) return;
+
+        let controller = null;
+        let suggestions = [];
+
+        function selectedZbnrs() {
+          return new Set(
+            Array.from(list.querySelectorAll('input[name="excluded_ancestor_zbnrs"]'))
+              .map(item => item.value)
+              .filter(Boolean)
+          );
+        }
+
+        function parseZbnrFromLabel(label) {
+          if (!label.includes('|')) return '';
+          return label.split('|').pop().trim();
+        }
+
+        function addChip(label, zbnr) {
+          if (!zbnr || selectedZbnrs().has(zbnr)) return;
+
+          const chip = document.createElement('span');
+          chip.className = 'excluded-ancestor-chip';
+          chip.dataset.zbnr = zbnr;
+          chip.dataset.label = label;
+
+          const text = document.createTextNode(label + ' ');
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'excluded-ancestor-remove';
+          remove.setAttribute('aria-label', label + ' entfernen');
+          remove.textContent = '×';
+
+          const hidden = document.createElement('input');
+          hidden.type = 'hidden';
+          hidden.name = 'excluded_ancestor_zbnrs';
+          hidden.value = zbnr;
+
+          chip.append(text, remove, hidden);
+          list.appendChild(chip);
+        }
+
+        function addSelected() {
+          const value = input.value.trim();
+          if (!value) return;
+
+          const exact = suggestions.find(item => item.label === value);
+          const zbnr = exact?.zbnr || parseZbnrFromLabel(value);
+          const label = exact?.label || value;
+          if (!zbnr) return;
+
+          addChip(label, zbnr);
+          input.value = '';
+          datalist.innerHTML = '';
+          suggestions = [];
+        }
+
+        input.addEventListener('input', () => {
+          const query = input.value.trim();
+          if (query.length < 2) {
+            datalist.innerHTML = '';
+            suggestions = [];
+            return;
+          }
+
+          if (controller) controller.abort();
+          controller = new AbortController();
+          const params = new URLSearchParams({ q: query });
+
+          fetch('/dog_suggest?' + params.toString(), { signal: controller.signal })
+            .then(r => r.json())
+            .then(items => {
+              suggestions = items || [];
+              datalist.innerHTML = suggestions
+                .filter(item => item.zbnr && !selectedZbnrs().has(item.zbnr))
+                .map(item => `<option value="${escapeHtml(item.label)}"></option>`)
+                .join('');
+            })
+            .catch(() => {});
+        });
+
+        input.addEventListener('keydown', event => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            addSelected();
+          }
+        });
+
+        addButton.addEventListener('click', addSelected);
+        list.addEventListener('click', event => {
+          const remove = event.target.closest('.excluded-ancestor-remove');
+          if (remove) remove.closest('.excluded-ancestor-chip')?.remove();
+        });
+      }
+
       const pedigreeArea = document.getElementById('pedigreeArea');
       if (pedigreeArea) {
         pedigreeArea.addEventListener('click', function (event) {
@@ -2214,9 +2592,23 @@
       window.addEventListener('pedigree-notes:changed', renderSelectedDogNote);
       document.getElementById('clearWatchlist')?.addEventListener('click', clearWatchlist);
 
+      function showSearchLoading() {
+        document.body.classList.add('search-loading');
+        document.getElementById('searchLoadingOverlay')?.setAttribute('aria-hidden', 'false');
+      }
+
+      document.querySelector('.search-form')?.addEventListener('submit', showSearchLoading);
+      document.addEventListener('click', event => {
+        const link = event.target.closest('a[href^="/search?"]');
+        if (!link) return;
+        if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        showSearchLoading();
+      });
+
       renderWatchlist();
       updateWatchlistButtons();
       loadWatchlistFromServer();
+      attachExcludedAncestorPicker();
       attachPedigreeTabs();
 
       const firstResult = document.querySelector('#resultsList tr');
