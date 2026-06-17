@@ -8,6 +8,7 @@
       {% include "_nav_css.html" %}
       {% include "_watchlist_css.html" %}
       {% include "_pedigree_notes_css.html" %}
+      {% include "_pedigree_health_css.html" %}
       {% include "_pedigree_import_css.html" %}
       {% include "_avk_analysis_css.html" %}
       * { box-sizing: border-box; }
@@ -2131,6 +2132,7 @@
 
               <div class="assessment-actions">
                 <button type="button" class="secondary-button" id="openSavePairingModalButton">Verpaarung speichern</button>
+                <a class="secondary-button" href="{{ url_for('pairing_report_pdf', sire=sire_input, selected_sire=selected_sire, dam=dam_input) }}">PDF-Bericht herunterladen</a>
               </div>
             {% else %}
               <div class="workspace-empty">
@@ -2303,10 +2305,12 @@
 
       {% include "_watchlist_script.html" %}
       {% include "_pedigree_notes_script.html" %}
+      {% include "_pedigree_health_script.html" %}
       {% include "_relatives_modal_script.html" %}
       {% include "_pedigree_import_script.html" %}
 
       let pairingPedigreeHistory = [];
+      let currentPairingPedigreeZbnr = '';
 
       function pairingPedigreeLabelFromTitle(title) {
         const cleanTitle = String(title || '').trim();
@@ -2358,7 +2362,8 @@
         return {
           html: panel?.innerHTML || '',
           title: titleText,
-          label: pairingPedigreeLabelFromTitle(titleText)
+          label: pairingPedigreeLabelFromTitle(titleText),
+          zbnr: currentPairingPedigreeZbnr
         };
       }
 
@@ -2368,8 +2373,33 @@
         if (!panel || !snapshot) return;
         panel.innerHTML = snapshot.html || '';
         if (title) title.textContent = snapshot.title || 'Ahnentafel';
+        currentPairingPedigreeZbnr = snapshot.zbnr || '';
         updatePairingPedigreeBackButton();
         document.querySelector('[data-pedigree-tab="pedigree"]')?.click();
+      }
+
+      function reloadCurrentPairingPedigree() {
+        const panel = document.querySelector('.pedigree-panel');
+        if (!panel) return;
+        if (!currentPairingPedigreeZbnr) {
+          window.location.reload();
+          return;
+        }
+
+        panel.innerHTML = '<div class="loading">Wird geladen...</div>';
+        fetch('/pedigree_fragment?zbnr=' + encodeURIComponent(currentPairingPedigreeZbnr) + '&gens=5')
+          .then(r => r.text().then(html => {
+            if (!r.ok) throw new Error(html || ('HTTP ' + r.status));
+            return html;
+          }))
+          .then(html => {
+            panel.innerHTML = html;
+            updatePairingPedigreeBackButton();
+            document.querySelector('[data-pedigree-tab="pedigree"]')?.click();
+          })
+          .catch(error => {
+            panel.innerHTML = '<div class="workspace-empty">Fehler beim Laden der Ahnentafel: ' + escapeHtml(error.message) + '</div>';
+          });
       }
 
       function attachPairingPedigreeClick() {
@@ -2388,6 +2418,7 @@
             pairingPedigreeHistory.push(currentPairingPedigreeSnapshot());
             const title = document.getElementById('plannedPedigreeTitle');
             if (title) title.textContent = label ? 'Ahnentafel: ' + label : 'Ahnentafel';
+            currentPairingPedigreeZbnr = zbnr;
             updatePairingPedigreeBackButton();
             panel.innerHTML = '<div class="loading">Wird geladen...</div>';
             fetch('/pedigree_fragment?zbnr=' + encodeURIComponent(zbnr) + '&gens=5')
@@ -3244,6 +3275,7 @@
       });
       document.getElementById('savedPairingsSearch')?.addEventListener('input', renderSavedPairings);
       document.getElementById('savedPairingsSort')?.addEventListener('change', renderSavedPairings);
+      window.addEventListener('pedigree-health:changed', reloadCurrentPairingPedigree);
       document.getElementById('openSavedPairingsCompareButton')?.addEventListener('click', openComparePairingsModal);
       document.getElementById('comparePairingsModalClose')?.addEventListener('click', closeComparePairingsModal);
       document.getElementById('comparePairingsModal')?.addEventListener('click', event => {

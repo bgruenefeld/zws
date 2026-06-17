@@ -7,6 +7,7 @@
     <style>
       {% include "_nav_css.html" %}
       {% include "_pedigree_notes_css.html" %}
+      {% include "_pedigree_health_css.html" %}
       {% include "_pedigree_import_css.html" %}
       {% include "_avk_analysis_css.html" %}
       * { box-sizing: border-box; }
@@ -2128,10 +2129,12 @@
 
             <div class="avk-metrics-box">
               <div class="avk-metrics-title">Pedigree-Kennzahlen für ${escapeHtml(maxGenerations)} Generationen</div>
-              <div class="avk-metric-line"><span>Bekannte Ahnenpositionen</span><strong>${formatNumber(analysis.known_ancestor_positions)}</strong></div>
-              <div class="avk-metric-line"><span>Unterschiedliche bekannte Ahnen</span><strong>${formatNumber(analysis.unique_known_ancestors)}</strong></div>
+              <div class="avk-metric-line"><span>Besetzte Positionen mit Datensatz</span><strong>${formatNumber(analysis.known_ancestor_positions)}</strong></div>
+              <div class="avk-metric-line"><span>Unterschiedliche Hunde darin</span><strong>${formatNumber(analysis.unique_known_ancestors)}</strong></div>
               <div class="avk-metric-line"><span>Mögliche Ahnenpositionen</span><strong>${formatNumber(analysis.possible_ancestor_positions)}</strong></div>
-              <div class="avk-metric-line"><span>Ahnenverlust</span><strong>${formatNumber(analysis.ancestor_loss_known)} (${formatPercent(analysis.avk_known_percent)})</strong></div>
+              <div class="avk-metric-line"><span>Pedigree-Vollständigkeit</span><strong>${formatPercent(analysis.pedigree_completeness_percent)}</strong></div>
+              <div class="avk-metric-line"><span>Positionsduplikate</span><strong>${formatNumber(analysis.ancestor_loss_known)} (${formatPercent(analysis.avk_known_percent)} der besetzten Positionen)</strong></div>
+              <div class="avk-metric-note">Die Positionen sind keine unterschiedlichen Hunde. Wiederholte Ahnen und deren Vorfahren werden in tieferen Generationen mehrfach als Ahnentafelposition gezählt.</div>
             </div>
 
             <div>
@@ -2336,6 +2339,7 @@
 
       {% include "_watchlist_script.html" %}
       {% include "_pedigree_notes_script.html" %}
+      {% include "_pedigree_health_script.html" %}
       {% include "_relatives_modal_script.html" %}
       {% include "_pedigree_import_script.html" %}
 
@@ -2421,6 +2425,12 @@
 
         document.querySelector('[data-pedigree-tab="pedigree"]')?.click();
       }
+
+      window.addEventListener('pedigree-health:changed', () => {
+        if (!currentPedigreeState?.zbnr) return;
+        loadPedigree(currentPedigreeState.zbnr);
+        loadPedigreeMetrics(currentPedigreeState.zbnr);
+      });
 
       function restorePedigreeState(state) {
         if (!state?.zbnr) return;

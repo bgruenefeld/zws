@@ -25,10 +25,12 @@
 
     <div class="avk-metrics-box">
       <div class="avk-metrics-title">Pedigree-Kennzahlen{% if analysis.max_generations %} für {{ analysis.max_generations }} Generationen{% endif %}</div>
-      <div class="avk-metric-line"><span>Bekannte Ahnenpositionen</span><strong>{{ analysis.known_ancestor_positions }}</strong></div>
-      <div class="avk-metric-line"><span>Unterschiedliche bekannte Ahnen</span><strong>{{ analysis.unique_known_ancestors }}</strong></div>
+      <div class="avk-metric-line"><span>Besetzte Positionen mit Datensatz</span><strong>{{ analysis.known_ancestor_positions }}</strong></div>
+      <div class="avk-metric-line"><span>Unterschiedliche Hunde darin</span><strong>{{ analysis.unique_known_ancestors }}</strong></div>
       <div class="avk-metric-line"><span>Mögliche Ahnenpositionen</span><strong>{{ analysis.possible_ancestor_positions }}</strong></div>
-      <div class="avk-metric-line"><span>Ahnenverlust</span><strong>{{ analysis.ancestor_loss_known }}{% if analysis.avk_known_percent is not none %} ({{ "%.2f"|format(analysis.avk_known_percent)|replace(".", ",") }} %){% endif %}</strong></div>
+      <div class="avk-metric-line"><span>Pedigree-Vollständigkeit</span><strong>{% if analysis.pedigree_completeness_percent is not none %}{{ "%.2f"|format(analysis.pedigree_completeness_percent)|replace(".", ",") }} %{% else %}—{% endif %}</strong></div>
+      <div class="avk-metric-line"><span>Positionsduplikate</span><strong>{{ analysis.ancestor_loss_known }}{% if analysis.avk_known_percent is not none %} ({{ "%.2f"|format(analysis.avk_known_percent)|replace(".", ",") }} % der besetzten Positionen){% endif %}</strong></div>
+      <div class="avk-metric-note">Die Positionen sind keine unterschiedlichen Hunde. Wiederholte Ahnen und deren Vorfahren werden in tieferen Generationen mehrfach als Ahnentafelposition gezählt.</div>
     </div>
 
     <div>

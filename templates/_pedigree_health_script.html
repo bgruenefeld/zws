@@ -1,0 +1,213 @@
+(function () {
+  const apiUrl = '/api/dog-health';
+  let activeZbnr = '';
+  let activeDogName = '';
+  let activeCard = null;
+  let annotateQueued = false;
+
+  function healthEscapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function dogNameFromCard(card) {
+    const nameElement = card.querySelector('.name');
+    return (nameElement?.childNodes?.[0]?.textContent || nameElement?.textContent || 'Hund').trim();
+  }
+
+  function ensureHealthModal() {
+    let modal = document.getElementById('pedigreeHealthModal');
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.className = 'pedigree-health-backdrop';
+    modal.id = 'pedigreeHealthModal';
+    modal.setAttribute('aria-hidden', 'true');
+    modal.innerHTML = `
+      <div class="pedigree-health-dialog" role="dialog" aria-modal="true" aria-labelledby="pedigreeHealthTitle">
+        <div class="pedigree-health-head">
+          <div>
+            <h2 id="pedigreeHealthTitle">Gesundheitsdaten bearbeiten</h2>
+            <div class="pedigree-health-meta" id="pedigreeHealthMeta"></div>
+          </div>
+          <button type="button" class="pedigree-health-close" id="pedigreeHealthClose" aria-label="Dialog schließen">×</button>
+        </div>
+        <div class="pedigree-health-body">
+          <div class="pedigree-health-grid">
+            <label>
+              HD
+              <input id="pedigreeHealthHd" placeholder="z. B. A1">
+            </label>
+            <label>
+              ED rechts
+              <input id="pedigreeHealthEdRight" placeholder="z. B. frei">
+            </label>
+            <label>
+              ED links
+              <input id="pedigreeHealthEdLeft" placeholder="z. B. frei">
+            </label>
+          </div>
+          <div class="pedigree-health-hint" id="pedigreeHealthOriginal"></div>
+          <div class="pedigree-health-actions">
+            <div class="pedigree-health-status" id="pedigreeHealthStatus" aria-live="polite"></div>
+            <button type="button" class="secondary-button" id="pedigreeHealthCancel">Abbrechen</button>
+            <button type="button" id="pedigreeHealthSave">Speichern</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('pedigreeHealthClose')?.addEventListener('click', closeHealthModal);
+    document.getElementById('pedigreeHealthCancel')?.addEventListener('click', closeHealthModal);
+    document.getElementById('pedigreeHealthSave')?.addEventListener('click', saveActiveHealth);
+    modal.addEventListener('click', event => {
+      if (event.target === modal) closeHealthModal();
+    });
+
+    return modal;
+  }
+
+  function openHealthModal(card) {
+    const zbnr = card.getAttribute('data-zbnr') || '';
+    if (!zbnr || zbnr.startsWith('__')) return;
+
+    activeZbnr = zbnr;
+    activeDogName = dogNameFromCard(card);
+    activeCard = card;
+
+    const modal = ensureHealthModal();
+    const title = document.getElementById('pedigreeHealthTitle');
+    const meta = document.getElementById('pedigreeHealthMeta');
+    const original = document.getElementById('pedigreeHealthOriginal');
+    const status = document.getElementById('pedigreeHealthStatus');
+    const hdInput = document.getElementById('pedigreeHealthHd');
+    const edRightInput = document.getElementById('pedigreeHealthEdRight');
+    const edLeftInput = document.getElementById('pedigreeHealthEdLeft');
+
+    if (title) title.textContent = 'Gesundheitsdaten: ' + activeDogName;
+    if (meta) meta.textContent = 'ZBNr ' + zbnr;
+    if (status) status.textContent = '';
+    if (original) original.textContent = 'Werte werden geladen...';
+    if (hdInput) hdInput.value = '';
+    if (edRightInput) edRightInput.value = '';
+    if (edLeftInput) edLeftInput.value = '';
+
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+
+    fetch(apiUrl + '?zbnr=' + encodeURIComponent(zbnr))
+      .then(r => r.json().then(data => {
+        if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+        return data;
+      }))
+      .then(data => {
+        activeDogName = data.dogName || activeDogName;
+        if (title) title.textContent = 'Gesundheitsdaten: ' + activeDogName;
+        if (hdInput) hdInput.value = data.values?.hd || '';
+        if (edRightInput) edRightInput.value = data.values?.edRechts || '';
+        if (edLeftInput) edLeftInput.value = data.values?.edLinks || '';
+        if (original) {
+          original.textContent = 'Original: HD ' + (data.original?.hd || '—')
+            + ' · ED rechts ' + (data.original?.edRechts || '—')
+            + ' · ED links ' + (data.original?.edLinks || '—');
+        }
+        hdInput?.focus();
+      })
+      .catch(error => {
+        if (status) status.textContent = 'Fehler: ' + error.message;
+      });
+  }
+
+  function closeHealthModal() {
+    const modal = document.getElementById('pedigreeHealthModal');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+    activeZbnr = '';
+    activeDogName = '';
+    activeCard = null;
+  }
+
+  function saveActiveHealth() {
+    if (!activeZbnr) return;
+    const status = document.getElementById('pedigreeHealthStatus');
+    const payload = {
+      zbnr: activeZbnr,
+      dogName: activeDogName,
+      hd: (document.getElementById('pedigreeHealthHd')?.value || '').trim(),
+      edRechts: (document.getElementById('pedigreeHealthEdRight')?.value || '').trim(),
+      edLinks: (document.getElementById('pedigreeHealthEdLeft')?.value || '').trim()
+    };
+
+    if (status) status.textContent = 'Speichere...';
+    fetch(apiUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(r => r.json().then(data => {
+        if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+        return data;
+      }))
+      .then(() => {
+        if (status) status.textContent = 'Gespeichert.';
+        window.dispatchEvent(new CustomEvent('pedigree-health:changed', {
+          detail: { zbnr: activeZbnr, card: activeCard }
+        }));
+        window.setTimeout(closeHealthModal, 250);
+      })
+      .catch(error => {
+        if (status) status.textContent = 'Fehler: ' + error.message;
+      });
+  }
+
+  function createHealthButton(card) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'pedigree-health-button';
+    button.textContent = 'H';
+    button.title = 'HD/ED bearbeiten';
+    button.setAttribute('aria-label', 'HD und ED bearbeiten');
+    button.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      openHealthModal(card);
+    });
+    card.appendChild(button);
+    return button;
+  }
+
+  function refreshPedigreeHealthButtons() {
+    document.querySelectorAll('.card[data-zbnr]').forEach(card => {
+      const zbnr = card.getAttribute('data-zbnr') || '';
+      if (!zbnr || zbnr.startsWith('__')) return;
+      if (!card.querySelector('.pedigree-health-button')) createHealthButton(card);
+    });
+  }
+
+  function queueRefresh() {
+    if (annotateQueued) return;
+    annotateQueued = true;
+    window.requestAnimationFrame(() => {
+      annotateQueued = false;
+      refreshPedigreeHealthButtons();
+    });
+  }
+
+  window.refreshPedigreeHealthButtons = refreshPedigreeHealthButtons;
+  window.openPedigreeHealthModal = openHealthModal;
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeHealthModal();
+  });
+
+  const observer = new MutationObserver(queueRefresh);
+  observer.observe(document.body, { childList: true, subtree: true });
+  queueRefresh();
+})();

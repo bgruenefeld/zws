@@ -2,6 +2,7 @@ from pathlib import Path
 from urllib.parse import quote_plus, urlencode
 from contextlib import contextmanager
 from collections import defaultdict
+from io import BytesIO
 import json
 import logging
 import math
@@ -16,10 +17,29 @@ import threading
 import time
 import uuid
 
-from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, session, g
+from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, session, g, send_file
 
 import pedigree_tools as pt
 import pandas as pd
+
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+except ImportError:
+    colors = None
+    A4 = None
+    getSampleStyleSheet = None
+    ParagraphStyle = None
+    cm = None
+    SimpleDocTemplate = None
+    Paragraph = None
+    Spacer = None
+    Table = None
+    TableStyle = None
+    PageBreak = None
 
 try:
     import fcntl
@@ -49,6 +69,7 @@ app.logger.setLevel(os.environ.get("LOG_LEVEL", "INFO").upper())
 AUTH_USERNAME = os.environ.get("APP_USERNAME", "admin")
 AUTH_PASSWORD = os.environ.get("APP_PASSWORD", "admin")
 AUTH_USERS_JSON = os.environ.get("APP_USERS_JSON", "")
+DOG_HEALTH_GLOBAL_USER_ID = "__global_health_overrides__"
 
 USER_DOG_COLUMNS = [
     "ZBNr",
@@ -156,6 +177,7 @@ def close_db(error=None):
 def init_personalization_db():
     connection = sqlite3.connect(APP_DATABASE, timeout=15)
     try:
+        connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA journal_mode = WAL")
         connection.executescript(
             """
@@ -177,6 +199,17 @@ def init_personalization_db():
                 PRIMARY KEY (user_id, zbnr)
             );
 
+            CREATE TABLE IF NOT EXISTS dog_health_overrides (
+                user_id TEXT NOT NULL,
+                zbnr TEXT NOT NULL,
+                dog_name TEXT,
+                hd TEXT,
+                ed_rechts TEXT,
+                ed_links TEXT,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, zbnr)
+            );
+
             CREATE TABLE IF NOT EXISTS saved_pairings (
                 user_id TEXT NOT NULL,
                 pairing_id TEXT NOT NULL,
@@ -187,6 +220,37 @@ def init_personalization_db():
             );
             """
         )
+        rows = connection.execute(
+            """
+            SELECT user_id, zbnr, dog_name, hd, ed_rechts, ed_links, updated_at
+            FROM dog_health_overrides
+            WHERE user_id != ?
+            ORDER BY updated_at
+            """,
+            (DOG_HEALTH_GLOBAL_USER_ID,),
+        ).fetchall()
+        for row in rows:
+            connection.execute(
+                """
+                INSERT INTO dog_health_overrides (user_id, zbnr, dog_name, hd, ed_rechts, ed_links, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id, zbnr) DO UPDATE SET
+                    dog_name = excluded.dog_name,
+                    hd = excluded.hd,
+                    ed_rechts = excluded.ed_rechts,
+                    ed_links = excluded.ed_links,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    DOG_HEALTH_GLOBAL_USER_ID,
+                    row["zbnr"],
+                    row["dog_name"],
+                    row["hd"],
+                    row["ed_rechts"],
+                    row["ed_links"],
+                    row["updated_at"],
+                ),
+            )
         connection.commit()
     finally:
         connection.close()
@@ -1188,7 +1252,8 @@ def parent_display_by_zbnr(zbnr):
     if not normalized:
         return None
 
-    parent = ZBNR_INDEX.get(normalized) or ZBNR_INDEX.get(clean_text(zbnr))
+    index = personalized_zbnr_index()
+    parent = index.get(normalized) or index.get(clean_text(zbnr))
     if parent is None:
         return {"name": "", "zbnr": normalized, "label": normalized}
 
@@ -1407,6 +1472,65 @@ def dog_has_excluded_ancestor(row, excluded_zbnrs, max_generations=5):
     return bool(ancestor_zbnrs_for_dog(row, max_generations=max_generations) & set(excluded_zbnrs))
 
 
+def normalized_health_zbnr(value):
+    text = clean_text(value)
+    return pt.normalize_zbnr(text) or text
+
+
+def dog_health_overrides(user_id=None):
+    if not has_request_context_safe():
+        return {}
+    rows = get_db().execute(
+        """
+        SELECT zbnr, dog_name, hd, ed_rechts, ed_links, updated_at
+        FROM dog_health_overrides
+        WHERE user_id = ?
+        """,
+        (user_id or DOG_HEALTH_GLOBAL_USER_ID,),
+    ).fetchall()
+    return {
+        row["zbnr"]: {
+            "dogName": row["dog_name"] or "",
+            "hd": row["hd"] or "",
+            "edRechts": row["ed_rechts"] or "",
+            "edLinks": row["ed_links"] or "",
+            "updatedAt": row["updated_at"] or "",
+        }
+        for row in rows
+        if row["zbnr"]
+    }
+
+
+def apply_health_override_to_row(row, override):
+    if not override:
+        return row
+    item = dict(row)
+    if clean_text(override.get("hd")):
+        item["HD_Grad"] = clean_text(override.get("hd"))
+    if clean_text(override.get("edRechts")):
+        item["ED_rechts"] = clean_text(override.get("edRechts"))
+        item["ED_rechts_raw"] = clean_text(override.get("edRechts"))
+    if clean_text(override.get("edLinks")):
+        item["ED_links"] = clean_text(override.get("edLinks"))
+        item["ED_links_raw"] = clean_text(override.get("edLinks"))
+    return item
+
+
+def personalized_zbnr_index():
+    if not has_request_context_safe():
+        return ZBNR_INDEX
+    overrides = dog_health_overrides()
+    if not overrides:
+        return ZBNR_INDEX
+    index = dict(ZBNR_INDEX)
+    for zbnr, override in overrides.items():
+        dog = index.get(zbnr)
+        if dog is None:
+            continue
+        index[zbnr] = apply_health_override_to_row(dog, override)
+    return index
+
+
 def dog_has_any_carrier_status(row):
     for _key, column in GENETIC_TEST_FIELDS:
         if column in row and is_carrier_status(row.get(column)):
@@ -1512,7 +1636,8 @@ def resolve_dog(value, required_sex=None):
         return None
 
     zbnr = parse_selected_zbnr(query)
-    dog = ZBNR_INDEX.get(zbnr)
+    index = personalized_zbnr_index()
+    dog = index.get(zbnr)
     if dog is not None:
         if required_sex and clean_text(dog.get("Geschlecht")) != required_sex:
             return None
@@ -1533,7 +1658,7 @@ def resolve_dog(value, required_sex=None):
 
     row = matches.iloc[0].to_dict()
     resolved_zbnr = clean_text(row.get("ZBNr_norm")) or clean_text(row.get("ZBNr"))
-    return ZBNR_INDEX.get(resolved_zbnr) or row
+    return index.get(resolved_zbnr) or apply_health_override_to_row(row, dog_health_overrides().get(resolved_zbnr))
 
 
 def make_pairing_index(sire, dam):
@@ -1541,7 +1666,7 @@ def make_pairing_index(sire, dam):
     sire_zbnr = clean_text(sire.get("ZBNr_norm") or sire.get("ZBNr"))
     dam_zbnr = clean_text(dam.get("ZBNr_norm") or dam.get("ZBNr"))
 
-    pairing_index = dict(ZBNR_INDEX)
+    pairing_index = dict(personalized_zbnr_index())
     pairing_index[planned_zbnr] = {
         "ZBNr": planned_zbnr,
         "ZBNr_norm": planned_zbnr,
@@ -1557,6 +1682,314 @@ def make_pairing_index(sire, dam):
         "mother_found": True,
     }
     return planned_zbnr, pairing_index
+
+
+def ed_grade_value(value):
+    text = clean_text(value).lower()
+    if not text:
+        return None
+    if "frei" in text or "free" in text:
+        return 0
+    if "borderline" in text:
+        return 0.5
+    match = re.search(r"\b([0-3])(?:[.,]5)?\b", text)
+    if match:
+        try:
+            return float(match.group(0).replace(",", "."))
+        except Exception:
+            return None
+    for token, grade in {"iii": 3, "ii": 2, "i": 1}.items():
+        if re.search(rf"\bed\s*{token}\b", text):
+            return grade
+    return None
+
+
+def has_bad_ed_value(row):
+    values = [
+        row.get("ED_rechts"),
+        row.get("ED_rechts_raw"),
+        row.get("ED_links"),
+        row.get("ED_links_raw"),
+        row.get("ED_ZWS"),
+    ]
+    grades = [ed_grade_value(value) for value in values]
+    grades = [grade for grade in grades if grade is not None]
+    return bool(grades) and max(grades) >= 1
+
+
+def normalized_row_zbnr(row):
+    zbnr = clean_text(row.get("ZBNr_norm") or row.get("ZBNr"))
+    return pt.normalize_zbnr(zbnr) or zbnr
+
+
+def ancestor_rows_with_ebv_at_least(index, start_zbnr, min_ebv=0, max_generations=5):
+    slots = pt.build_positional_pedigree(
+        index=index,
+        start_zbnr=start_zbnr,
+        max_generations=max_generations,
+    )
+    by_zbnr = {}
+    for _slot_id, entry in slots.items():
+        generation = entry.get("generation", 0)
+        if generation <= 0 or generation > max_generations:
+            continue
+        zbnr = pt.normalize_zbnr(entry.get("zbnr")) or clean_text(entry.get("zbnr"))
+        if not zbnr:
+            continue
+        dog = entry.get("dog") or index.get(zbnr)
+        if dog is None:
+            continue
+        ebv = dog_ebv_value(dog)
+        if ebv is None or ebv < min_ebv:
+            continue
+        item = by_zbnr.setdefault(
+            zbnr,
+            {
+                "dog": dog,
+                "summary": dog_summary(dog),
+                "ebv": ebv,
+                "generations": set(),
+            },
+        )
+        item["generations"].add(generation)
+
+    rows = list(by_zbnr.values())
+    for row in rows:
+        row["generations"] = sorted(row["generations"])
+    rows.sort(key=lambda item: (-item["ebv"], item["summary"]["name"].casefold()))
+    return rows
+
+
+def offspring_with_bad_ed_for_dog(dog):
+    dog_zbnr = normalized_row_zbnr(dog)
+    if not dog_zbnr:
+        return []
+
+    def normalized_zbnr(value):
+        text = clean_text(value)
+        return pt.normalize_zbnr(text) or text
+
+    father_series = MERGED_DF.get("vater_zbnr_norm", pd.Series([""] * len(MERGED_DF))).map(normalized_zbnr)
+    mother_series = MERGED_DF.get("mutter_zbnr_norm", pd.Series([""] * len(MERGED_DF))).map(normalized_zbnr)
+    offspring_mask = (father_series == dog_zbnr) | (mother_series == dog_zbnr)
+    rows = []
+    for row in MERGED_DF.loc[offspring_mask].sort_values(by=["Wurfdatum", "Name"], na_position="last").to_dict(orient="records"):
+        if not has_bad_ed_value(row):
+            continue
+        child_father = normalized_zbnr(row.get("vater_zbnr_norm") or row.get("vater_zbnr"))
+        child_mother = normalized_zbnr(row.get("mutter_zbnr_norm") or row.get("mutter_zbnr"))
+        other_parent_zbnr = child_mother if child_father == dog_zbnr else child_father
+        other_parent = parent_display_by_zbnr(other_parent_zbnr)
+        summary = dog_summary(row)
+        summary["other_parent"] = other_parent["label"] if other_parent else ""
+        rows.append(summary)
+    return rows
+
+
+def build_pairing_report_data(sire, dam):
+    planned_zbnr, pairing_index = make_pairing_index(sire, dam)
+    display_max_gen = 5
+    metric_max_gen = pedigree_metric_generation_depth(
+        pairing_index,
+        planned_zbnr,
+        minimum=5,
+        maximum=10,
+    )
+    sire_ebv = dog_ebv_value(sire)
+    dam_ebv = dog_ebv_value(dam)
+    planned_ebv = (
+        (sire_ebv + dam_ebv) / 2
+        if sire_ebv is not None and dam_ebv is not None
+        else None
+    )
+    coi = pt.calculate_coi_for_zbnr(pairing_index, planned_zbnr, max_generations=metric_max_gen)
+    avk = pt.calculate_avk_for_zbnr(pairing_index, planned_zbnr, max_generations=metric_max_gen)
+    avk_analysis = avk_analysis_for_display(
+        pairing_index,
+        planned_zbnr,
+        max_generations=metric_max_gen,
+        visible_generations=display_max_gen,
+    )
+    repeated_visible = [
+        item for item in avk_analysis.get("repeated_ancestors", [])
+        if item.get("visible_count", 0) > 1
+    ]
+    risk_ancestors = ancestor_rows_with_ebv_at_least(
+        pairing_index,
+        planned_zbnr,
+        min_ebv=0,
+        max_generations=display_max_gen,
+    )
+    for item in risk_ancestors:
+        item["bad_offspring"] = offspring_with_bad_ed_for_dog(item["dog"])
+
+    return {
+        "sire": dog_summary(sire),
+        "dam": dog_summary(dam),
+        "planned_ebv": planned_ebv,
+        "planned_ebv_display": (
+            f"{planned_ebv:.1f}".replace(".", ",")
+            if planned_ebv is not None
+            else "—"
+        ),
+        "coi_display": format_percent_or_dash(coi.get("coi_percent")),
+        "visible_avk_display": format_percent_or_dash(avk_analysis.get("visible_avk_known_percent")),
+        "avk_display": format_percent_or_dash(avk.get("avk_known_percent")),
+        "complete_generation": avk.get("deepest_complete_generation_in_data"),
+        "metric_generations": metric_max_gen,
+        "display_generations": display_max_gen,
+        "repeated_visible": repeated_visible,
+        "risk_ancestors": risk_ancestors,
+    }
+
+
+def pdf_text(value):
+    text = clean_text(value)
+    return text if text else "—"
+
+
+def pdf_escape(value):
+    return (
+        pdf_text(value)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
+def pdf_paragraph(value, style):
+    escaped = pdf_escape(value)
+    return Paragraph(escaped, style)
+
+
+def dog_health_rows(summary):
+    return [
+        ["Name", summary.get("name")],
+        ["ZBNr", summary.get("zbnr")],
+        ["Geschlecht", summary.get("geschlecht")],
+        ["Wurfdatum", summary.get("wurfdatum")],
+        ["Alter", f"{summary.get('alter')} Jahre" if summary.get("alter") is not None else "—"],
+        ["HD", summary.get("hd")],
+        ["ED", summary.get("ed")],
+        ["ED-Zuchtwert", summary.get("zuchtwert")],
+        ["Sicherheit", f"{summary.get('konfidenz')} %" if summary.get("konfidenz") is not None else "—"],
+        ["Nachkommen", summary.get("anz_nachkommen")],
+        ["prcd-PRA", summary.get("prcd_pra")],
+        ["HNPK", summary.get("hnpk")],
+        ["SD2", summary.get("sd2")],
+        ["CNM", summary.get("cnm")],
+        ["EIC", summary.get("eic")],
+        ["ZS", summary.get("zs")],
+        ["STGD", summary.get("stgd_status")],
+    ]
+
+
+def styled_pdf_table(data, widths, repeat_rows=0):
+    table = Table(data, colWidths=widths, repeatRows=repeat_rows, hAlign="LEFT")
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#edf2f7") if repeat_rows else colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#d8dee6")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold" if repeat_rows else "Helvetica"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    return table
+
+
+def build_pairing_pdf(data):
+    if SimpleDocTemplate is None:
+        raise RuntimeError("ReportLab ist nicht installiert.")
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=1.35 * cm,
+        leftMargin=1.35 * cm,
+        topMargin=1.3 * cm,
+        bottomMargin=1.3 * cm,
+        title="Bericht Testverpaarung",
+    )
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="Small", parent=styles["BodyText"], fontSize=8, leading=10))
+    styles.add(ParagraphStyle(name="Section", parent=styles["Heading2"], fontSize=13, leading=16, spaceBefore=10, spaceAfter=6))
+    story = []
+
+    story.append(Paragraph("Bericht Testverpaarung", styles["Title"]))
+    story.append(Paragraph(f"{pdf_text(data['dam'].get('name'))} × {pdf_text(data['sire'].get('name'))}", styles["Heading2"]))
+    story.append(Paragraph(f"Erstellt am {datetime.now().strftime('%d.%m.%Y %H:%M')}", styles["Small"]))
+    story.append(Spacer(1, 10))
+
+    story.append(Paragraph("Hunde und Gesundheitsdaten", styles["Section"]))
+    for title, summary in [("Hündin", data["dam"]), ("Rüde", data["sire"])]:
+        story.append(Paragraph(title, styles["Heading3"]))
+        rows = [[pdf_paragraph(label, styles["Small"]), pdf_paragraph(value, styles["Small"])] for label, value in dog_health_rows(summary)]
+        story.append(styled_pdf_table(rows, [4.0 * cm, 12.0 * cm]))
+        story.append(Spacer(1, 8))
+
+    story.append(Paragraph("Ahnentafel-Kennzahlen", styles["Section"]))
+    metrics = [
+        ["Erwarteter ED-Zuchtwert", data["planned_ebv_display"]],
+        [f"COI bis Gen. {data['metric_generations']}", data["coi_display"]],
+        [f"AVK Gen. {data['display_generations']}", data["visible_avk_display"]],
+        ["AVK tief", data["avk_display"]],
+        ["Vollständig bis", f"Gen. {data['complete_generation']}" if data["complete_generation"] is not None else "—"],
+    ]
+    story.append(styled_pdf_table([[pdf_paragraph(a, styles["Small"]), pdf_paragraph(b, styles["Small"])] for a, b in metrics], [7.0 * cm, 9.0 * cm]))
+
+    story.append(Paragraph(f"Mehrfach vorkommende Hunde in Gen. 1-{data['display_generations']}", styles["Section"]))
+    if data["repeated_visible"]:
+        rows = [["Name", "ZBNr", "Anzahl", "Generationen"]]
+        for item in data["repeated_visible"]:
+            rows.append([
+                pdf_paragraph(item.get("name"), styles["Small"]),
+                pdf_paragraph(item.get("zbnr"), styles["Small"]),
+                pdf_paragraph(item.get("visible_count"), styles["Small"]),
+                pdf_paragraph(", ".join(str(gen) for gen in item.get("visible_generations", [])), styles["Small"]),
+            ])
+        story.append(styled_pdf_table(rows, [6.0 * cm, 4.0 * cm, 2.0 * cm, 4.0 * cm], repeat_rows=1))
+    else:
+        story.append(Paragraph("Keine mehrfach vorkommenden Hunde in Generation 1-5.", styles["BodyText"]))
+
+    story.append(PageBreak())
+    story.append(Paragraph("Ahnen mit ED-Zuchtwert >= 0", styles["Section"]))
+    if not data["risk_ancestors"]:
+        story.append(Paragraph("Keine Ahnen mit ED-Zuchtwert >= 0 in Generation 1-5 gefunden.", styles["BodyText"]))
+    for item in data["risk_ancestors"]:
+        summary = item["summary"]
+        story.append(Paragraph(
+            f"{pdf_text(summary.get('name'))} · ZBNr {pdf_text(summary.get('zbnr'))} · EBV {pdf_text(summary.get('zuchtwert'))} · Gen. {', '.join(str(gen) for gen in item.get('generations', []))}",
+            styles["Heading3"],
+        ))
+        bad_offspring = item.get("bad_offspring", [])
+        if not bad_offspring:
+            story.append(Paragraph("Keine direkten Nachkommen mit auffälligem ED-Befund gefunden.", styles["Small"]))
+            story.append(Spacer(1, 7))
+            continue
+        rows = [["Nachkomme", "ZBNr", "ED", "HD", "ED-ZW", "Paarungspartner"]]
+        for child in bad_offspring:
+            rows.append([
+                pdf_paragraph(child.get("name"), styles["Small"]),
+                pdf_paragraph(child.get("zbnr"), styles["Small"]),
+                pdf_paragraph(child.get("ed"), styles["Small"]),
+                pdf_paragraph(child.get("hd"), styles["Small"]),
+                pdf_paragraph(child.get("zuchtwert"), styles["Small"]),
+                pdf_paragraph(child.get("other_parent"), styles["Small"]),
+            ])
+        story.append(styled_pdf_table(rows, [4.0 * cm, 2.7 * cm, 1.6 * cm, 1.6 * cm, 1.8 * cm, 4.3 * cm], repeat_rows=1))
+        story.append(Spacer(1, 8))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
 
 
 def format_percent_or_dash(value):
@@ -1727,12 +2160,14 @@ def avk_analysis_for_display(index, start_zbnr, max_generations=10, visible_gene
         "avk_known_percent": avk.get("avk_known_percent"),
         "possible_ancestor_positions": avk.get("possible_ancestor_positions"),
         "known_ancestor_positions": avk.get("known_ancestor_positions"),
+        "pedigree_completeness_percent": pedigree_completeness_percent(avk),
         "unique_known_ancestors": avk.get("unique_known_ancestors"),
         "ancestor_loss_known": avk.get("ancestor_loss_known"),
         "deepest_complete_generation_in_data": avk.get("deepest_complete_generation_in_data"),
         "generation_rows": avk.get("generation_rows", []),
         "contributors": contributors,
         "repeated_ancestors": repeated,
+        "note": avk.get("note"),
     }
 
 
@@ -2128,6 +2563,87 @@ def api_dog_notes():
         )
     log_event("dog_notes_saved", count=len(normalized_notes))
     return jsonify({"ok": True, "items": normalized_notes})
+
+
+@app.route("/api/dog-health", methods=["GET", "PUT"])
+def api_dog_health():
+    user_id = DOG_HEALTH_GLOBAL_USER_ID
+    db = get_db()
+
+    if request.method == "GET":
+        zbnr = normalized_health_zbnr(request.args.get("zbnr"))
+        if not zbnr:
+            return jsonify({"error": "zbnr fehlt"}), 400
+        dog = personalized_zbnr_index().get(zbnr) or ZBNR_INDEX.get(zbnr)
+        if dog is None:
+            return jsonify({"error": "Hund nicht gefunden"}), 404
+        override = dog_health_overrides(user_id).get(zbnr, {})
+        original = ZBNR_INDEX.get(zbnr) or dog
+        return jsonify(
+            {
+                "ok": True,
+                "zbnr": zbnr,
+                "dogName": clean_text(dog.get("Name")) or zbnr,
+                "values": {
+                    "hd": clean_text(dog.get("HD_Grad") or dog.get("HD")),
+                    "edRechts": clean_text(dog.get("ED_rechts") or dog.get("ED_rechts_raw")),
+                    "edLinks": clean_text(dog.get("ED_links") or dog.get("ED_links_raw")),
+                },
+                "original": {
+                    "hd": clean_text(original.get("HD_Grad") or original.get("HD")),
+                    "edRechts": clean_text(original.get("ED_rechts") or original.get("ED_rechts_raw")),
+                    "edLinks": clean_text(original.get("ED_links") or original.get("ED_links_raw")),
+                },
+                "override": override,
+            }
+        )
+
+    body = read_json_body()
+    zbnr = normalized_health_zbnr(body.get("zbnr"))
+    if not zbnr:
+        return jsonify({"error": "zbnr fehlt"}), 400
+
+    dog = ZBNR_INDEX.get(zbnr)
+    if dog is None:
+        return jsonify({"error": "Hund nicht gefunden"}), 404
+
+    dog_name = clean_text(body.get("dogName")) or clean_text(dog.get("Name")) or zbnr
+    hd = clean_text(body.get("hd"))
+    ed_rechts = clean_text(body.get("edRechts"))
+    ed_links = clean_text(body.get("edLinks"))
+    now = utc_now_iso()
+
+    with db:
+        if hd or ed_rechts or ed_links:
+            db.execute(
+                """
+                INSERT INTO dog_health_overrides (user_id, zbnr, dog_name, hd, ed_rechts, ed_links, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id, zbnr) DO UPDATE SET
+                    dog_name = excluded.dog_name,
+                    hd = excluded.hd,
+                    ed_rechts = excluded.ed_rechts,
+                    ed_links = excluded.ed_links,
+                    updated_at = excluded.updated_at
+                """,
+                (user_id, zbnr, dog_name, hd, ed_rechts, ed_links, now),
+            )
+        else:
+            db.execute(
+                "DELETE FROM dog_health_overrides WHERE user_id = ? AND zbnr = ?",
+                (user_id, zbnr),
+            )
+
+    log_event("dog_health_saved", zbnr=zbnr, dog_name=dog_name)
+    return jsonify(
+        {
+            "ok": True,
+            "zbnr": zbnr,
+            "dogName": dog_name,
+            "values": {"hd": hd, "edRechts": ed_rechts, "edLinks": ed_links},
+            "updatedAt": now,
+        }
+    )
 
 
 @app.route("/api/saved-pairings", methods=["GET", "PUT"])
@@ -2639,6 +3155,40 @@ def pairing():
     return render_template("pairing.html", **context)
 
 
+@app.route("/pairing/report.pdf")
+def pairing_report_pdf():
+    sire_input = request.args.get("sire", "").strip()
+    selected_sire = request.args.get("selected_sire", "").strip()
+    dam_input = request.args.get("dam", "").strip()
+    sire_query = selected_sire or sire_input
+    sire = resolve_dog(sire_query, required_sex="R") if sire_query else None
+    dam = resolve_dog(dam_input, required_sex="H") if dam_input else None
+
+    if sire is None or dam is None:
+        return Response("Hündin oder Rüde wurde nicht gefunden.", status=404, mimetype="text/plain")
+
+    try:
+        data = build_pairing_report_data(sire, dam)
+        pdf = build_pairing_pdf(data)
+    except RuntimeError as exc:
+        return Response(str(exc), status=500, mimetype="text/plain")
+    except Exception:
+        app.logger.exception("PDF-Bericht konnte nicht erstellt werden")
+        return Response("PDF-Bericht konnte nicht erstellt werden.", status=500, mimetype="text/plain")
+
+    dam_name = re.sub(r"[^A-Za-z0-9_-]+", "_", data["dam"].get("name") or "huendin").strip("_")
+    sire_name = re.sub(r"[^A-Za-z0-9_-]+", "_", data["sire"].get("name") or "ruede").strip("_")
+    filename = f"testverpaarung_{dam_name}_{sire_name}.pdf"[:140]
+    if not filename.endswith(".pdf"):
+        filename += ".pdf"
+    return send_file(
+        pdf,
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=filename,
+    )
+
+
 @app.route("/search", methods=["GET"])
 def search_results():
     """Search results page."""
@@ -2951,9 +3501,10 @@ def pedigree():
 
     max_gen = int(request.args.get("gens", 5))
     started_at = time.perf_counter()
+    index = personalized_zbnr_index()
 
     res = pt.create_pedigree_html_for_zbnr(
-        df_or_index=ZBNR_INDEX,
+        df_or_index=index,
         start_zbnr=zbnr,
         max_generations=max_gen,
         include_coi=True,
@@ -2964,7 +3515,7 @@ def pedigree():
     log_event(
         "pedigree_opened",
         zbnr=pt.normalize_zbnr(zbnr) or clean_text(zbnr),
-        dog_name=dog_log_name(ZBNR_INDEX, zbnr),
+        dog_name=dog_log_name(index, zbnr),
         generations=max_gen,
         duration_ms=event_duration_ms(started_at),
     )
@@ -3007,30 +3558,31 @@ def pedigree_metrics():
             int(requested_gens)
             if requested_gens
             else pedigree_metric_generation_depth(
-                ZBNR_INDEX,
+                personalized_zbnr_index(),
                 zbnr,
                 minimum=5,
                 maximum=10,
             )
         )
+        index = personalized_zbnr_index()
         coi = pt.calculate_coi_for_zbnr(
-            ZBNR_INDEX,
+            index,
             zbnr,
             max_generations=max_gen,
         )
         avk = pt.calculate_avk_for_zbnr(
-            ZBNR_INDEX,
+            index,
             zbnr,
             max_generations=max_gen,
         )
         avk_analysis = avk_analysis_for_display(
-            ZBNR_INDEX,
+            index,
             zbnr,
             max_generations=max_gen,
             visible_generations=5,
         )
         coi_analysis = coi_analysis_for_display(
-            ZBNR_INDEX,
+            index,
             zbnr,
             min_generations=5,
             max_generations=max_gen,
@@ -3041,7 +3593,7 @@ def pedigree_metrics():
     log_event(
         "pedigree_metrics_rendered",
         zbnr=pt.normalize_zbnr(zbnr) or clean_text(zbnr),
-        dog_name=dog_log_name(ZBNR_INDEX, zbnr),
+        dog_name=dog_log_name(index, zbnr),
         coi=safe_float(coi.get("coi_percent") if coi else None),
         avk=safe_float(avk.get("avk_known_percent") if avk else None),
         completeness=pedigree_completeness_percent(avk),
@@ -3056,6 +3608,7 @@ def pedigree_metrics():
             "visible_avk_known_percent": (
                 avk_analysis.get("visible_avk_known_percent") if avk_analysis else None
             ),
+            "pedigree_completeness_percent": pedigree_completeness_percent(avk),
             "deepest_complete_generation_in_data": (
                 avk.get("deepest_complete_generation_in_data") if avk else None
             ),
@@ -3078,7 +3631,8 @@ def littermates():
         return jsonify({"error": "no zbnr provided"}), 400
 
     zbnr = pt.normalize_zbnr(requested_zbnr) or requested_zbnr
-    dog = ZBNR_INDEX.get(zbnr) or ZBNR_INDEX.get(requested_zbnr)
+    index = personalized_zbnr_index()
+    dog = index.get(zbnr) or index.get(requested_zbnr)
     if dog is None:
         return jsonify({"error": "dog not found"}), 404
 
@@ -3162,8 +3716,9 @@ def pedigree_fragment():
     started_at = time.perf_counter()
 
     try:
+        index = personalized_zbnr_index()
         res = pt.create_pedigree_html_for_zbnr(
-            df_or_index=ZBNR_INDEX,
+            df_or_index=index,
             start_zbnr=zbnr,
             max_generations=max_gen,
             include_coi=False,
@@ -3186,7 +3741,7 @@ def pedigree_fragment():
         log_event(
             "pedigree_opened",
             zbnr=pt.normalize_zbnr(zbnr) or clean_text(zbnr),
-            dog_name=dog_log_name(ZBNR_INDEX, zbnr),
+            dog_name=dog_log_name(index, zbnr),
             generations=max_gen,
             duration_ms=event_duration_ms(started_at),
         )
