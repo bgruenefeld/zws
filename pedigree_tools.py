@@ -976,6 +976,7 @@ def render_pedigree_html(
     max_generations: int = 5,
     coi_result: dict[str, Any] | None = None,
     avk_result: dict[str, Any] | None = None,
+    include_root: bool = False,
 ) -> str:
     """
     Erzeugt den HTML-Inhalt der Ahnentafel als String.
@@ -988,8 +989,11 @@ def render_pedigree_html(
 
     leaf_count = 2 ** max_generations
     row_height = 44
-    column_widths = [250, 255, 260, 270, 270]
-    active_widths = column_widths[:max_generations]
+    column_widths = [250, 255, 260, 270, 270, 270]
+    needed_columns = max_generations + (1 if include_root else 0)
+    if len(column_widths) < needed_columns:
+        column_widths.extend([270] * (needed_columns - len(column_widths)))
+    active_widths = column_widths[:needed_columns]
     total_width = sum(active_widths)
     total_height = leaf_count * row_height
 
@@ -997,17 +1001,18 @@ def render_pedigree_html(
 
     for slot, entry in slots.items():
         generation = entry["generation"]
-        if generation == 0:
+        if generation == 0 and not include_root:
             continue
         idx_in_generation = slot - 2 ** generation
         row_span = 2 ** (max_generations - generation)
         row_start = idx_in_generation * row_span + 1
         row_end = row_start + row_span
+        grid_column = generation + 1 if include_root else generation
 
         cells_html.append(
             f"""
             <div class="pedigree-cell"
-                 style="grid-column:{generation}; grid-row:{row_start} / {row_end};">
+                 style="grid-column:{grid_column}; grid-row:{row_start} / {row_end};">
                 {render_card(entry, generation=generation, max_generations=max_generations)}
             </div>
             """
@@ -1318,6 +1323,7 @@ def create_pedigree_html_for_zbnr(
     max_generations: int = 5,
     include_coi: bool = True,
     include_avk: bool = True,
+    include_root: bool = False,
 ) -> dict[str, Any]:
     """
     Erzeugt eine HTML-Ahnentafel für eine ZBNr.
@@ -1357,6 +1363,7 @@ def create_pedigree_html_for_zbnr(
         max_generations=max_generations,
         coi_result=coi_result,
         avk_result=avk_result,
+        include_root=include_root,
     )
 
     saved_path = None

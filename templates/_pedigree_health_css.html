@@ -52,9 +52,9 @@
         background: #fff;
         border-radius: 8px;
         box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
-        max-width: 560px;
+        max-width: 620px;
         overflow: hidden;
-        width: min(100%, 560px);
+        width: min(100%, 620px);
       }
 
       .pedigree-health-head {
@@ -80,12 +80,14 @@
       .pedigree-health-close {
         align-items: center;
         background: #f8fafc;
-        border: 1px solid #dbe2ea;
+        border: 1px solid #cfd8e3;
         border-radius: 6px;
-        color: #243447;
+        color: #1f3a52;
         cursor: pointer;
         display: inline-flex;
         font: inherit;
+        font-size: 16px;
+        font-weight: 700;
         height: 34px;
         justify-content: center;
         padding: 0;
@@ -93,7 +95,8 @@
       }
 
       .pedigree-health-close:hover {
-        background: #edf2f7;
+        background: #eef6ff;
+        border-color: #9fb2c6;
       }
 
       .pedigree-health-body {
@@ -109,18 +112,26 @@
       }
 
       .pedigree-health-body label {
-        color: #52606d;
+        color: #344054;
         display: grid;
-        font-size: 13px;
-        font-weight: 700;
+        font-size: 12px;
+        font-weight: 800;
         gap: 6px;
       }
 
       .pedigree-health-body input {
-        border: 1px solid #cfd8e3;
+        border: 1px solid #d0d7de;
         border-radius: 6px;
         font: inherit;
-        padding: 9px 10px;
+        font-size: 13px;
+        min-height: 36px;
+        padding: 8px 10px;
+      }
+
+      .pedigree-health-body input:focus {
+        border-color: #4a90e2;
+        box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+        outline: none;
       }
 
       .pedigree-health-hint {
@@ -129,11 +140,107 @@
         line-height: 1.45;
       }
 
+      .pedigree-health-history {
+        border: 1px solid #e1e7ee;
+        border-radius: 7px;
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+      }
+
+      .pedigree-health-history-title {
+        color: #1f3a52;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .pedigree-health-history-list {
+        color: #52606d;
+        display: grid;
+        font-size: 12px;
+        gap: 8px;
+        max-height: 210px;
+        overflow: auto;
+      }
+
+      .pedigree-health-history-item {
+        background: #fbfcfe;
+        border: 1px solid #dbe2ea;
+        border-radius: 6px;
+        display: grid;
+        gap: 7px;
+        padding: 10px;
+      }
+
+      .pedigree-health-history-meta {
+        color: #1f3a52;
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 12px;
+        font-weight: 800;
+        gap: 6px 12px;
+      }
+
+      .pedigree-health-history-change {
+        color: #52606d;
+        line-height: 1.35;
+      }
+
+      .pedigree-health-history-label {
+        color: #667085;
+        display: inline-block;
+        font-weight: 800;
+        margin-right: 6px;
+        min-width: 48px;
+      }
+
+      .pedigree-health-history-empty {
+        color: #8a94a3;
+        font-style: italic;
+      }
+
       .pedigree-health-actions {
         align-items: center;
         display: flex;
         gap: 8px;
         justify-content: flex-end;
+      }
+
+      .pedigree-health-primary,
+      .pedigree-health-secondary {
+        align-items: center;
+        border-radius: 6px;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 800;
+        justify-content: center;
+        min-height: 34px;
+        padding: 8px 14px;
+        white-space: nowrap;
+      }
+
+      .pedigree-health-primary {
+        background: #4a90e2;
+        border: 1px solid #4a90e2;
+        color: #fff;
+      }
+
+      .pedigree-health-primary:hover {
+        background: #3a7bc8;
+        border-color: #3a7bc8;
+      }
+
+      .pedigree-health-secondary {
+        background: #fff;
+        border: 1px solid #cfd8e3;
+        color: #1f3a52;
+      }
+
+      .pedigree-health-secondary:hover {
+        background: #f5f8fb;
+        border-color: #9fb2c6;
       }
 
       .pedigree-health-status {

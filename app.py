@@ -210,6 +210,21 @@ def init_personalization_db():
                 PRIMARY KEY (user_id, zbnr)
             );
 
+            CREATE TABLE IF NOT EXISTS dog_health_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                zbnr TEXT NOT NULL,
+                dog_name TEXT,
+                changed_by TEXT NOT NULL,
+                action TEXT NOT NULL,
+                previous_hd TEXT,
+                previous_ed_rechts TEXT,
+                previous_ed_links TEXT,
+                new_hd TEXT,
+                new_ed_rechts TEXT,
+                new_ed_links TEXT,
+                changed_at TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS saved_pairings (
                 user_id TEXT NOT NULL,
                 pairing_id TEXT NOT NULL,
@@ -1516,6 +1531,43 @@ def apply_health_override_to_row(row, override):
     return item
 
 
+def insert_dog_health_history(
+    db,
+    *,
+    zbnr,
+    dog_name,
+    changed_by,
+    action,
+    previous_values,
+    new_values,
+    changed_at,
+):
+    db.execute(
+        """
+        INSERT INTO dog_health_history (
+            zbnr, dog_name, changed_by, action,
+            previous_hd, previous_ed_rechts, previous_ed_links,
+            new_hd, new_ed_rechts, new_ed_links,
+            changed_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            zbnr,
+            dog_name,
+            changed_by,
+            action,
+            previous_values.get("hd", ""),
+            previous_values.get("edRechts", ""),
+            previous_values.get("edLinks", ""),
+            new_values.get("hd", ""),
+            new_values.get("edRechts", ""),
+            new_values.get("edLinks", ""),
+            changed_at,
+        ),
+    )
+
+
 def personalized_zbnr_index():
     if not has_request_context_safe():
         return ZBNR_INDEX
@@ -2568,6 +2620,7 @@ def api_dog_notes():
 @app.route("/api/dog-health", methods=["GET", "PUT"])
 def api_dog_health():
     user_id = DOG_HEALTH_GLOBAL_USER_ID
+    changed_by = current_user_id()
     db = get_db()
 
     if request.method == "GET":
@@ -2612,6 +2665,21 @@ def api_dog_health():
     ed_rechts = clean_text(body.get("edRechts"))
     ed_links = clean_text(body.get("edLinks"))
     now = utc_now_iso()
+    previous_row = db.execute(
+        """
+        SELECT hd, ed_rechts, ed_links
+        FROM dog_health_overrides
+        WHERE user_id = ? AND zbnr = ?
+        """,
+        (user_id, zbnr),
+    ).fetchone()
+    previous_values = {
+        "hd": previous_row["hd"] if previous_row else "",
+        "edRechts": previous_row["ed_rechts"] if previous_row else "",
+        "edLinks": previous_row["ed_links"] if previous_row else "",
+    }
+    new_values = {"hd": hd, "edRechts": ed_rechts, "edLinks": ed_links}
+    has_changed = previous_values != new_values
 
     with db:
         if hd or ed_rechts or ed_links:
@@ -2633,8 +2701,19 @@ def api_dog_health():
                 "DELETE FROM dog_health_overrides WHERE user_id = ? AND zbnr = ?",
                 (user_id, zbnr),
             )
+        if has_changed:
+            insert_dog_health_history(
+                db,
+                zbnr=zbnr,
+                dog_name=dog_name,
+                changed_by=changed_by,
+                action="update" if (hd or ed_rechts or ed_links) else "delete",
+                previous_values=previous_values,
+                new_values=new_values,
+                changed_at=now,
+            )
 
-    log_event("dog_health_saved", zbnr=zbnr, dog_name=dog_name)
+    log_event("dog_health_saved", zbnr=zbnr, dog_name=dog_name, changed=has_changed)
     return jsonify(
         {
             "ok": True,
@@ -2644,6 +2723,50 @@ def api_dog_health():
             "updatedAt": now,
         }
     )
+
+
+@app.route("/api/dog-health-history")
+def api_dog_health_history():
+    zbnr = normalized_health_zbnr(request.args.get("zbnr"))
+    if not zbnr:
+        return jsonify({"error": "zbnr fehlt"}), 400
+
+    rows = get_db().execute(
+        """
+        SELECT
+            id, zbnr, dog_name, changed_by, action,
+            previous_hd, previous_ed_rechts, previous_ed_links,
+            new_hd, new_ed_rechts, new_ed_links,
+            changed_at
+        FROM dog_health_history
+        WHERE zbnr = ?
+        ORDER BY id DESC
+        LIMIT 25
+        """,
+        (zbnr,),
+    ).fetchall()
+    items = [
+        {
+            "id": row["id"],
+            "zbnr": row["zbnr"],
+            "dogName": row["dog_name"] or "",
+            "changedBy": row["changed_by"] or "",
+            "action": row["action"] or "",
+            "previous": {
+                "hd": row["previous_hd"] or "",
+                "edRechts": row["previous_ed_rechts"] or "",
+                "edLinks": row["previous_ed_links"] or "",
+            },
+            "new": {
+                "hd": row["new_hd"] or "",
+                "edRechts": row["new_ed_rechts"] or "",
+                "edLinks": row["new_ed_links"] or "",
+            },
+            "changedAt": row["changed_at"] or "",
+        }
+        for row in rows
+    ]
+    return jsonify({"ok": True, "items": items})
 
 
 @app.route("/api/saved-pairings", methods=["GET", "PUT"])
@@ -3303,6 +3426,19 @@ def search_results():
         matches = matches.loc[
             ~matches.apply(lambda row: bool(ancestor_zbnrs_for_dog(row) & excluded), axis=1)
         ]
+
+    health_overrides = dog_health_overrides()
+    if health_overrides and not matches.empty:
+        matches = pd.DataFrame(
+            [
+                apply_health_override_to_row(
+                    row,
+                    health_overrides.get(normalized_health_zbnr(row.get("ZBNr_norm") or row.get("ZBNr"))),
+                )
+                for row in matches.to_dict(orient="records")
+            ],
+            index=matches.index,
+        )
     
     # Build sort helper columns
     matches["sort_zbnr"] = (
@@ -3713,6 +3849,7 @@ def pedigree_fragment():
         return "", 400
 
     max_gen = int(request.args.get("gens", 5))
+    include_root = request.args.get("include_root", "").strip() == "1"
     started_at = time.perf_counter()
 
     try:
@@ -3723,6 +3860,7 @@ def pedigree_fragment():
             max_generations=max_gen,
             include_coi=False,
             include_avk=False,
+            include_root=include_root,
         )
 
         html = res.get("html", "")

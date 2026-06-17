@@ -829,6 +829,11 @@
         margin-top: 10px;
       }
 
+      .overview-health-edit {
+        min-height: 30px;
+        padding: 6px 10px;
+      }
+
       .overview-ebv-row {
         align-items: center;
         background: #f8fafc;
@@ -1602,6 +1607,7 @@
 
               <div class="overview-joints-row">
                 <div id="overviewHealth"></div>
+                <button type="button" id="overviewHealthButton" class="small-action-button overview-health-edit">HD/ED bearbeiten</button>
                 <div class="overview-ebv-row">
                   <span class="overview-info-label">ED-Zuchtwert</span>
                   <span class="overview-info-value" id="zwValue">—</span>
@@ -1772,11 +1778,8 @@
             kennelClubLink.hidden = true;
           }
         }
-        document.getElementById('overviewHealth').innerHTML = [
-          '<strong>Gelenke</strong>',
-          'HD ' + escapeHtml(dogData.hd || '—'),
-          'ED ' + escapeHtml(dogData.ed || '—')
-        ].join(' · ');
+        renderOverviewHealth(dogData.hd, dogData.ed);
+        updateOverviewHealthButton(dogData.zbnr || zbnrLink, dogName || dogData.name || 'Hund');
         document.getElementById('overviewTests').innerHTML = [
           'prcd-PRA ' + escapeHtml(dogData.prcd_pra || '—'),
           'HNPK ' + escapeHtml(dogData.hnpk || '—'),
@@ -1814,6 +1817,38 @@
 
         // Show detail card
         document.getElementById('detailCard').classList.add('active');
+      }
+
+      function formatEdForOverview(values) {
+        const right = values?.edRechts || '';
+        const left = values?.edLinks || '';
+        if (right && left && right !== left) return right + ' / ' + left;
+        return right || left || '';
+      }
+
+      function renderOverviewHealth(hd, ed) {
+        const target = document.getElementById('overviewHealth');
+        if (!target) return;
+        target.innerHTML = [
+          '<strong>Gelenke</strong>',
+          'HD ' + escapeHtml(hd || '—'),
+          'ED ' + escapeHtml(ed || '—')
+        ].join(' · ');
+      }
+
+      function updateOverviewHealthButton(zbnr, dogName) {
+        const button = document.getElementById('overviewHealthButton');
+        if (!button) return;
+        const cleanZbnr = String(zbnr || '').trim();
+        button.disabled = !cleanZbnr;
+        button.dataset.zbnr = cleanZbnr;
+        button.dataset.dogName = dogName || 'Hund';
+      }
+
+      function openOverviewHealthEditor() {
+        const button = document.getElementById('overviewHealthButton');
+        if (!button || button.disabled || !button.dataset.zbnr) return;
+        window.openPedigreeHealthModal?.(button);
       }
 
       function renderSelectedDogNote() {
@@ -2393,7 +2428,7 @@
         const area = document.getElementById('pedigreeArea');
         area.innerHTML = '<div class="loading">Wird geladen...</div>';
 
-        const url = '/pedigree_fragment?zbnr=' + encodeURIComponent(zbnr) + '&gens=5';
+        const url = '/pedigree_fragment?zbnr=' + encodeURIComponent(zbnr) + '&gens=5&include_root=1';
         console.log('Loading pedigree HTML from:', url);
 
         fetch(url)
@@ -2426,7 +2461,22 @@
         document.querySelector('[data-pedigree-tab="pedigree"]')?.click();
       }
 
-      window.addEventListener('pedigree-health:changed', () => {
+      window.addEventListener('pedigree-health:changed', event => {
+        const changedZbnr = event.detail?.zbnr || '';
+        if (selectedDogForWatchlist?.zbnr && selectedDogForWatchlist.zbnr === changedZbnr) {
+          fetch('/api/dog-health?zbnr=' + encodeURIComponent(changedZbnr))
+            .then(r => r.json().then(data => {
+              if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+              return data;
+            }))
+            .then(data => {
+              const hd = data.values?.hd || '';
+              const ed = formatEdForOverview(data.values);
+              selectedDogForWatchlist = { ...selectedDogForWatchlist, hd: hd || '—', ed: ed || '—' };
+              renderOverviewHealth(hd, ed);
+            })
+            .catch(error => console.warn('Gesundheitsdaten konnten nicht aktualisiert werden:', error));
+        }
         if (!currentPedigreeState?.zbnr) return;
         loadPedigree(currentPedigreeState.zbnr);
         loadPedigreeMetrics(currentPedigreeState.zbnr);
@@ -2599,6 +2649,7 @@
 
       document.getElementById('overviewWatchlistButton')?.addEventListener('click', toggleSelectedDogWatchlist);
       document.getElementById('overviewNoteButton')?.addEventListener('click', openSelectedDogNote);
+      document.getElementById('overviewHealthButton')?.addEventListener('click', openOverviewHealthEditor);
       window.addEventListener('pedigree-notes:changed', renderSelectedDogNote);
       document.getElementById('clearWatchlist')?.addEventListener('click', clearWatchlist);
 

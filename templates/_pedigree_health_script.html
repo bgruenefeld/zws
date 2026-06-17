@@ -1,5 +1,6 @@
 (function () {
   const apiUrl = '/api/dog-health';
+  const historyApiUrl = '/api/dog-health-history';
   let activeZbnr = '';
   let activeDogName = '';
   let activeCard = null;
@@ -15,6 +16,7 @@
   }
 
   function dogNameFromCard(card) {
+    if (card.dataset?.dogName) return card.dataset.dogName.trim() || 'Hund';
     const nameElement = card.querySelector('.name');
     return (nameElement?.childNodes?.[0]?.textContent || nameElement?.textContent || 'Hund').trim();
   }
@@ -52,10 +54,14 @@
             </label>
           </div>
           <div class="pedigree-health-hint" id="pedigreeHealthOriginal"></div>
+          <section class="pedigree-health-history" aria-labelledby="pedigreeHealthHistoryTitle">
+            <div class="pedigree-health-history-title" id="pedigreeHealthHistoryTitle">Historie</div>
+            <div class="pedigree-health-history-list" id="pedigreeHealthHistory">Wird geladen...</div>
+          </section>
           <div class="pedigree-health-actions">
             <div class="pedigree-health-status" id="pedigreeHealthStatus" aria-live="polite"></div>
-            <button type="button" class="secondary-button" id="pedigreeHealthCancel">Abbrechen</button>
-            <button type="button" id="pedigreeHealthSave">Speichern</button>
+            <button type="button" class="pedigree-health-secondary" id="pedigreeHealthCancel">Abbrechen</button>
+            <button type="button" class="pedigree-health-primary" id="pedigreeHealthSave">Speichern</button>
           </div>
         </div>
       </div>
@@ -96,10 +102,13 @@
     if (hdInput) hdInput.value = '';
     if (edRightInput) edRightInput.value = '';
     if (edLeftInput) edLeftInput.value = '';
+    renderHealthHistoryLoading();
 
     modal.classList.add('open');
     modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-open');
+
+    loadHealthHistory(zbnr);
 
     fetch(apiUrl + '?zbnr=' + encodeURIComponent(zbnr))
       .then(r => r.json().then(data => {
@@ -121,6 +130,78 @@
       })
       .catch(error => {
         if (status) status.textContent = 'Fehler: ' + error.message;
+      });
+  }
+
+  function formatHealthDate(value) {
+    const date = new Date(value || '');
+    if (Number.isNaN(date.getTime())) return value || '';
+    return date.toLocaleString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  function formatHealthValues(values) {
+    const hd = values?.hd || '—';
+    const edRight = values?.edRechts || '—';
+    const edLeft = values?.edLinks || '—';
+    return 'HD ' + hd + ' · ED rechts ' + edRight + ' · ED links ' + edLeft;
+  }
+
+  function renderHealthHistoryLoading() {
+    const target = document.getElementById('pedigreeHealthHistory');
+    if (target) target.textContent = 'Wird geladen...';
+  }
+
+  function renderHealthHistory(items) {
+    const target = document.getElementById('pedigreeHealthHistory');
+    if (!target) return;
+
+    if (!items || !items.length) {
+      target.innerHTML = '<div class="pedigree-health-history-empty">Noch keine Änderungen gespeichert.</div>';
+      return;
+    }
+
+    target.innerHTML = items.map(item => {
+      const action = item.action === 'delete' ? 'Override gelöscht' : 'Werte geändert';
+      return `
+        <div class="pedigree-health-history-item">
+          <div class="pedigree-health-history-meta">
+            <span>${healthEscapeHtml(formatHealthDate(item.changedAt))}</span>
+            <span>${healthEscapeHtml(item.changedBy || 'unbekannt')}</span>
+            <span>${healthEscapeHtml(action)}</span>
+          </div>
+          <div class="pedigree-health-history-change">
+            <span class="pedigree-health-history-label">Vorher</span>
+            ${healthEscapeHtml(formatHealthValues(item.previous))}
+          </div>
+          <div class="pedigree-health-history-change">
+            <span class="pedigree-health-history-label">Nachher</span>
+            ${healthEscapeHtml(formatHealthValues(item.new))}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function loadHealthHistory(zbnr) {
+    const target = document.getElementById('pedigreeHealthHistory');
+    if (!target || !zbnr) return Promise.resolve();
+    renderHealthHistoryLoading();
+    return fetch(historyApiUrl + '?zbnr=' + encodeURIComponent(zbnr))
+      .then(r => r.json().then(data => {
+        if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+        return data;
+      }))
+      .then(data => {
+        renderHealthHistory(data.items || []);
+      })
+      .catch(error => {
+        target.textContent = 'Historie konnte nicht geladen werden: ' + error.message;
       });
   }
 
@@ -158,6 +239,7 @@
       }))
       .then(() => {
         if (status) status.textContent = 'Gespeichert.';
+        loadHealthHistory(activeZbnr);
         window.dispatchEvent(new CustomEvent('pedigree-health:changed', {
           detail: { zbnr: activeZbnr, card: activeCard }
         }));
