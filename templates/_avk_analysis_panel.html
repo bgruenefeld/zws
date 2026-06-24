@@ -12,7 +12,16 @@
       <div class="avk-generation-list">
         {% for row in analysis.generation_rows %}
           {% set percent = (row.found_in_data_positions / row.expected_positions * 100) if row.expected_positions else 0 %}
-          <div class="avk-generation-row">
+          <div
+            class="avk-generation-row{% if row.found_in_data_positions < row.expected_positions and analysis.start_zbnr and not analysis.start_zbnr.startswith('__') %} avk-generation-row-action{% endif %}"
+            {% if row.found_in_data_positions < row.expected_positions and analysis.start_zbnr and not analysis.start_zbnr.startswith('__') %}
+              role="button"
+              tabindex="0"
+              data-missing-generation="{{ row.generation }}"
+              data-missing-zbnr="{{ analysis.start_zbnr }}"
+              aria-label="Fehlende Hunde in Generation {{ row.generation }} anzeigen"
+            {% endif %}
+          >
             <div class="avk-generation-label">Gen {{ row.generation }}</div>
             <div class="avk-generation-bar">
               <div class="avk-generation-fill" style="width: {{ percent }}%;">{{ "%.1f"|format(percent)|replace(".", ",") }}%</div>

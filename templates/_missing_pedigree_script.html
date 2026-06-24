@@ -1,0 +1,104 @@
+(function () {
+  const modal = document.getElementById('missingPedigreeModal');
+  if (!modal) return;
+
+  function missingEscape(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function closeMissingPedigreeModal() {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+  }
+
+  function renderMissingItems(data) {
+    const list = document.getElementById('missingPedigreeList');
+    const note = document.getElementById('missingPedigreeNote');
+    const items = Array.isArray(data.items) ? data.items : [];
+    if (!items.length) {
+      list.innerHTML = '<div class="missing-pedigree-empty">Für diese Generation konnten keine direkt ergänzbaren Elternverknüpfungen ermittelt werden.</div>';
+    } else {
+      list.innerHTML = items.map(item => {
+        const expected = item.expectedName || item.expectedZbnr;
+        const detail = expected
+          ? `<div class="missing-pedigree-detail">Hinterlegt: ${missingEscape(item.expectedName || 'Name unbekannt')}${item.expectedZbnr ? ' · ' + missingEscape(item.expectedZbnr) : ''}</div>`
+          : '<div class="missing-pedigree-detail">Name und Zuchtbuchnummer sind noch unbekannt.</div>';
+        return `
+          <div class="missing-pedigree-item">
+            <div class="missing-pedigree-item-main">
+              <div class="missing-pedigree-item-title">Fehlende ${missingEscape(item.role)} von ${missingEscape(item.childName)}</div>
+              <div class="missing-pedigree-child">ZBNr ${missingEscape(item.childZbnr || '—')}</div>
+              ${detail}
+            </div>
+            <a class="missing-pedigree-k9" href="${missingEscape(item.searchUrl)}" target="_blank" rel="noopener noreferrer">
+              Auf k9-data suchen
+            </a>
+          </div>
+        `;
+      }).join('');
+    }
+
+    const unresolved = Number(data.unresolvedPositions || 0);
+    note.textContent = unresolved
+      ? `${unresolved} weitere Positionen liegen unter bereits fehlenden Hunden und können erst nach deren Ergänzung aufgelöst werden.`
+      : 'Öffne den bekannten Hund auf k9-data und importiere anschließend dessen Ahnentafel wie gewohnt.';
+  }
+
+  function openMissingPedigreeModal(zbnr, generation) {
+    if (!zbnr || !generation) return;
+    const title = document.getElementById('missingPedigreeTitle');
+    const meta = document.getElementById('missingPedigreeMeta');
+    const list = document.getElementById('missingPedigreeList');
+    const note = document.getElementById('missingPedigreeNote');
+    title.textContent = `Fehlende Hunde in Generation ${generation}`;
+    meta.textContent = '';
+    list.innerHTML = '<div class="missing-pedigree-empty">Wird geladen...</div>';
+    note.textContent = '';
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+
+    fetch('/api/pedigree-missing-parents?zbnr=' + encodeURIComponent(zbnr) + '&generation=' + encodeURIComponent(generation))
+      .then(response => response.json().then(data => {
+        if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+        return data;
+      }))
+      .then(data => {
+        meta.textContent = `${data.dogName || zbnr} · ${data.missingPositions || 0} fehlende Positionen`;
+        renderMissingItems(data);
+      })
+      .catch(error => {
+        list.innerHTML = '<div class="missing-pedigree-empty">Fehler: ' + missingEscape(error.message) + '</div>';
+      });
+  }
+
+  document.addEventListener('click', event => {
+    const row = event.target.closest('.avk-generation-row-action[data-missing-generation]');
+    if (!row) return;
+    openMissingPedigreeModal(row.dataset.missingZbnr, row.dataset.missingGeneration);
+  });
+  document.addEventListener('keydown', event => {
+    const row = event.target.closest?.('.avk-generation-row-action[data-missing-generation]');
+    if (row && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      openMissingPedigreeModal(row.dataset.missingZbnr, row.dataset.missingGeneration);
+      return;
+    }
+    if (event.key === 'Escape' && modal.classList.contains('open')) closeMissingPedigreeModal();
+  });
+  modal.addEventListener('click', event => {
+    if (event.target === modal) closeMissingPedigreeModal();
+  });
+  document.getElementById('missingPedigreeClose')?.addEventListener('click', closeMissingPedigreeModal);
+  document.getElementById('missingPedigreeCancel')?.addEventListener('click', closeMissingPedigreeModal);
+  document.getElementById('missingPedigreeImport')?.addEventListener('click', () => {
+    closeMissingPedigreeModal();
+    window.openImportPedigreeModal?.();
+  });
+})();

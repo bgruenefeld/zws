@@ -182,6 +182,39 @@
         font-weight: 800;
       }
 
+      .pedigree-import-modal .import-choice-group {
+        display: grid;
+        gap: 6px;
+        margin: 7px 0;
+      }
+
+      .pedigree-import-modal .import-choice-group label {
+        align-items: flex-start;
+        background: #fff;
+        border: 1px solid #dfe5ec;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        font-size: 12px;
+        font-weight: 650;
+        gap: 7px;
+        line-height: 1.35;
+        padding: 7px 8px;
+      }
+
+      .pedigree-import-modal .import-choice-group label:hover,
+      .pedigree-import-modal .import-choice-group label:focus-within {
+        background: #eef6ff;
+        border-color: #9ec5fe;
+      }
+
+      .pedigree-import-modal .import-choice-group input {
+        flex: 0 0 auto;
+        margin-top: 2px;
+        padding: 0;
+        width: auto;
+      }
+
       @media (max-width: 900px) {
         .pedigree-import-modal .form-grid {
           grid-template-columns: 1fr;

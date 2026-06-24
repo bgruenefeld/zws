@@ -205,6 +205,194 @@
         padding: 16px;
       }
 
+      .avk-generation-row-action {
+        border-radius: 6px;
+        cursor: pointer;
+        margin: -3px;
+        padding: 3px;
+        transition: background 0.12s ease, box-shadow 0.12s ease;
+      }
+
+      .avk-generation-row-action:hover,
+      .avk-generation-row-action:focus-visible {
+        background: #eef6ff;
+        box-shadow: 0 0 0 1px #9ec5fe;
+        outline: none;
+      }
+
+      .missing-pedigree-backdrop {
+        align-items: center;
+        background: rgba(15, 23, 42, 0.48);
+        display: none;
+        inset: 0;
+        justify-content: center;
+        padding: 20px;
+        position: fixed;
+        z-index: 1220;
+      }
+
+      .missing-pedigree-backdrop.open {
+        display: flex;
+      }
+
+      .missing-pedigree-dialog {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+        max-width: 760px;
+        overflow: hidden;
+        width: min(100%, 760px);
+      }
+
+      .missing-pedigree-head {
+        align-items: flex-start;
+        border-bottom: 1px solid #e1e7ee;
+        display: flex;
+        gap: 14px;
+        justify-content: space-between;
+        padding: 16px 18px;
+      }
+
+      .missing-pedigree-head h2 {
+        color: #12233a;
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+
+      .missing-pedigree-meta,
+      .missing-pedigree-note {
+        color: #667085;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .missing-pedigree-close {
+        align-items: center;
+        background: #f8fafc;
+        border: 1px solid #cfd8e3;
+        border-radius: 6px;
+        color: #1f3a52;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-size: 16px;
+        font-weight: 700;
+        height: 34px;
+        justify-content: center;
+        padding: 0;
+        width: 34px;
+      }
+
+      .missing-pedigree-close:hover {
+        background: #eef6ff;
+        border-color: #9fb2c6;
+      }
+
+      .missing-pedigree-body {
+        display: grid;
+        gap: 12px;
+        padding: 18px;
+      }
+
+      .missing-pedigree-list {
+        display: grid;
+        gap: 8px;
+        max-height: min(55vh, 480px);
+        overflow: auto;
+      }
+
+      .missing-pedigree-item {
+        align-items: center;
+        background: #fbfcfe;
+        border: 1px solid #dbe2ea;
+        border-radius: 7px;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 11px 12px;
+      }
+
+      .missing-pedigree-item-title {
+        color: #1f3a52;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .missing-pedigree-child,
+      .missing-pedigree-detail {
+        color: #667085;
+        font-size: 12px;
+        line-height: 1.4;
+        margin-top: 3px;
+      }
+
+      .missing-pedigree-k9 {
+        background: #fff;
+        border: 1px solid #cfd8e3;
+        border-radius: 6px;
+        color: #1f3a52;
+        font-size: 12px;
+        font-weight: 800;
+        padding: 8px 10px;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .missing-pedigree-k9:hover {
+        background: #eef6ff;
+        border-color: #9ec5fe;
+        color: #2563eb;
+      }
+
+      .missing-pedigree-empty {
+        background: #f8fafc;
+        border: 1px dashed #cfd8e3;
+        border-radius: 7px;
+        color: #667085;
+        font-size: 13px;
+        padding: 14px;
+      }
+
+      .missing-pedigree-actions {
+        align-items: center;
+        border-top: 1px solid #edf1f5;
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        padding-top: 12px;
+      }
+
+      .missing-pedigree-actions button {
+        border-radius: 6px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 800;
+        min-height: 34px;
+        padding: 8px 12px;
+      }
+
+      .missing-pedigree-actions #missingPedigreeImport {
+        background: #4a90e2;
+        border: 1px solid #4a90e2;
+        color: #fff;
+      }
+
+      .missing-pedigree-actions #missingPedigreeImport:hover {
+        background: #3a7bc8;
+        border-color: #3a7bc8;
+      }
+
+      @media (max-width: 600px) {
+        .missing-pedigree-item {
+          grid-template-columns: 1fr;
+        }
+
+        .missing-pedigree-k9 {
+          text-align: center;
+        }
+      }
+
       .avk-summary-card {
         background: #f8fafc;
         border: 1px solid #e1e7ee;

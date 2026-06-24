@@ -1,7 +1,8 @@
 from pathlib import Path
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import parse_qsl, quote_plus, urlencode, urlsplit, urlunsplit
 from contextlib import contextmanager
 from collections import defaultdict
+from difflib import SequenceMatcher, get_close_matches
 from io import BytesIO
 import json
 import logging
@@ -15,6 +16,7 @@ import re
 import tempfile
 import threading
 import time
+import unicodedata
 import uuid
 
 from flask import Flask, render_template, request, redirect, url_for, Response, jsonify, session, g, send_file
@@ -302,10 +304,19 @@ def current_return_url():
     return request.full_path.rstrip("?")
 
 
+def without_query_parameter(url, parameter):
+    parts = urlsplit(url)
+    query = urlencode(
+        [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True) if key != parameter],
+        doseq=True,
+    )
+    return urlunsplit(("", "", parts.path, query, parts.fragment))
+
+
 def redirect_with_imported_count(return_to, imported_count):
     target = return_to if is_safe_next_url(return_to) else url_for("manage_user_dogs")
-    separator = "&" if "?" in target else "?"
-    return redirect(f"{target}{separator}imported={imported_count}")
+    session["pedigree_imported_count"] = imported_count
+    return redirect(without_query_parameter(target, "imported"))
 
 
 def cleanup_pedigree_import_states():
@@ -341,9 +352,10 @@ def pedigree_import_context(default_return_to=None):
     )
     if not is_safe_next_url(return_to):
         return_to = url_for("manage_user_dogs")
+    return_to = without_query_parameter(return_to, "imported")
 
     return {
-        "imported_count": request.args.get("imported", ""),
+        "imported_count": session.pop("pedigree_imported_count", ""),
         "import_errors": state.get("import_errors", []),
         "import_preview": state.get("import_preview", []),
         "import_data_json": state.get("import_data_json", ""),
@@ -986,82 +998,314 @@ def parse_pedigree_text(text, root_sex=""):
 
 
 def normalize_import_name(value):
-    return re.sub(r"\s+", " ", clean_text(value)).strip().casefold()
+    text = unicodedata.normalize("NFKD", clean_text(value).casefold())
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9]+", "", text)
 
 
-def match_imported_dog(item):
-    name_key = normalize_import_name(item.get("name"))
-    if not name_key:
-        return None
-
-    candidates = MERGED_DF[
-        MERGED_DF["Name"].fillna("").map(normalize_import_name) == name_key
-    ].copy()
-    if candidates.empty:
-        return None
-
-    birth_year = clean_text(item.get("birth_year"))
-    if birth_year:
-        year_source = candidates.get("geburtsjahr", pd.Series([""] * len(candidates), index=candidates.index)).fillna("")
-        year_mask = year_source.astype(str).str.extract(r"(\d{4})")[0].fillna("") == birth_year
-        year_matches = candidates[year_mask]
-        if not year_matches.empty:
-            candidates = year_matches
-
-    row = candidates.iloc[0].to_dict()
-    has_parents = bool(
-        clean_text(row.get("vater_zbnr_norm") or row.get("vater_zbnr"))
-        or clean_text(row.get("mutter_zbnr_norm") or row.get("mutter_zbnr"))
+def imported_candidate_parent_name(row, role):
+    role_key = "vater" if role == "father" else "mutter"
+    parent_zbnr = clean_text(row.get(f"{role_key}_zbnr_norm") or row.get(f"{role_key}_zbnr"))
+    parent = ZBNR_INDEX.get(pt.normalize_zbnr(parent_zbnr) or parent_zbnr) if parent_zbnr else None
+    return clean_text(
+        (parent or {}).get("Name")
+        or row.get(f"{role_key}_name")
+        or row.get("Vater" if role == "father" else "Mutter")
     )
+
+
+def import_match_from_row(row, confidence="sicher", evidence=None):
+    father_zbnr = clean_text(row.get("vater_zbnr_norm") or row.get("vater_zbnr"))
+    mother_zbnr = clean_text(row.get("mutter_zbnr_norm") or row.get("mutter_zbnr"))
     return {
         "zbnr": clean_text(row.get("ZBNr_norm") or row.get("ZBNr")),
         "name": clean_text(row.get("Name")),
         "birth_year": extract_birth_year(row.get("Wurfdatum") or row.get("geburtsjahr")),
         "geschlecht": clean_text(row.get("Geschlecht")),
-        "has_parents": has_parents,
+        "father_zbnr": father_zbnr,
+        "mother_zbnr": mother_zbnr,
+        "has_parents": bool(father_zbnr and mother_zbnr),
+        "confidence": confidence,
+        "evidence": evidence or [],
+    }
+
+
+def import_match_from_zbnr(zbnr, confidence="manuell gewählt"):
+    normalized = pt.normalize_zbnr(zbnr) or clean_text(zbnr)
+    row = ZBNR_INDEX.get(normalized)
+    if not row:
+        return None
+    return import_match_from_row(row, confidence=confidence)
+
+
+def imported_dog_candidate_score(item, row, items_by_slot):
+    imported_name = normalize_import_name(item.get("name"))
+    candidate_name = normalize_import_name(row.get("Name"))
+    similarity = SequenceMatcher(None, imported_name, candidate_name).ratio()
+    exact_name = bool(imported_name) and imported_name == candidate_name
+    score = 100 if exact_name else round(similarity * 60)
+    evidence = ["Name normalisiert identisch"] if exact_name else [f"Name ähnlich ({similarity:.0%})"]
+
+    imported_year = clean_text(item.get("birth_year"))
+    candidate_year = extract_birth_year(row.get("Wurfdatum") or row.get("geburtsjahr"))
+    if imported_year and candidate_year:
+        if imported_year != candidate_year:
+            return None
+        score += 20
+        evidence.append("Geburtsjahr stimmt")
+
+    imported_sex = clean_text(item.get("geschlecht")).upper()
+    candidate_sex = clean_text(row.get("Geschlecht") or row.get("_sex_clean")).upper()
+    if imported_sex and candidate_sex:
+        if imported_sex != candidate_sex:
+            return None
+        score += 15
+        evidence.append("Geschlecht stimmt")
+
+    parent_matches = 0
+    parent_conflicts = 0
+    for role, slot_key in (("father", "father_slot"), ("mother", "mother_slot")):
+        parent_item = items_by_slot.get(item.get(slot_key))
+        imported_parent_name = normalize_import_name((parent_item or {}).get("name"))
+        candidate_parent_name = normalize_import_name(imported_candidate_parent_name(row, role))
+        if not imported_parent_name or not candidate_parent_name:
+            continue
+        if imported_parent_name == candidate_parent_name:
+            parent_matches += 1
+            score += 35
+        else:
+            parent_conflicts += 1
+            score -= 35
+
+    if parent_matches:
+        evidence.append(f"{parent_matches} Elternteil(e) stimmen")
+    if parent_conflicts:
+        evidence.append(f"{parent_conflicts} Elternteil(e) widersprechen")
+
+    father_zbnr = clean_text(row.get("vater_zbnr_norm") or row.get("vater_zbnr"))
+    mother_zbnr = clean_text(row.get("mutter_zbnr_norm") or row.get("mutter_zbnr"))
+    score += 2 * (int(bool(father_zbnr)) + int(bool(mother_zbnr)))
+    return {
+        "row": row,
+        "score": score,
+        "exact_name": exact_name,
+        "similarity": similarity,
+        "parent_matches": parent_matches,
+        "parent_conflicts": parent_conflicts,
+        "evidence": evidence,
+    }
+
+
+def match_imported_dog(item, items_by_slot=None, candidate_index=None):
+    name_key = normalize_import_name(item.get("name"))
+    if not name_key:
+        return None
+    items_by_slot = items_by_slot or {}
+    if candidate_index is None:
+        candidate_index = defaultdict(list)
+        for row in MERGED_DF.to_dict(orient="records"):
+            candidate_index[normalize_import_name(row.get("Name"))].append(row)
+
+    candidate_names = [name_key] if name_key in candidate_index else get_close_matches(
+        name_key,
+        candidate_index.keys(),
+        n=8,
+        cutoff=0.92,
+    )
+    scored = []
+    for candidate_name in candidate_names:
+        for row in candidate_index.get(candidate_name, []):
+            candidate = imported_dog_candidate_score(item, row, items_by_slot)
+            if candidate is not None:
+                scored.append(candidate)
+
+    if not scored:
+        return None
+
+    scored.sort(
+        key=lambda candidate: (
+            -candidate["score"],
+            -candidate["parent_matches"],
+            -int(candidate["exact_name"]),
+            clean_text(candidate["row"].get("Name")).casefold(),
+        )
+    )
+    best = scored[0]
+    runner_up = scored[1] if len(scored) > 1 else None
+    automatic = best["exact_name"] and (
+        runner_up is None
+        or best["score"] - runner_up["score"] >= 15
+        or best["parent_matches"] > runner_up["parent_matches"]
+    )
+    if not best["exact_name"]:
+        automatic = best["parent_matches"] >= 1 and best["score"] >= 105 and (
+            runner_up is None or best["score"] - runner_up["score"] >= 20
+        )
+
+    row = best["row"]
+    match = import_match_from_row(
+        row,
+        confidence="sicher" if automatic else "unklar",
+        evidence=best["evidence"],
+    )
+    if automatic:
+        return match
+    return {
+        "ambiguous": True,
+        "candidate": match,
+        "candidates": [
+            {
+                "zbnr": clean_text(candidate["row"].get("ZBNr_norm") or candidate["row"].get("ZBNr")),
+                "name": clean_text(candidate["row"].get("Name")),
+                "birth_year": extract_birth_year(
+                    candidate["row"].get("Wurfdatum") or candidate["row"].get("geburtsjahr")
+                ),
+                "score": candidate["score"],
+            }
+            for candidate in scored[:3]
+        ],
     }
 
 
 def build_import_preview(parsed_items):
+    items_by_slot = {item["slot"]: item for item in parsed_items}
+    candidate_index = defaultdict(list)
+    for row in MERGED_DF.to_dict(orient="records"):
+        name_key = normalize_import_name(row.get("Name"))
+        if name_key:
+            candidate_index[name_key].append(row)
+    matches_by_slot = {
+        item["slot"]: match_imported_dog(item, items_by_slot, candidate_index)
+        for item in parsed_items
+    }
     preview = []
     for item in parsed_items:
-        match = match_imported_dog(item)
-        can_add_parent_links = bool(match) and not match.get("has_parents") and bool(item.get("father_slot") or item.get("mother_slot"))
+        match_result = matches_by_slot.get(item["slot"])
+        ambiguous_match = match_result if (match_result or {}).get("ambiguous") else None
+        match = None if ambiguous_match else match_result
+        imported_father = items_by_slot.get(item.get("father_slot")) if item.get("father_slot") else None
+        imported_mother = items_by_slot.get(item.get("mother_slot")) if item.get("mother_slot") else None
+        missing_parent_links = []
+        corrected_parent_links = []
+        if match:
+            for role, parent_item, parent_slot, match_key in (
+                ("Vater", imported_father, item.get("father_slot"), "father_zbnr"),
+                ("Mutter", imported_mother, item.get("mother_slot"), "mother_zbnr"),
+            ):
+                if not parent_item or not clean_text(parent_item.get("name")):
+                    continue
+                imported_parent_match = matches_by_slot.get(parent_slot) or {}
+                imported_parent_zbnr = clean_text(imported_parent_match.get("zbnr"))
+                current_parent_zbnr = clean_text(match.get(match_key))
+                if not current_parent_zbnr:
+                    missing_parent_links.append(role)
+                elif imported_parent_zbnr and (
+                    pt.normalize_zbnr(imported_parent_zbnr) or imported_parent_zbnr
+                ) != (
+                    pt.normalize_zbnr(current_parent_zbnr) or current_parent_zbnr
+                ):
+                    corrected_parent_links.append(role)
+        can_add_parent_links = bool(missing_parent_links or corrected_parent_links)
         preview_item = dict(item)
         preview_item["match"] = match
-        preview_item["status"] = "found" if match else "new"
-        preview_item["selected"] = not bool(match) or can_add_parent_links
+        preview_item["status"] = "unclear" if ambiguous_match else "found" if match else "new"
+        preview_item["selected"] = (not bool(match) and not ambiguous_match) or can_add_parent_links
         preview_item["can_add_parent_links"] = can_add_parent_links
+        preview_item["missing_parent_links"] = missing_parent_links
+        preview_item["corrected_parent_links"] = corrected_parent_links
+        preview_item["ambiguous_match"] = ambiguous_match
         preview.append(preview_item)
     return preview
 
 
+def apply_import_match_decisions(preview_items, form_data):
+    resolved_items = []
+    errors = []
+    for item in preview_items:
+        resolved = dict(item)
+        slot = resolved.get("slot")
+        if resolved.get("status") != "unclear":
+            resolved_items.append(resolved)
+            continue
+
+        decision = clean_text(form_data.get(f"import_decision_{slot}"))
+        resolved["selected"] = False
+        resolved["_force_new"] = False
+        resolved["_manual_existing_match"] = False
+        if not decision or decision == "skip":
+            resolved["_skip_import"] = True
+        elif decision == "new":
+            resolved["status"] = "new"
+            resolved["match"] = None
+            resolved["ambiguous_match"] = None
+            resolved["selected"] = True
+            resolved["_force_new"] = True
+        elif decision.startswith("existing:"):
+            zbnr = decision.split(":", 1)[1]
+            match = import_match_from_zbnr(zbnr)
+            if match:
+                resolved["status"] = "found"
+                resolved["match"] = match
+                resolved["ambiguous_match"] = None
+                resolved["_manual_existing_match"] = True
+            else:
+                errors.append(
+                    f"Der gewählte vorhandene Hund für Slot {slot} konnte nicht gefunden werden."
+                )
+        else:
+            errors.append(f"Die Auswahl für Slot {slot} konnte nicht verarbeitet werden.")
+        resolved_items.append(resolved)
+    return resolved_items, errors
+
+
 def user_dog_record_from_import(item, zbnr, parent_refs, now):
-    father = parent_refs.get(item.get("father_slot")) or {}
-    mother = parent_refs.get(item.get("mother_slot")) or {}
     match = item.get("match") or {}
+    existing = ZBNR_INDEX.get(pt.normalize_zbnr(zbnr) or zbnr) if match else None
+    existing = existing or {}
+    father = parent_refs.get(item.get("father_slot")) or {
+        "zbnr": clean_text(existing.get("vater_zbnr_norm") or existing.get("vater_zbnr")),
+        "name": clean_text(existing.get("vater_name") or existing.get("Vater")),
+    }
+    mother = parent_refs.get(item.get("mother_slot")) or {
+        "zbnr": clean_text(existing.get("mutter_zbnr_norm") or existing.get("mutter_zbnr")),
+        "name": clean_text(existing.get("mutter_name") or existing.get("Mutter")),
+    }
+
+    def existing_value(*keys):
+        for key in keys:
+            value = clean_text(existing.get(key))
+            if value:
+                return value
+        return ""
+
+    def imported_or_existing(import_key, *existing_keys):
+        imported_value = clean_text(item.get(import_key))
+        if imported_value:
+            return imported_value
+        return existing_value(*existing_keys)
+
     return {
         "ZBNr": zbnr,
         "ZBNr_norm": zbnr,
-        "Name": clean_text(item.get("name")),
-        "Rasse": "Labrador-Retriever",
-        "Wurfdatum": clean_text(item.get("birth_year")),
-        "Geschlecht": clean_text(item.get("geschlecht")) or clean_text(match.get("geschlecht")),
-        "HD_Grad": clean_text(item.get("hips")),
-        "ED_rechts": clean_text(item.get("ed")),
-        "ED_links": "",
-        "AnzNachkommen": "",
-        "EBV": clean_text(item.get("ebv")),
-        "Confidenz": clean_text(item.get("confidence")),
-        "Verlässlichkeit": "",
-        "ED_ZWS": "",
-        "prcd-PRA": "",
-        "HNPK": "",
-        "SD2": "",
-        "CNM": "",
-        "EIC": "",
-        "ZS": "",
-        "STGD_Status": "",
+        "Name": imported_or_existing("name", "Name"),
+        "Rasse": existing_value("Rasse") or "Labrador-Retriever",
+        "Wurfdatum": imported_or_existing("birth_year", "Wurfdatum", "geburtsjahr"),
+        "Geschlecht": clean_text(item.get("geschlecht")) or clean_text(match.get("geschlecht")) or existing_value("Geschlecht"),
+        "HD_Grad": imported_or_existing("hips", "HD_Grad", "HD"),
+        "ED_rechts": imported_or_existing("ed", "ED_rechts", "ED_rechts_raw"),
+        "ED_links": existing_value("ED_links", "ED_links_raw"),
+        "AnzNachkommen": existing_value("AnzNachkommen"),
+        "EBV": imported_or_existing("ebv", "EBV"),
+        "Confidenz": imported_or_existing("confidence", "Confidenz"),
+        "Verlässlichkeit": existing_value("Verlässlichkeit"),
+        "ED_ZWS": existing_value("ED_ZWS"),
+        "prcd-PRA": existing_value("prcd-PRA"),
+        "HNPK": existing_value("HNPK"),
+        "SD2": existing_value("SD2"),
+        "CNM": existing_value("CNM"),
+        "EIC": existing_value("EIC"),
+        "ZS": existing_value("ZS"),
+        "STGD_Status": existing_value("STGD_Status"),
         "vater_name": clean_text(father.get("name")),
         "vater_zbnr": clean_text(father.get("zbnr")),
         "vater_zbnr_norm": pt.normalize_zbnr(father.get("zbnr")) or "",
@@ -1094,6 +1338,33 @@ def prepare_import_records(preview_items, selected_slots, user_df):
             zbnr = next_user_zbnr(next_number_df)
             next_number_df = pd.concat([next_number_df, pd.DataFrame([{"ZBNr": zbnr, "ZBNr_norm": zbnr}])], ignore_index=True)
             slot_refs[item["slot"]] = {"zbnr": zbnr, "name": item.get("name")}
+
+    changed_reference_slots = {
+        item["slot"]
+        for item in preview_items
+        if item["slot"] in selected_slots and not item.get("match")
+    }
+    for item in sorted(preview_items, key=lambda dog: dog["slot"], reverse=True):
+        match = item.get("match") or {}
+        if not match:
+            continue
+        if (
+            item.get("father_slot") not in changed_reference_slots
+            and item.get("mother_slot") not in changed_reference_slots
+        ):
+            continue
+        father_ref = slot_refs.get(item.get("father_slot")) or {}
+        mother_ref = slot_refs.get(item.get("mother_slot")) or {}
+        current_father = pt.normalize_zbnr(match.get("father_zbnr")) or clean_text(match.get("father_zbnr"))
+        current_mother = pt.normalize_zbnr(match.get("mother_zbnr")) or clean_text(match.get("mother_zbnr"))
+        imported_father = pt.normalize_zbnr(father_ref.get("zbnr")) or clean_text(father_ref.get("zbnr"))
+        imported_mother = pt.normalize_zbnr(mother_ref.get("zbnr")) or clean_text(mother_ref.get("zbnr"))
+        if (
+            imported_father and imported_father != current_father
+        ) or (
+            imported_mother and imported_mother != current_mother
+        ):
+            selected_slots.add(item["slot"])
 
     now = datetime.now().isoformat(timespec="seconds")
     records = []
@@ -2206,6 +2477,7 @@ def avk_analysis_for_display(index, start_zbnr, max_generations=10, visible_gene
     )
 
     return {
+        "start_zbnr": pt.normalize_zbnr(start_zbnr) or clean_text(start_zbnr),
         "max_generations": max_generations,
         "visible_generations": visible_generations,
         "visible_avk_known_percent": visible_avk.get("avk_known_percent"),
@@ -2220,6 +2492,68 @@ def avk_analysis_for_display(index, start_zbnr, max_generations=10, visible_gene
         "contributors": contributors,
         "repeated_ancestors": repeated,
         "note": avk.get("note"),
+    }
+
+
+def missing_pedigree_parents_for_generation(index, start_zbnr, generation):
+    generation = max(1, int(generation))
+    slots = pt.build_positional_pedigree(
+        index=index,
+        start_zbnr=start_zbnr,
+        max_generations=generation,
+    )
+    missing = {}
+    unresolved_positions = 0
+
+    for slot_id, entry in slots.items():
+        if entry.get("generation") != generation or entry.get("dog") is not None:
+            continue
+
+        child_entry = slots.get(slot_id // 2) or {}
+        child = child_entry.get("dog")
+        if child is None:
+            unresolved_positions += 1
+            continue
+
+        role = "Vater" if slot_id % 2 == 0 else "Mutter"
+        role_key = "vater" if role == "Vater" else "mutter"
+        child_zbnr = clean_text(child.get("ZBNr_norm") or child.get("ZBNr"))
+        child_name = clean_text(child.get("Name")) or child_zbnr or "Unbekannter Hund"
+        expected_zbnr = clean_text(
+            child.get(f"{role_key}_zbnr_norm") or child.get(f"{role_key}_zbnr")
+        )
+        expected_name = clean_text(
+            child.get(f"{role_key}_name") or child.get("Vater" if role == "Vater" else "Mutter")
+        )
+        search_name = expected_name or child_name
+        key = (child_zbnr, role, expected_zbnr, expected_name)
+        item = missing.setdefault(
+            key,
+            {
+                "role": role,
+                "childName": child_name,
+                "childZbnr": child_zbnr,
+                "expectedName": expected_name,
+                "expectedZbnr": expected_zbnr,
+                "searchName": search_name,
+                "searchUrl": (
+                    "https://k9-data.org/search?"
+                    + urlencode({"registeredName": search_name, "breed": 2})
+                ),
+                "positions": 0,
+            },
+        )
+        item["positions"] += 1
+
+    items = sorted(
+        missing.values(),
+        key=lambda item: (item["childName"].casefold(), item["role"]),
+    )
+    return {
+        "generation": generation,
+        "items": items,
+        "missingPositions": sum(item["positions"] for item in items) + unresolved_positions,
+        "unresolvedPositions": unresolved_positions,
     }
 
 
@@ -2939,15 +3273,24 @@ def confirm_user_dog_import():
         preview_items = []
         import_errors.append("Die Importdaten konnten nicht gelesen werden. Bitte erzeuge die Vorschau erneut.")
 
+    preview_items, decision_errors = apply_import_match_decisions(preview_items, request.form)
+    import_errors.extend(decision_errors)
     selected_slots = request.form.getlist("import_slots")
+    forced_new_slots = [
+        str(item.get("slot"))
+        for item in preview_items
+        if item.get("_force_new")
+    ]
+    selected_slots.extend(forced_new_slots)
+    has_manual_existing_decision = any(item.get("_manual_existing_match") for item in preview_items)
     log_event(
         "pedigree_import_confirm_requested",
         selected_slots_count=len(selected_slots),
         preview_items_count=len(preview_items),
         return_to=return_to,
     )
-    if not selected_slots:
-        import_errors.append("Bitte wähle mindestens einen neuen Hund für den Import aus.")
+    if not selected_slots and not has_manual_existing_decision:
+        import_errors.append("Bitte wähle mindestens einen neuen Hund oder eine fehlende Elternverknüpfung aus.")
 
     if import_errors:
         set_pedigree_import_state(
@@ -3758,6 +4101,35 @@ def pedigree_metrics():
             "coi_analysis": coi_analysis,
         }
     )
+
+
+@app.route("/api/pedigree-missing-parents")
+def api_pedigree_missing_parents():
+    requested_zbnr = clean_text(request.args.get("zbnr"))
+    if not requested_zbnr:
+        return jsonify({"error": "zbnr fehlt"}), 400
+    try:
+        generation = int(request.args.get("generation", ""))
+    except ValueError:
+        return jsonify({"error": "generation ist ungültig"}), 400
+    if generation < 1 or generation > 10:
+        return jsonify({"error": "generation muss zwischen 1 und 10 liegen"}), 400
+
+    zbnr = pt.normalize_zbnr(requested_zbnr) or requested_zbnr
+    index = personalized_zbnr_index()
+    dog = index.get(zbnr)
+    if dog is None:
+        return jsonify({"error": "Hund nicht gefunden"}), 404
+
+    result = missing_pedigree_parents_for_generation(index, zbnr, generation)
+    result.update(
+        {
+            "ok": True,
+            "zbnr": zbnr,
+            "dogName": clean_text(dog.get("Name")) or zbnr,
+        }
+    )
+    return jsonify(result)
 
 
 @app.route("/littermates")

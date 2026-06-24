@@ -2248,6 +2248,7 @@
 
     {% include "_relatives_modal.html" %}
     {% include "_pedigree_import_modal.html" %}
+    {% include "_missing_pedigree_modal.html" %}
 
     {% if result %}
       <div class="modal-backdrop" id="savePairingModal" aria-hidden="true">
@@ -2330,6 +2331,7 @@
       {% include "_pedigree_health_script.html" %}
       {% include "_relatives_modal_script.html" %}
       {% include "_pedigree_import_script.html" %}
+      {% include "_missing_pedigree_script.html" %}
 
       let pairingPedigreeHistory = [];
       let currentPairingPedigreeZbnr = '';

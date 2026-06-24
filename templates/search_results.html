@@ -12,55 +12,89 @@
       {% include "_avk_analysis_css.html" %}
       * { box-sizing: border-box; }
       body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         margin: 0;
-        padding: 0;
-        background: #f5f5f5;
-        color: #333;
+        background: #f5f6f8;
+        color: #243447;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       }
       
       .container {
-        max-width: 1760px;
+        max-width: none;
         margin: 0 auto;
-        padding: 0 20px;
+        padding: 0 14px;
+      }
+
+      main.container {
+        padding-top: 20px;
+      }
+
+      .search-page-header {
+        background: #f8fafc;
+        border-bottom: 1px solid #e0e5eb;
+        padding: 14px 0;
+      }
+
+      .search-page-head {
+        align-items: center;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+      }
+
+      .search-page-head h1 {
+        color: #12233a;
+        font-size: 24px;
+        font-weight: 800;
+        margin: 0;
+      }
+
+      .search-page-subtitle {
+        color: #667085;
+        font-size: 13px;
+        margin-top: 2px;
+      }
+
+      .search-page-toolbar {
+        display: inline-flex;
+      }
+
+      .search-page-toolbar .toolbar-button {
+        align-items: center;
+        background: #fff;
+        border: 1px solid #cfd8e3;
+        border-radius: 8px;
+        color: #1f3a52;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 800;
+        justify-content: center;
+        min-height: 38px;
+        padding: 8px 12px;
+      }
+
+      .search-page-toolbar .toolbar-button:hover,
+      .search-page-toolbar .toolbar-button:focus-visible {
+        background: #eef6ff;
+        border-color: #9ec5fe;
+        outline: none;
       }
 
       .workspace {
-        display: grid;
-        gap: 20px;
-        grid-template-columns: 1fr;
         align-items: start;
+        display: grid;
+        gap: 14px;
+        grid-template-columns: 1fr;
       }
       
       /* Search Section */
       .search-section {
         background: #fff;
-        border: 1px solid #e0e0e0;
+        border: 1px solid #dbe2ea;
         border-radius: 8px;
-        padding: 24px;
-        margin-bottom: 30px;
-        margin-top: 30px;
-      }
-
-      .search-title {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        margin-bottom: 16px;
-      }
-      
-      .search-title h1 {
-        color: #1f2937;
-        font-size: 24px;
-        font-weight: 600;
-        margin: 0;
-      }
-
-      .search-title p {
-        color: #667085;
-        font-size: 13px;
-        line-height: 1.45;
-        margin: 0;
+        margin-bottom: 12px;
+        padding: 14px;
       }
       
       .search-form {
@@ -72,11 +106,12 @@
       
       .search-form input {
         flex: 1;
-        padding: 10px 12px;
-        font-size: 14px;
-        border: 1px solid #ddd;
+        border: 1px solid #d0d7de;
         border-radius: 6px;
         font-family: inherit;
+        font-size: 14px;
+        min-height: 38px;
+        padding: 9px 11px;
       }
       
       .search-form input:focus {
@@ -86,14 +121,15 @@
       }
       
       .search-form button {
-        padding: 10px 20px;
-        font-size: 14px;
         background: #4a90e2;
-        color: #fff;
         border: none;
         border-radius: 6px;
+        color: #fff;
         cursor: pointer;
-        font-weight: 500;
+        font-size: 13px;
+        font-weight: 800;
+        min-height: 38px;
+        padding: 9px 18px;
         white-space: nowrap;
       }
       
@@ -303,6 +339,20 @@
       }
 
       @media (max-width: 720px) {
+        .search-page-head {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .search-page-toolbar,
+        .search-page-toolbar .toolbar-button {
+          width: 100%;
+        }
+
+        .search-form input {
+          flex-basis: 100%;
+        }
+
         .search-filter-grid {
           grid-template-columns: 1fr;
         }
@@ -315,31 +365,34 @@
       /* Results Section */
       .results-section {
         background: #fff;
-        border: 1px solid #e0e0e0;
+        border: 1px solid #dbe2ea;
         border-radius: 8px;
         grid-column: 1 / -1;
         min-height: 120px;
-        padding: 18px;
         overflow: auto;
+        padding: 14px;
         position: relative;
       }
 
       .results-header {
+        align-items: center;
+        border-bottom: 1px solid #edf1f5;
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
       }
       
       .results-header h2 {
-        margin: 0;
+        color: #12233a;
         font-size: 16px;
-        font-weight: 600;
+        font-weight: 800;
+        margin: 0;
       }
       
       .results-count {
+        color: #667085;
         font-size: 13px;
-        color: #999;
       }
       
       /* No Results Message */
@@ -357,24 +410,24 @@
 
       /* Results Table */
       .results-table {
-        width: 100%;
         border-collapse: collapse;
         font-size: 12px;
+        width: 100%;
       }
       
       .results-table th {
-        background: #f9f9f9;
-        border-bottom: 2px solid #e0e0e0;
-        padding: 8px;
-        text-align: left;
-        font-weight: 600;
-        color: #666;
+        background: #f8fafc;
+        border-bottom: 1px solid #dbe2ea;
+        color: #52606d;
         cursor: pointer;
+        font-weight: 800;
+        padding: 9px 8px;
+        text-align: left;
         user-select: none;
       }
       
       .results-table th:hover {
-        background: #f0f0f0;
+        background: #eef6ff;
       }
       
       .sort-indicator {
@@ -388,8 +441,9 @@
       }
       
       .results-table td {
-        padding: 8px;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid #edf1f5;
+        color: #344054;
+        padding: 9px 8px;
       }
 
       .results-table th:nth-child(3),
@@ -403,11 +457,12 @@
       }
       
       .results-table tbody tr:hover {
-        background: #f9f9f9;
+        background: #f8fafc;
       }
       
       .results-table tbody tr.selected {
-        background: #e8f0ff;
+        background: #eef6ff;
+        box-shadow: inset 3px 0 0 #4a90e2;
       }
 
       .row-action-cell {
@@ -576,13 +631,15 @@
       
       .pagination a,
       .pagination span {
-        padding: 6px 10px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 12px;
-        text-decoration: none;
-        color: #4a90e2;
+        border: 1px solid #dbe2ea;
+        border-radius: 6px;
+        color: #243447;
         cursor: pointer;
+        font-size: 12px;
+        min-width: 32px;
+        padding: 7px 9px;
+        text-align: center;
+        text-decoration: none;
       }
       
       .pagination span.current {
@@ -592,7 +649,8 @@
       }
       
       .pagination a:hover {
-        background: #f0f0f0;
+        background: #eef6ff;
+        border-color: #9ec5fe;
       }
       
       /* Detail Card */
@@ -602,7 +660,7 @@
       
       .detail-card.active {
         display: grid;
-        gap: 20px;
+        gap: 14px;
       }
       
       .detail-meta {
@@ -621,17 +679,23 @@
       }
 
       .detail-content-section {
+        background: #fff;
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
         display: grid;
         gap: 12px;
         min-width: 0;
+        padding: 14px;
       }
 
       .detail-section-title {
+        border-bottom: 1px solid #edf1f5;
         color: #1f3a52;
         font-size: 16px;
-        font-weight: 750;
+        font-weight: 800;
         letter-spacing: 0;
         margin: 0;
+        padding-bottom: 10px;
       }
       
       .detail-section h4 {
@@ -778,9 +842,7 @@
       .zw-chip.low { background: #fae8e8; color: #7a3535; }
 
       .overview-dog-card {
-        border: 1px solid #e1e7ee;
-        border-radius: 8px;
-        padding: 18px;
+        padding: 2px 0 0;
       }
 
       .overview-dog-card h4 {
@@ -1024,10 +1086,10 @@
       }
       
       .pedigree-section {
+        background: #fff;
         margin: 0;
-        width: 100%;
-        background: #f3f6f8;
         padding: 0;
+        width: 100%;
       }
       
       .pedigree-section h4 {
@@ -1037,13 +1099,13 @@
       }
       
       #pedigreeArea {
-        overflow: auto;
         background: #fff;
         border: 1px solid #d8dee6;
         border-radius: 8px;
-        padding: 0;
-        min-height: 240px;
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        min-height: 240px;
+        overflow: auto;
+        padding: 0;
       }
 
       .sibling-table {
@@ -1371,16 +1433,23 @@
   <body>
     {% include "_nav.html" %}
 
-    <div class="container">
-      <div class="search-section">
-        <div class="search-title">
+    <header class="search-page-header">
+      <div class="container search-page-head">
+        <div>
           <h1>Hundesuche</h1>
-          <p>Suche nach Hundename oder Zuchtbuchnummer und öffne Treffer, Überblick und Ahnentafel.</p>
+          <div class="search-page-subtitle">Hunde finden, Gesundheitsdaten prüfen und Ahnentafeln gezielt öffnen.</div>
         </div>
+        <div class="search-page-toolbar" aria-label="Suchaktionen">
+          <button type="button" class="toolbar-button" id="openImportPedigreeModal">Ahnentafel importieren</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="search-section">
         <form class="search-form" method="get" action="/search">
           <input name="q" type="text" value="{{ query }}" placeholder="Hundename oder Zuchtbuchnummer" />
           <button type="submit">Suchen</button>
-          <button type="button" class="import-launch-button" id="openImportPedigreeModal">Ahnentafel importieren</button>
           {% if not search_started %}
             <div class="search-loading-overlay search-loading-overlay--inline" id="searchLoadingOverlay" role="status" aria-live="polite" aria-hidden="true">
               <span class="search-loading-spinner" aria-hidden="true"></span>
@@ -1658,9 +1727,7 @@
             <div class="pedigree-history-card" id="pedigreeHistoryCard">
               <div class="pedigree-history-main">
                 <span>Ahnentafel von: <strong id="pedigreeCurrentLabel">—</strong></span>
-                <span class="pedigree-history-origin">Ausgang: <strong id="pedigreeOriginLabel">—</strong></span>
               </div>
-              <div class="pedigree-breadcrumb" id="pedigreeBreadcrumb"></div>
             </div>
             <section class="pedigree-tab-panel" data-pedigree-panel="pedigree">
               <div class="pedigree-section">
@@ -1682,10 +1749,11 @@
         </div>
       </div>
       {% endif %}
-    </div>
+    </main>
 
     {% include "_relatives_modal.html" %}
     {% include "_pedigree_import_modal.html" %}
+    {% include "_missing_pedigree_modal.html" %}
 
     <script>
       let currentSort = { column: null, direction: 'asc' };
@@ -2121,8 +2189,12 @@
           const expected = Number(row.expected_positions || 0);
           const found = Number(row.found_in_data_positions || 0);
           const percent = expected ? found / expected * 100 : 0;
+          const isIncomplete = found < expected;
+          const actionAttributes = isIncomplete
+            ? ` role="button" tabindex="0" class="avk-generation-row avk-generation-row-action" data-missing-generation="${escapeHtml(row.generation)}" data-missing-zbnr="${escapeHtml(analysis.start_zbnr || selectedMetricsZbnr || '')}" aria-label="Fehlende Hunde in Generation ${escapeHtml(row.generation)} anzeigen"`
+            : ' class="avk-generation-row"';
           return `
-            <div class="avk-generation-row">
+            <div${actionAttributes}>
               <div class="avk-generation-label">Gen ${escapeHtml(row.generation)}</div>
               <div class="avk-generation-bar">
                 <div class="avk-generation-fill" style="width: ${Math.max(0, Math.min(100, percent))}%;">${percent.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%</div>
@@ -2377,6 +2449,7 @@
       {% include "_pedigree_health_script.html" %}
       {% include "_relatives_modal_script.html" %}
       {% include "_pedigree_import_script.html" %}
+      {% include "_missing_pedigree_script.html" %}
 
       let pedigreeHistory = [];
       let currentPedigreeState = null;
@@ -2390,18 +2463,9 @@
       function renderPedigreeHistory() {
         const trail = [...pedigreeHistory, currentPedigreeState].filter(Boolean);
         const currentLabel = document.getElementById('pedigreeCurrentLabel');
-        const originLabel = document.getElementById('pedigreeOriginLabel');
-        const breadcrumb = document.getElementById('pedigreeBreadcrumb');
         const current = currentPedigreeState || trail[trail.length - 1] || null;
-        const origin = trail[0] || current || null;
 
         if (currentLabel) currentLabel.textContent = pedigreeStateLabel(current);
-        if (originLabel) originLabel.textContent = pedigreeStateLabel(origin);
-        if (breadcrumb) {
-          breadcrumb.textContent = trail.length
-            ? trail.map(pedigreeStateLabel).join(' › ')
-            : 'Noch kein Verlauf';
-        }
       }
 
       function updatePedigreeBackButton() {

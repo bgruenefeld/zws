@@ -55,9 +55,13 @@
           {% if import_preview %}
             {% set new_count = import_preview | selectattr("status", "equalto", "new") | list | length %}
             {% set found_count = import_preview | selectattr("status", "equalto", "found") | list | length %}
+            {% set unclear_count = import_preview | selectattr("status", "equalto", "unclear") | list | length %}
             <div class="import-summary">
               <span class="status-pill new">{{ new_count }} neu</span>
               <span class="status-pill found">{{ found_count }} vorhanden</span>
+              {% if unclear_count %}
+                <span class="status-pill">{{ unclear_count }} unklar</span>
+              {% endif %}
               <span class="panel-note">Bitte prüfe Namen, Jahr, HD/ED und Elternzuordnung vor dem Speichern.</span>
             </div>
 
@@ -82,18 +86,20 @@
                   <tbody>
                     {% for dog in import_preview %}
                       <tr>
-                        <td>
-                          {% if dog.status == "new" or dog.can_add_parent_links %}
-                            <input
-                              type="checkbox"
-                              name="import_slots"
-                              value="{{ dog.slot }}"
-                              {% if dog.selected %}checked{% endif %}
-                              aria-label="{{ dog.name }} {{ 'importieren' if dog.status == 'new' else 'mit Eltern ergänzen' }}"
-                            >
-                          {% else %}
-                            —
-                          {% endif %}
+	                        <td>
+	                          {% if dog.status == "new" or dog.can_add_parent_links %}
+	                            <input
+	                              type="checkbox"
+	                              name="import_slots"
+	                              value="{{ dog.slot }}"
+	                              {% if dog.selected %}checked{% endif %}
+	                              aria-label="{{ dog.name }} {{ 'als neuen Hund importieren' if dog.status == 'new' else 'mit Eltern ergänzen' }}"
+	                            >
+	                          {% elif dog.status == "unclear" %}
+	                            Auswahl
+	                          {% else %}
+	                            —
+	                          {% endif %}
                         </td>
                         <td>{{ dog.slot }}</td>
                         <td><span class="dog-name">{{ dog.name }}</span></td>
@@ -111,11 +117,44 @@
                             <span class="status-pill found">vorhanden</span><br>
                             <span class="panel-note">{{ dog.match.name }}{% if dog.match.zbnr %} · {{ dog.match.zbnr }}{% endif %}</span>
                             {% if dog.can_add_parent_links %}
-                              <br><span class="panel-note">Eltern aus Import ergänzen</span>
+                              {% if dog.missing_parent_links %}
+                                <br><span class="panel-note">
+                                  Fehlende Verknüpfung ergänzen:
+                                  {{ dog.missing_parent_links | join(", ") }}
+                                </span>
+                              {% endif %}
+                              {% if dog.corrected_parent_links %}
+                                <br><span class="panel-note">
+                                  Abweichende Verknüpfung korrigieren:
+                                  {{ dog.corrected_parent_links | join(", ") }}
+                                </span>
+                              {% endif %}
                             {% endif %}
-                          {% else %}
-                            <span class="status-pill new">neu</span>
-                          {% endif %}
+	                          {% elif dog.status == "unclear" %}
+	                            <span class="status-pill">unklar</span><br>
+	                            <div class="import-choice-group" role="radiogroup" aria-label="Import-Entscheidung für {{ dog.name }}">
+	                              <label>
+	                                <input type="radio" name="import_decision_{{ dog.slot }}" value="skip" checked>
+	                                <span>Überspringen</span>
+	                              </label>
+	                              {% for candidate in dog.ambiguous_match.candidates %}
+	                                <label>
+	                                  <input type="radio" name="import_decision_{{ dog.slot }}" value="existing:{{ candidate.zbnr }}">
+	                                  <span>
+	                                    Vorhandenen Hund verwenden:
+	                                    <strong>{{ candidate.name }}</strong>{% if candidate.birth_year %} ({{ candidate.birth_year }}){% endif %}
+	                                  </span>
+	                                </label>
+	                              {% endfor %}
+	                              <label>
+	                                <input type="radio" name="import_decision_{{ dog.slot }}" value="new">
+	                                <span>Bewusst als neuen Hund anlegen</span>
+	                              </label>
+	                            </div>
+	                            <span class="panel-note">Der Name ist ähnlich zu vorhandenen Hunden. Bitte wähle bewusst, damit keine Dublette entsteht.</span>
+	                          {% else %}
+	                            <span class="status-pill new">neu</span>
+	                          {% endif %}
                         </td>
                       </tr>
                     {% endfor %}

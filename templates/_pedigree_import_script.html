@@ -7,6 +7,8 @@
         setTimeout(() => document.querySelector('#importPedigreeModal textarea[name="pedigree_text"]')?.focus(), 0);
       }
 
+      window.openImportPedigreeModal = openImportPedigreeModal;
+
       function closeImportPedigreeModal() {
         const modal = document.getElementById('importPedigreeModal');
         if (!modal) return;
