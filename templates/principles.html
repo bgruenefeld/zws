@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Grundsätze der Zuchtplanung</title>
+    <style>
+      {% include "_nav_css.html" %}
+
+      :root {
+        --bg: #f4f7fb;
+        --surface: #ffffff;
+        --text: #172033;
+        --muted: #5f6c82;
+        --line: #dce4ef;
+        --primary: #245eea;
+        --primary-dark: #1846b8;
+        --ink: #18243a;
+        --shadow: 0 16px 40px rgba(31, 52, 93, 0.08);
+        --max-width: 1080px;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.65;
+        margin: 0;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .hero {
+        background:
+          radial-gradient(circle at 86% 18%, rgba(85, 138, 255, 0.18), transparent 27%),
+          linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .hero-inner {
+        margin: 0 auto;
+        max-width: var(--max-width);
+        padding: 72px 24px 96px;
+      }
+
+      .eyebrow {
+        color: var(--primary);
+        display: inline-flex;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        margin-bottom: 16px;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        font-size: clamp(40px, 5vw, 62px);
+        letter-spacing: -0.045em;
+        line-height: 1.05;
+        margin: 0;
+        max-width: 840px;
+      }
+
+      .hero-copy {
+        color: var(--muted);
+        font-size: 19px;
+        margin: 22px 0 0;
+        max-width: 760px;
+      }
+
+      main {
+        margin: -48px auto 0;
+        max-width: var(--max-width);
+        padding: 0 24px 76px;
+      }
+
+      .article-card {
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(197, 210, 231, 0.95);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .article-layout {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+      }
+
+      .toc {
+        background: #fbfdff;
+        border-right: 1px solid #e7edf5;
+        padding: 28px 24px;
+      }
+
+      .toc-title {
+        color: #7b879a;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+      }
+
+      .toc a {
+        border-radius: 10px;
+        color: #506079;
+        display: block;
+        font-size: 14px;
+        font-weight: 750;
+        padding: 8px 10px;
+      }
+
+      .toc a:hover {
+        background: #eef4ff;
+        color: var(--primary);
+      }
+
+      .article {
+        padding: clamp(28px, 4vw, 48px);
+      }
+
+      .article h2,
+      .article h3 {
+        color: var(--text);
+        letter-spacing: -0.02em;
+        line-height: 1.2;
+      }
+
+      .article h2 {
+        font-size: clamp(28px, 3vw, 36px);
+        margin: 0 0 18px;
+      }
+
+      .article h3 {
+        border-top: 1px solid #e7edf5;
+        font-size: 22px;
+        margin: 34px 0 12px;
+        padding-top: 28px;
+      }
+
+      .article p {
+        color: #344054;
+        font-size: 16px;
+        margin: 0 0 16px;
+      }
+
+      .article blockquote {
+        background: #eef4ff;
+        border-left: 5px solid var(--primary);
+        border-radius: 14px;
+        color: var(--text);
+        font-size: 18px;
+        font-weight: 800;
+        margin: 20px 0;
+        padding: 16px 18px;
+      }
+
+      .conclusion {
+        background: var(--ink);
+        border-radius: 18px;
+        color: #fff;
+        margin-top: 36px;
+        padding: 28px;
+      }
+
+      .conclusion h2 {
+        color: #fff;
+        margin-top: 0;
+      }
+
+      .conclusion p {
+        color: #d3dceb;
+      }
+
+      .conclusion blockquote {
+        background: rgba(255, 255, 255, 0.07);
+        border-color: #79a7ff;
+        color: #fff;
+      }
+
+      @media (max-width: 860px) {
+        .hero-inner,
+        main {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+
+        .article-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          border-bottom: 1px solid #e7edf5;
+          border-right: 0;
+        }
+      }
+
+      @media (max-width: 640px) {
+        h1 {
+          font-size: 40px;
+        }
+
+        .hero-copy {
+          font-size: 17px;
+        }
+
+        .article,
+        .conclusion {
+          padding: 24px 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    {% include "_nav.html" %}
+
+    <section class="hero">
+      <div class="hero-inner">
+        <div class="eyebrow">Zuchtplanung</div>
+        <h1>Grundsätze der Zuchtplanung</h1>
+        <p class="hero-copy">
+          Kennzahlen helfen bei der Orientierung. Verantwortungsvolle Entscheidungen entstehen
+          aber erst aus dem fachlichen Gesamtbild.
+        </p>
+      </div>
+    </section>
+
+    <main>
+      <article class="article-card">
+        <div class="article-layout">
+          <aside class="toc" aria-label="Inhalt">
+            <div class="toc-title">Inhalt</div>
+            <a href="#kennzahlen">Kennzahlen</a>
+            <a href="#zuchtwerte">Zuchtwerte</a>
+            <a href="#gesundheit">Gesundheitsdaten</a>
+            <a href="#vielfalt">Verwandtschaft</a>
+            <a href="#zuchtziel">Zuchtziel</a>
+            <a href="#fazit">Fazit</a>
+          </aside>
+
+          <div class="article">
+            <section id="kennzahlen">
+              <h2>Kennzahlen immer im Zusammenhang betrachten</h2>
+              <p>Kennzahlen wie Zuchtwerte, Inzuchtkoeffizient, Ahnenverlust oder genetische Testergebnisse können die Zuchtplanung sinnvoll unterstützen. Sie verdichten komplexe Informationen und erleichtern den Vergleich möglicher Verpaarungen. Eine einzelne Kennzahl beschreibt jedoch immer nur einen bestimmten Ausschnitt der züchterischen Situation.</p>
+              <p>Ein günstiger Wert ist daher nicht automatisch mit einer insgesamt geeigneten Verpaarung gleichzusetzen. Ebenso sollte ein weniger günstiger Einzelwert nicht isoliert betrachtet werden. Entscheidend ist das Gesamtbild aus Gesundheit, Wesen, Arbeitsleistung, genetischer Vielfalt, familiärer Belastung und dem konkreten Zuchtziel.</p>
+            </section>
+
+            <section id="zuchtwerte">
+              <h3>Zuchtwerte richtig einordnen</h3>
+              <p>Zuchtwerte sind Schätzwerte für die genetische Veranlagung eines Hundes in Bezug auf ein bestimmtes Merkmal. Sie beruhen auf den verfügbaren Informationen über den Hund selbst, seine Verwandten und gegebenenfalls seine Nachkommen. Ihre Aussagekraft hängt wesentlich davon ab, wie viele und wie verlässliche Daten in die Schätzung eingeflossen sind.</p>
+              <p>Deshalb sollte ein Zuchtwert immer gemeinsam mit seiner Sicherheit betrachtet werden. Ein günstiger Wert mit geringer Sicherheit kann sich durch neue Daten noch deutlich verändern. Ein weniger günstiger Wert mit hoher Sicherheit ist dagegen meist belastbarer einzuschätzen.</p>
+            </section>
+
+            <section id="gesundheit">
+              <h3>Gesundheitsdaten nicht nur als Einzelbefund lesen</h3>
+              <p>Ein unauffälliger Gesundheitsbefund ist zunächst positiv. Für die Zuchtplanung ist jedoch auch die familiäre Situation relevant. Treten bestimmte Erkrankungen wiederholt bei Geschwistern, Halbgeschwistern, Eltern oder Nachkommen auf, kann dies auf eine erbliche Belastung hinweisen, auch wenn der betreffende Hund selbst gesund ist.</p>
+              <p>Umgekehrt bedeutet ein einzelner ungünstiger Befund nicht automatisch, dass ein Hund züchterisch vollständig ausgeschlossen werden muss. Die Bedeutung hängt unter anderem von der Schwere des Befundes, dem Erbgang, der Häufigkeit in der Population und den verfügbaren Ausgleichsmöglichkeiten ab.</p>
+            </section>
+
+            <section id="vielfalt">
+              <h3>Verwandtschaft und genetische Vielfalt</h3>
+              <p>Der Inzuchtkoeffizient beschreibt die Wahrscheinlichkeit, mit der zwei Allele eines Nachkommen aufgrund gemeinsamer Abstammung identisch sind. Der Ahnenverlustkoeffizient zeigt dagegen, wie viele unterschiedliche Vorfahren in der betrachteten Ahnentafel tatsächlich vertreten sind.</p>
+              <p>Beide Kennzahlen liefern wichtige, aber unterschiedliche Informationen. Ein niedriger Inzuchtkoeffizient bedeutet nicht zwangsläufig, dass eine Verpaarung einen besonders hohen Beitrag zur genetischen Vielfalt leistet. Ebenso kann ein guter Ahnenverlustkoeffizient gemeinsame, in der Population stark verbreitete Vorfahren nur eingeschränkt abbilden.</p>
+              <p>Entscheidend ist daher nicht nur die Verwandtschaft zwischen zwei einzelnen Hunden, sondern auch die Frage, wie häufig ihre Linien bereits in der Gesamtpopulation vertreten sind.</p>
+            </section>
+
+            <section id="zuchtziel">
+              <h3>Das Zuchtziel bleibt maßgeblich</h3>
+              <p>Kennzahlen ersetzen kein klar formuliertes Zuchtziel. Eine Verpaarung sollte nicht danach ausgewählt werden, möglichst viele Einzelwerte zu optimieren. Vielmehr geht es darum, Stärken zu erhalten, erkennbare Risiken zu begrenzen und langfristig zur Gesundheit, Leistungsfähigkeit und genetischen Stabilität der Population beizutragen.</p>
+              <p>Dabei können unterschiedliche Verpaarungen trotz ähnlicher Kennzahlen zu unterschiedlichen züchterischen Bewertungen führen. Ein Hund kann beispielsweise aufgrund seiner Gesundheit, seines Wesens oder seiner Arbeitsanlagen besonders wertvoll sein, obwohl nicht jede Kennzahl im optimalen Bereich liegt.</p>
+            </section>
+
+            <section id="fazit" class="conclusion">
+              <h2>Fazit</h2>
+              <p>Kennzahlen sind Orientierungshilfen, keine automatischen Entscheidungen. Ihre Bedeutung entsteht erst im Zusammenhang mit der Datenqualität, der Sicherheit der Schätzung, der familiären Belastung, der Verwandtschaft, dem Zuchtziel und der Situation der Gesamtpopulation.</p>
+              <p>Eine verantwortungsvolle Zuchtplanung fragt deshalb nicht nur:</p>
+              <blockquote>Welcher Wert ist am günstigsten?</blockquote>
+              <p>Sondern vor allem:</p>
+              <blockquote>Welche Verpaarung ergibt unter Berücksichtigung aller verfügbaren Informationen das fachlich überzeugendste Gesamtbild?</blockquote>
+            </section>
+          </div>
+        </div>
+      </article>
+    </main>
+  </body>
+</html>

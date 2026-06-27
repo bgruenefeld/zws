@@ -2339,6 +2339,22 @@ def pedigree_metric_generation_depth(index, start_zbnr, minimum=5, maximum=10):
     return max(minimum, min(maximum, deepest_found))
 
 
+def repeated_ancestor_identity_key(zbnr, dog):
+    zbnr = pt.normalize_zbnr(zbnr) or clean_text(zbnr)
+    name = clean_text((dog or {}).get("Name"))
+
+    # Imported pedigree rows can represent the same real dog with different
+    # generated USER-* ids. For display purposes, group those exact-name rows
+    # together so visible duplicates are not missed.
+    if name and (not zbnr or zbnr.upper().startswith("USER-")):
+        normalized_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
+        normalized_name = re.sub(r"[^a-z0-9]+", " ", normalized_name.lower()).strip()
+        if normalized_name:
+            return f"name:{normalized_name}"
+
+    return f"zbnr:{zbnr}" if zbnr else ""
+
+
 def repeated_ancestors_for_display(
     index,
     start_zbnr,
@@ -2351,8 +2367,9 @@ def repeated_ancestors_for_display(
         start_zbnr=start_zbnr,
         max_generations=max_generations,
     )
-    positions_by_zbnr = defaultdict(list)
-    dog_by_zbnr = {}
+    positions_by_identity = defaultdict(list)
+    dogs_by_identity = {}
+    zbnrs_by_identity = defaultdict(set)
 
     for slot_id, entry in slots.items():
         generation = entry.get("generation", 0)
@@ -2360,25 +2377,32 @@ def repeated_ancestors_for_display(
             continue
 
         zbnr = pt.normalize_zbnr(entry.get("zbnr")) or clean_text(entry.get("zbnr"))
-        if not zbnr:
+        dog = entry.get("dog") or (index.get(zbnr) if zbnr else None) or {}
+        identity_key = repeated_ancestor_identity_key(zbnr, dog)
+        if not identity_key:
             continue
 
-        positions_by_zbnr[zbnr].append(
+        positions_by_identity[identity_key].append(
             {
                 "slot": slot_id,
                 "generation": generation,
                 "role": pt.get_pedigree_role(slot_id),
                 "path": pt.get_pedigree_path(slot_id),
+                "zbnr": zbnr,
             }
         )
-        if zbnr not in dog_by_zbnr and entry.get("dog") is not None:
-            dog_by_zbnr[zbnr] = entry["dog"]
+        if zbnr:
+            zbnrs_by_identity[identity_key].add(zbnr)
+        if identity_key not in dogs_by_identity and dog:
+            dogs_by_identity[identity_key] = dog
 
     repeated = []
-    for zbnr, positions in positions_by_zbnr.items():
+    for identity_key, positions in positions_by_identity.items():
         if len(positions) < 2:
             continue
-        dog = dog_by_zbnr.get(zbnr) or index.get(zbnr) or {}
+        match_zbnrs = sorted(zbnrs_by_identity.get(identity_key) or [])
+        primary_zbnr = match_zbnrs[0] if match_zbnrs else ""
+        dog = dogs_by_identity.get(identity_key) or index.get(primary_zbnr) or {}
         generations = sorted({pos["generation"] for pos in positions})
         visible_positions = [
             pos for pos in positions
@@ -2394,8 +2418,10 @@ def repeated_ancestors_for_display(
         else:
             visibility_label = "sichtbar"
         item = {
-            "zbnr": zbnr,
-            "name": clean_text(dog.get("Name")) or zbnr,
+            "zbnr": primary_zbnr,
+            "match_zbnrs": match_zbnrs,
+            "identity_key": identity_key,
+            "name": clean_text(dog.get("Name")) or primary_zbnr,
             "count": len(positions),
             "generations": generations,
             "visible_count": len(visible_positions),
@@ -2819,6 +2845,11 @@ def dog_search_home():
 @app.route("/info")
 def info():
     return render_template("info.html", **population_stats_context())
+
+
+@app.route("/grundsaetze-zuchtplanung")
+def breeding_principles():
+    return render_template("principles.html")
 
 
 @app.route("/compare")

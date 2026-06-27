@@ -1,7 +1,7 @@
 <nav class="app-nav" aria-label="Hauptnavigation">
   <div class="app-nav__inner">
-    <a class="app-nav__brand" href="/" aria-label="Planer Startseite">
-      <img src="{{ url_for('static', filename='planer-logo.png') }}" alt="Planer">
+    <a class="app-nav__brand" href="/" aria-label="CRD Startseite">
+      <img src="{{ url_for('static', filename='planer-logo.png') }}" alt="CRD – Canine Relationship & Diversity">
     </a>
     <div class="app-nav__links">
       <a href="/search">Hundesuche</a>
@@ -10,7 +10,13 @@
       </a>
       <a href="/pairing">Verpaarungen planen</a>
       <a href="/user-dogs">Eigene Hunde</a>
-      <a href="/info">Informationen zur Zuchtwertschätzung</a>
+      <details class="app-nav__menu">
+        <summary>Infos</summary>
+        <div class="app-nav__submenu">
+          <a href="/grundsaetze-zuchtplanung">Grundsätze der Zuchtplanung</a>
+          <a href="/info">Informationen zur Zuchtwertschätzung</a>
+        </div>
+      </details>
       {% set nav_username = session.get("username", "") %}
       {% if nav_username %}
         <span class="app-nav__user" title="Angemeldet als {{ nav_username }}" aria-label="Angemeldet als {{ nav_username }}">

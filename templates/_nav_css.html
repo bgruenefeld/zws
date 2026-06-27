@@ -56,6 +56,78 @@
   color: #2563eb;
 }
 
+.app-nav__menu {
+  position: relative;
+}
+
+.app-nav__menu summary {
+  align-items: center;
+  border-radius: 6px;
+  color: #52606d;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 600;
+  gap: 6px;
+  list-style: none;
+  padding: 8px 10px;
+  user-select: none;
+}
+
+.app-nav__menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-nav__menu summary::after {
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  content: "";
+  height: 5px;
+  margin-top: -3px;
+  transform: rotate(45deg);
+  width: 5px;
+}
+
+.app-nav__menu[open] summary,
+.app-nav__menu summary:hover,
+.app-nav__menu summary:focus-visible {
+  background: #edf4fb;
+  color: #2563eb;
+  outline: none;
+}
+
+.app-nav__submenu {
+  background: #ffffff;
+  border: 1px solid #dfe5ec;
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(31, 52, 93, 0.12);
+  display: grid;
+  gap: 2px;
+  min-width: 250px;
+  padding: 8px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 1300;
+}
+
+.app-nav__submenu a {
+  border-radius: 8px;
+  padding: 9px 10px;
+  white-space: normal;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-nav__menu:not([open]) .app-nav__submenu {
+    display: none;
+  }
+
+  .app-nav__menu:hover .app-nav__submenu,
+  .app-nav__menu:focus-within .app-nav__submenu {
+    display: grid;
+  }
+}
+
 .app-nav__watchlist {
   align-items: center;
   display: inline-flex;
@@ -127,5 +199,21 @@
 
   .app-nav__links {
     justify-content: flex-start;
+  }
+
+  .app-nav__menu {
+    width: 100%;
+  }
+
+  .app-nav__menu summary {
+    width: 100%;
+  }
+
+  .app-nav__submenu {
+    box-shadow: none;
+    margin: 4px 0 0;
+    min-width: 0;
+    position: static;
+    width: 100%;
   }
 }
