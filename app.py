@@ -3686,6 +3686,92 @@ def pairing_report_pdf():
     )
 
 
+@app.route("/api/pairing/pedigree.json")
+def pairing_pedigree_json():
+    """Exportiert die Ahnentafel und Kennzahlen einer Testverpaarung."""
+    sire_input = request.args.get("sire", "").strip()
+    selected_sire = request.args.get("selected_sire", "").strip()
+    dam_input = request.args.get("dam", "").strip()
+    sire_query = selected_sire or sire_input
+    sire = resolve_dog(sire_query, required_sex="R") if sire_query else None
+    dam = resolve_dog(dam_input, required_sex="H") if dam_input else None
+
+    if sire is None or dam is None:
+        return jsonify({"error": "Hündin oder Rüde wurde nicht gefunden."}), 404
+
+    try:
+        planned_zbnr, pairing_index = make_pairing_index(sire, dam)
+        metric_max_gen = pedigree_metric_generation_depth(
+            pairing_index,
+            planned_zbnr,
+            minimum=5,
+            maximum=10,
+        )
+        pedigree_data = pt.create_pedigree_json_for_zbnr(
+            df_or_index=pairing_index,
+            start_zbnr=planned_zbnr,
+            max_generations=metric_max_gen,
+            include_coi=False,
+            include_avk=False,
+        )
+        # Diese beiden leeren Felder sind im generischen Pedigree-Export nur
+        # Platzhalter; die vollständigen Werte stehen im Abschnitt metrics.
+        pedigree_data.pop("coi", None)
+        pedigree_data.pop("avk", None)
+        coi = pt.calculate_coi_for_zbnr(
+            pairing_index,
+            planned_zbnr,
+            max_generations=metric_max_gen,
+        )
+        avk = pt.calculate_avk_for_zbnr(
+            pairing_index,
+            planned_zbnr,
+            max_generations=metric_max_gen,
+        )
+        repeated = repeated_ancestors_for_display(
+            pairing_index,
+            planned_zbnr,
+            max_generations=metric_max_gen,
+            visible_generations=5,
+            include_positions=True,
+        )
+        payload = {
+            "schema_version": "1.0",
+            "export_type": "test_pairing_pedigree",
+            "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+            "pairing": {
+                "dam": dog_summary(dam),
+                "sire": dog_summary(sire),
+                "virtual_offspring_zbnr": planned_zbnr,
+            },
+            "calculation": {
+                "generations": metric_max_gen,
+                "visible_generations_in_application": 5,
+            },
+            "pedigree": pedigree_data,
+            "metrics": {
+                "coi": coi,
+                "avk": avk,
+            },
+            "repeated_ancestors": repeated,
+        }
+    except Exception:
+        app.logger.exception("JSON-Bericht der Testverpaarung konnte nicht erstellt werden")
+        return jsonify({"error": "JSON-Bericht konnte nicht erstellt werden."}), 500
+
+    dam_name = re.sub(r"[^A-Za-z0-9_-]+", "_", dog_summary(dam).get("name") or "huendin").strip("_")
+    sire_name = re.sub(r"[^A-Za-z0-9_-]+", "_", dog_summary(sire).get("name") or "ruede").strip("_")
+    filename = f"testverpaarung_{dam_name}_{sire_name}.json"[:141]
+    if not filename.endswith(".json"):
+        filename += ".json"
+    body = json.dumps(payload, ensure_ascii=False, indent=2, default=pt.make_json_serializable)
+    return Response(
+        body,
+        mimetype="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @app.route("/search", methods=["GET"])
 def search_results():
     """Search results page."""

@@ -2103,6 +2103,7 @@
             <div class="assessment-actions">
               <button type="button" class="secondary-button" id="openSavePairingModalButton">Verpaarung speichern</button>
               <a class="secondary-button" href="{{ url_for('pairing_report_pdf', sire=sire_input, selected_sire=selected_sire, dam=dam_input) }}">PDF-Bericht herunterladen</a>
+              <a class="secondary-button" href="{{ url_for('pairing_pedigree_json', sire=sire_input, selected_sire=selected_sire, dam=dam_input) }}" download>JSON herunterladen</a>
             </div>
           </div>
           <div class="planned-pairing-overview">
