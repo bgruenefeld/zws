@@ -448,6 +448,42 @@
         grid-template-columns: 52px minmax(0, 1fr) 72px;
       }
 
+      .avk-generation-row-with-action {
+        grid-template-columns: 52px minmax(0, 1fr) 72px auto;
+      }
+
+      .avk-missing-button {
+        background: #fff;
+        border: 1px solid #9ec5fe;
+        border-radius: 6px;
+        color: #2563eb;
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 800;
+        min-height: 30px;
+        padding: 5px 9px;
+        white-space: nowrap;
+      }
+
+      .avk-missing-button:hover,
+      .avk-missing-button:focus-visible {
+        background: #eef6ff;
+        border-color: #2563eb;
+        outline: none;
+      }
+
+      @media (max-width: 650px) {
+        .avk-generation-row-with-action {
+          grid-template-columns: 44px minmax(0, 1fr) 58px;
+        }
+
+        .avk-missing-button {
+          grid-column: 2 / -1;
+          justify-self: end;
+        }
+      }
+
       .avk-generation-label,
       .avk-generation-count {
         color: #52606d;

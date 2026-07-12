@@ -50,7 +50,7 @@
       : 'Öffne den bekannten Hund auf k9-data und importiere anschließend dessen Ahnentafel wie gewohnt.';
   }
 
-  function openMissingPedigreeModal(zbnr, generation) {
+  function openMissingPedigreeModal(zbnr, generation, baseUrl) {
     if (!zbnr || !generation) return;
     const title = document.getElementById('missingPedigreeTitle');
     const meta = document.getElementById('missingPedigreeMeta');
@@ -64,7 +64,11 @@
     modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-open');
 
-    fetch('/api/pedigree-missing-parents?zbnr=' + encodeURIComponent(zbnr) + '&generation=' + encodeURIComponent(generation))
+    const separator = baseUrl && baseUrl.includes('?') ? '&' : '?';
+    const requestUrl = baseUrl
+      ? baseUrl + separator + 'generation=' + encodeURIComponent(generation)
+      : '/api/pedigree-missing-parents?zbnr=' + encodeURIComponent(zbnr) + '&generation=' + encodeURIComponent(generation);
+    fetch(requestUrl)
       .then(response => response.json().then(data => {
         if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
         return data;
@@ -79,15 +83,15 @@
   }
 
   document.addEventListener('click', event => {
-    const row = event.target.closest('.avk-generation-row-action[data-missing-generation]');
-    if (!row) return;
-    openMissingPedigreeModal(row.dataset.missingZbnr, row.dataset.missingGeneration);
+    const trigger = event.target.closest('.avk-missing-button[data-missing-generation], .avk-generation-row-action[data-missing-generation]');
+    if (!trigger) return;
+    openMissingPedigreeModal(trigger.dataset.missingZbnr, trigger.dataset.missingGeneration, trigger.dataset.missingUrl);
   });
   document.addEventListener('keydown', event => {
     const row = event.target.closest?.('.avk-generation-row-action[data-missing-generation]');
     if (row && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault();
-      openMissingPedigreeModal(row.dataset.missingZbnr, row.dataset.missingGeneration);
+      openMissingPedigreeModal(row.dataset.missingZbnr, row.dataset.missingGeneration, row.dataset.missingUrl);
       return;
     }
     if (event.key === 'Escape' && modal.classList.contains('open')) closeMissingPedigreeModal();

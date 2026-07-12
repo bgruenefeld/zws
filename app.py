@@ -3591,6 +3591,12 @@ def pairing():
                 max_generations=metric_max_gen,
                 visible_generations=display_max_gen,
             )
+            avk_analysis["missing_parents_url"] = url_for(
+                "api_pedigree_missing_parents",
+                zbnr=planned_zbnr,
+                sire=normalized_row_zbnr(sire),
+                dam=normalized_row_zbnr(dam),
+            )
             coi_analysis = coi_analysis_for_display(
                 pairing_index,
                 planned_zbnr,
@@ -4235,6 +4241,13 @@ def api_pedigree_missing_parents():
     zbnr = pt.normalize_zbnr(requested_zbnr) or requested_zbnr
     index = personalized_zbnr_index()
     dog = index.get(zbnr)
+    if requested_zbnr == "__PLANNED_PAIRING__":
+        sire = resolve_dog(clean_text(request.args.get("sire")), required_sex="R")
+        dam = resolve_dog(clean_text(request.args.get("dam")), required_sex="H")
+        if sire is None or dam is None:
+            return jsonify({"error": "Hündin oder Rüde wurde nicht gefunden."}), 404
+        zbnr, index = make_pairing_index(sire, dam)
+        dog = index.get(zbnr)
     if dog is None:
         return jsonify({"error": "Hund nicht gefunden"}), 404
 
