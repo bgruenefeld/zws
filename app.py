@@ -3196,6 +3196,8 @@ def api_saved_pairings():
 def manage_user_dogs():
     errors = []
     saved_zbnr = request.args.get("saved", "")
+    merged_dog = session.pop("merged_user_dog", None)
+    merge_error = session.pop("merge_user_dog_error", None)
     import_context = pedigree_import_context(default_return_to=url_for("manage_user_dogs"))
     form_values = user_dog_form_defaults()
     prefill_name = clean_text(request.args.get("prefill_name"))
@@ -3229,12 +3231,141 @@ def manage_user_dogs():
         "user_dogs.html",
         errors=errors,
         saved_zbnr=saved_zbnr,
+        merged_dog=merged_dog,
+        merge_error=merge_error,
         form_values=form_values,
         user_dogs=user_dogs,
         user_dogs_path=user_dog_path_label(),
         modal_open=modal_open,
         **import_context,
     )
+
+
+def user_dog_merge_preview(source_zbnr, target_zbnr):
+    source_zbnr = pt.normalize_zbnr(source_zbnr) or clean_text(source_zbnr)
+    target_zbnr = pt.normalize_zbnr(target_zbnr) or clean_text(target_zbnr)
+    user_df = load_user_dogs_df()
+    source_rows = user_df[
+        user_df["ZBNr_norm"].fillna("").map(
+            lambda value: (pt.normalize_zbnr(value) or clean_text(value)) == source_zbnr
+        )
+    ]
+    if source_rows.empty:
+        raise ValueError("Die Dublette wurde in den eigenen Hunden nicht gefunden.")
+
+    source = source_rows.iloc[0].to_dict()
+    target = personalized_zbnr_index().get(target_zbnr)
+    if target is None:
+        raise ValueError("Der Zielhund wurde nicht gefunden.")
+    if source_zbnr == target_zbnr:
+        raise ValueError("Dublette und Zielhund müssen unterschiedlich sein.")
+
+    source_sex = clean_text(source.get("Geschlecht")).upper()
+    target_sex = clean_text(target.get("Geschlecht") or target.get("sex")).upper()
+    if source_sex in {"R", "H"} and target_sex in {"R", "H"} and source_sex != target_sex:
+        raise ValueError("Dublette und Zielhund haben ein unterschiedliches Geschlecht.")
+
+    affected = []
+    for row in user_df.to_dict(orient="records"):
+        roles = []
+        if source_zbnr in {
+            pt.normalize_zbnr(row.get("vater_zbnr")) or clean_text(row.get("vater_zbnr")),
+            pt.normalize_zbnr(row.get("vater_zbnr_norm")) or clean_text(row.get("vater_zbnr_norm")),
+        }:
+            roles.append("Vater")
+        if source_zbnr in {
+            pt.normalize_zbnr(row.get("mutter_zbnr")) or clean_text(row.get("mutter_zbnr")),
+            pt.normalize_zbnr(row.get("mutter_zbnr_norm")) or clean_text(row.get("mutter_zbnr_norm")),
+        }:
+            roles.append("Mutter")
+        if roles:
+            row_zbnr = pt.normalize_zbnr(row.get("ZBNr_norm") or row.get("ZBNr")) or clean_text(
+                row.get("ZBNr_norm") or row.get("ZBNr")
+            )
+            if row_zbnr == target_zbnr:
+                raise ValueError(
+                    "Der Zielhund verweist selbst auf die Dublette als Elternteil. "
+                    "Diese Verknüpfung muss zuerst manuell geprüft werden."
+                )
+            affected.append(
+                {
+                    "name": clean_text(row.get("Name")) or "Unbekannter Hund",
+                    "zbnr": row_zbnr,
+                    "roles": roles,
+                }
+            )
+
+    return {
+        "source": dog_summary(source),
+        "target": dog_summary(target),
+        "affected": affected,
+        "affected_count": len(affected),
+    }
+
+
+@app.route("/api/user-dogs/merge-preview")
+def api_user_dog_merge_preview():
+    try:
+        preview = user_dog_merge_preview(
+            request.args.get("source", ""),
+            parse_selected_zbnr(request.args.get("target", "")),
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify({"ok": True, **preview})
+
+
+@app.route("/user-dogs/merge", methods=["POST"])
+def merge_user_dog():
+    source_zbnr = pt.normalize_zbnr(request.form.get("source")) or clean_text(request.form.get("source"))
+    target_zbnr = parse_selected_zbnr(request.form.get("target", ""))
+    target_zbnr = pt.normalize_zbnr(target_zbnr) or clean_text(target_zbnr)
+
+    try:
+        with USER_DOGS_LOCK:
+            with locked_user_dogs_file():
+                preview = user_dog_merge_preview(source_zbnr, target_zbnr)
+                user_df = load_user_dogs_df()
+                target_name = preview["target"]["name"]
+
+                for prefix, display_column in (("vater", "Vater"), ("mutter", "Mutter")):
+                    reference_mask = user_df[f"{prefix}_zbnr_norm"].fillna("").map(
+                        lambda value: (pt.normalize_zbnr(value) or clean_text(value)) == source_zbnr
+                    ) | user_df[f"{prefix}_zbnr"].fillna("").map(
+                        lambda value: (pt.normalize_zbnr(value) or clean_text(value)) == source_zbnr
+                    )
+                    user_df.loc[reference_mask, f"{prefix}_zbnr"] = target_zbnr
+                    user_df.loc[reference_mask, f"{prefix}_zbnr_norm"] = target_zbnr
+                    user_df.loc[reference_mask, f"{prefix}_name"] = target_name
+                    user_df.loc[reference_mask, display_column] = target_name
+                    user_df.loc[reference_mask, "updated_at"] = datetime.now().isoformat(timespec="seconds")
+
+                source_mask = user_df["ZBNr_norm"].fillna("").map(
+                    lambda value: (pt.normalize_zbnr(value) or clean_text(value)) == source_zbnr
+                )
+                user_df = user_df.loc[~source_mask].copy()
+                write_user_dogs_df(user_df)
+                reload_data()
+    except ValueError as exc:
+        session["merge_user_dog_error"] = str(exc)
+        return redirect(url_for("manage_user_dogs"))
+    except Exception:
+        app.logger.exception("Hund-Dublette konnte nicht zusammengeführt werden")
+        session["merge_user_dog_error"] = "Die Zusammenführung konnte nicht gespeichert werden."
+        return redirect(url_for("manage_user_dogs"))
+
+    session["merged_user_dog"] = {
+        "source_name": preview["source"]["name"],
+        "target_name": preview["target"]["name"],
+        "affected_count": preview["affected_count"],
+    }
+    log_event(
+        "user_dog_merged",
+        source_zbnr=source_zbnr,
+        target_zbnr=target_zbnr,
+        affected_count=preview["affected_count"],
+    )
+    return redirect(url_for("manage_user_dogs"))
 
 
 @app.route("/user-dogs/import", methods=["POST"])

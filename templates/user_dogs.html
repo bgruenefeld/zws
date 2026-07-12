@@ -247,6 +247,47 @@
         font-weight: 800;
       }
 
+      .merge-dog-button {
+        font-size: 12px;
+        padding: 6px 8px;
+        white-space: nowrap;
+      }
+
+      .modal-dialog.merge-dialog {
+        max-width: 720px;
+      }
+
+      .merge-warning,
+      .merge-preview {
+        border-radius: 7px;
+        font-size: 13px;
+        line-height: 1.45;
+        margin: 14px 0;
+        padding: 12px;
+      }
+
+      .merge-warning {
+        background: #fff8e6;
+        border: 1px solid #f1d28a;
+        color: #714f05;
+      }
+
+      .merge-preview {
+        background: #f8fafc;
+        border: 1px solid #dfe5ec;
+        color: #52606d;
+        min-height: 44px;
+      }
+
+      .merge-preview strong {
+        color: #12233a;
+      }
+
+      .merge-preview ul {
+        margin: 8px 0 0;
+        padding-left: 20px;
+      }
+
       .status-pill {
         align-items: center;
         border-radius: 999px;
@@ -464,6 +505,12 @@
       {% if imported_count %}
         <div class="message success">{{ imported_count }} Hunde wurden aus der Ahnentafel importiert.</div>
       {% endif %}
+      {% if merged_dog %}
+        <div class="message success">{{ merged_dog.source_name }} wurde mit {{ merged_dog.target_name }} zusammengeführt. {{ merged_dog.affected_count }} Verknüpfungen wurden aktualisiert.</div>
+      {% endif %}
+      {% if merge_error %}
+        <div class="message error">{{ merge_error }}</div>
+      {% endif %}
 
       <section class="panel" aria-labelledby="userDogsTitle">
         <div class="panel-head">
@@ -490,6 +537,7 @@
                 <th>Wurfdatum</th>
                 <th>Eltern</th>
                 <th>gespeichert</th>
+                <th>Aktionen</th>
               </tr>
             </thead>
             <tbody>
@@ -504,6 +552,7 @@
                     Mutter: {{ dog.mutter_name or dog.mutter_zbnr or "—" }}
                   </td>
                   <td>{{ dog.created_at or "—" }}</td>
+                  <td><button class="secondary-button merge-dog-button" type="button" data-zbnr="{{ dog.ZBNr_norm or dog.ZBNr }}" data-name="{{ dog.Name }}" data-sex="{{ dog.Geschlecht }}">Dublette bereinigen</button></td>
                 </tr>
               {% endfor %}
             </tbody>
@@ -513,6 +562,35 @@
         {% endif %}
       </section>
     </main>
+
+    <div class="modal-backdrop" id="mergeDogModal" aria-hidden="true">
+      <div class="modal-dialog merge-dialog" role="dialog" aria-modal="true" aria-labelledby="mergeDogTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="mergeDogTitle">Hund-Dublette bereinigen</h2>
+            <div class="panel-note" id="mergeDogSourceLabel"></div>
+          </div>
+          <button type="button" class="modal-close" id="closeMergeDogModal" aria-label="Dialog schließen">×</button>
+        </div>
+        <form method="post" action="{{ url_for('merge_user_dog') }}" id="mergeDogForm">
+          <div class="modal-body">
+            <input type="hidden" name="source" id="mergeDogSource">
+            <label>
+              Vorhandenen Zielhund auswählen
+              <input name="target" id="mergeDogTarget" list="mergeDogSuggestions" placeholder="Name oder ZBNr suchen" autocomplete="off" required>
+              <datalist id="mergeDogSuggestions"></datalist>
+            </label>
+            <div class="merge-warning">Der gewählte Zielhund bleibt maßgeblich. Alle Elternverknüpfungen werden auf ihn umgestellt; anschließend wird die Dublette aus den eigenen Hunden entfernt.</div>
+            <button class="secondary-button" type="button" id="previewDogMerge">Auswirkungen prüfen</button>
+            <div class="merge-preview" id="mergeDogPreview" aria-live="polite"></div>
+          </div>
+          <div class="modal-actions">
+            <button class="secondary-button" type="button" id="cancelMergeDogModal">Abbrechen</button>
+            <button class="primary-button" type="submit" id="confirmDogMerge" disabled>Zusammenführen</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <div class="modal-backdrop {% if modal_open %}open{% endif %}" id="addDogModal" aria-hidden="{{ 'false' if modal_open else 'true' }}">
       <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="addDogTitle">
@@ -852,6 +930,72 @@
 
       attachDogSuggest(document.querySelector('input[name="vater"]'), document.getElementById('sireSuggestions'));
       attachDogSuggest(document.querySelector('input[name="mutter"]'), document.getElementById('damSuggestions'));
+      attachDogSuggest(document.getElementById('mergeDogTarget'), document.getElementById('mergeDogSuggestions'));
+
+      const mergeDogModal = document.getElementById('mergeDogModal');
+      const mergeDogSource = document.getElementById('mergeDogSource');
+      const mergeDogTarget = document.getElementById('mergeDogTarget');
+      const mergeDogPreview = document.getElementById('mergeDogPreview');
+      const confirmDogMerge = document.getElementById('confirmDogMerge');
+
+      function resetDogMergePreview() {
+        confirmDogMerge.disabled = true;
+        mergeDogPreview.innerHTML = 'Wähle den richtigen vorhandenen Hund und prüfe anschließend die Auswirkungen.';
+      }
+
+      function openMergeDogModal(button) {
+        mergeDogSource.value = button.dataset.zbnr || '';
+        mergeDogTarget.value = '';
+        mergeDogTarget.dataset.sex = button.dataset.sex || '';
+        document.getElementById('mergeDogSourceLabel').textContent = `Dublette: ${button.dataset.name || 'Unbekannter Hund'} · ${button.dataset.zbnr || '—'}`;
+        resetDogMergePreview();
+        mergeDogModal.classList.add('open');
+        mergeDogModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        setTimeout(() => mergeDogTarget.focus(), 0);
+      }
+
+      function closeMergeDogModal() {
+        mergeDogModal.classList.remove('open');
+        mergeDogModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+      }
+
+      document.querySelectorAll('.merge-dog-button').forEach(button => {
+        button.addEventListener('click', () => openMergeDogModal(button));
+      });
+      document.getElementById('closeMergeDogModal')?.addEventListener('click', closeMergeDogModal);
+      document.getElementById('cancelMergeDogModal')?.addEventListener('click', closeMergeDogModal);
+      mergeDogModal?.addEventListener('click', event => {
+        if (event.target === mergeDogModal) closeMergeDogModal();
+      });
+      mergeDogTarget?.addEventListener('input', resetDogMergePreview);
+      document.getElementById('previewDogMerge')?.addEventListener('click', () => {
+        const target = mergeDogTarget.value.trim();
+        if (!target) {
+          mergeDogPreview.textContent = 'Bitte wähle zuerst einen Zielhund aus.';
+          return;
+        }
+        mergeDogPreview.textContent = 'Auswirkungen werden geprüft …';
+        confirmDogMerge.disabled = true;
+        const params = new URLSearchParams({ source: mergeDogSource.value, target });
+        fetch('/api/user-dogs/merge-preview?' + params.toString())
+          .then(response => response.json().then(data => {
+            if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+            return data;
+          }))
+          .then(data => {
+            const affected = Array.isArray(data.affected) ? data.affected : [];
+            const list = affected.length
+              ? `<ul>${affected.map(item => `<li>${escapeHtml(item.name)} (${escapeHtml(item.zbnr || '—')}): ${escapeHtml((item.roles || []).join(', '))}</li>`).join('')}</ul>`
+              : '<div>Es bestehen keine Elternverknüpfungen zu dieser Dublette.</div>';
+            mergeDogPreview.innerHTML = `<strong>${escapeHtml(data.source.name)} wird durch ${escapeHtml(data.target.name)} (${escapeHtml(data.target.zbnr || '—')}) ersetzt.</strong>${list}`;
+            confirmDogMerge.disabled = false;
+          })
+          .catch(error => {
+            mergeDogPreview.textContent = 'Fehler: ' + error.message;
+          });
+      });
 
       function openAddDogModal() {
         const modal = document.getElementById('addDogModal');
@@ -903,6 +1047,7 @@
         if (event.key === 'Escape') {
           closeAddDogModal();
           closeImportPedigreeModal();
+          closeMergeDogModal();
         }
       });
 
