@@ -1558,6 +1558,7 @@ def collect_pedigree_for_coi(
     """
     pedigree: dict[str, dict[str, Any]] = {}
     visiting = set()
+    visiting_stack: list[str] = []
 
     def recurse(zbnr: str | None, generation: int) -> None:
         zbnr = normalize_parent_zbnr(zbnr)
@@ -1569,14 +1570,24 @@ def collect_pedigree_for_coi(
             return
 
         if zbnr in visiting:
+            cycle_start = visiting_stack.index(zbnr)
+            cycle_zbnrs = visiting_stack[cycle_start:] + [zbnr]
+            cycle_labels = []
+            for cycle_zbnr in cycle_zbnrs:
+                cycle_dog = index.get(cycle_zbnr) or {}
+                cycle_name = clean(cycle_dog.get("Name"))
+                cycle_labels.append(
+                    f"{cycle_name} ({cycle_zbnr})" if cycle_name else cycle_zbnr
+                )
             raise ValueError(
-                f"Zyklische Abstammung entdeckt bei ZBNr '{zbnr}'."
+                "Zyklische Abstammung entdeckt: " + " → ".join(cycle_labels)
             )
 
         if zbnr in pedigree:
             return
 
         visiting.add(zbnr)
+        visiting_stack.append(zbnr)
 
         dog = index.get(zbnr)
 
@@ -1586,6 +1597,7 @@ def collect_pedigree_for_coi(
                 "dam": None,
                 "found_in_data": False,
             }
+            visiting_stack.pop()
             visiting.remove(zbnr)
             return
 
@@ -1595,6 +1607,7 @@ def collect_pedigree_for_coi(
                 "dam": None,
                 "found_in_data": True,
             }
+            visiting_stack.pop()
             visiting.remove(zbnr)
             return
 
@@ -1614,6 +1627,7 @@ def collect_pedigree_for_coi(
         recurse(sire, generation + 1)
         recurse(dam, generation + 1)
 
+        visiting_stack.pop()
         visiting.remove(zbnr)
 
     recurse(start_zbnr, 0)

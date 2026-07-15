@@ -29,6 +29,13 @@ Die Datei `user_hunde.csv` wird automatisch angelegt, sobald der erste eigene Hu
 Die Lock-Datei wird standardmaessig daneben angelegt, z. B. `/var/data/user_hunde.csv.lock`.
 Die SQLite-Datei wird automatisch angelegt. Damit Merkliste, Notizen und gespeicherte Verpaarungen Deployments ueberleben, sollte `APP_DATABASE` ebenfalls auf die Persistent Disk zeigen.
 
+Bereinigung alter Unknown-Platzhalter:
+- Unter `/user-dogs` zuerst `Unknown-Platzhalter prüfen` öffnen.
+- Die Vorschau nennt jeden Platzhalter und alle betroffenen Elternverknüpfungen.
+- `Gesichert bereinigen` setzt diese Positionen auf unbekannt und entfernt die künstlichen Hunde aus der aktiven Ahnentafel.
+- Direkt neben `USER_DOGS_CSV` entstehen vorher eine vollständige Backup-CSV und eine separate Archiv-CSV der Platzhalter. Auf Render liegen diese Dateien bei der empfohlenen Konfiguration unter `/var/data`.
+- Der Vorgang ist idempotent und kann nach einer erfolgreichen Bereinigung gefahrlos erneut geprüft werden.
+
 Die App nutzt `pedigree_tools.py` aus demselben Verzeichnis und die CSV-Dateien:
 - `drc-Hunde-mit-eltern-rkey.csv`
 - `ed_zws_results_all_animals.csv`

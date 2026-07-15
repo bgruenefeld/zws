@@ -13,6 +13,7 @@ from datetime import datetime
 import hmac
 import os
 import re
+import shutil
 import tempfile
 import threading
 import time
@@ -1003,6 +1004,28 @@ def normalize_import_name(value):
     return re.sub(r"[^a-z0-9]+", "", text)
 
 
+UNKNOWN_DOG_NAME_KEYS = {
+    "unknown",
+    "unkown",
+    "nameunknown",
+    "nameunkown",
+    "unknownname",
+    "unbekannt",
+    "nameunbekannt",
+    "notknown",
+    "nichtbekannt",
+    "none",
+    "null",
+}
+
+
+def is_unknown_dog_name(value):
+    raw = clean_text(value).casefold()
+    if raw in {"?", "??", "-", "--", "n/a", "na"}:
+        return True
+    return normalize_import_name(raw) in UNKNOWN_DOG_NAME_KEYS
+
+
 def imported_candidate_parent_name(row, role):
     role_key = "vater" if role == "father" else "mutter"
     parent_zbnr = clean_text(row.get(f"{role_key}_zbnr_norm") or row.get(f"{role_key}_zbnr"))
@@ -1097,6 +1120,8 @@ def imported_dog_candidate_score(item, row, items_by_slot):
 
 
 def match_imported_dog(item, items_by_slot=None, candidate_index=None):
+    if is_unknown_dog_name(item.get("name")):
+        return None
     name_key = normalize_import_name(item.get("name"))
     if not name_key:
         return None
@@ -1171,6 +1196,8 @@ def build_import_preview(parsed_items):
     items_by_slot = {item["slot"]: item for item in parsed_items}
     candidate_index = defaultdict(list)
     for row in MERGED_DF.to_dict(orient="records"):
+        if is_unknown_dog_name(row.get("Name")):
+            continue
         name_key = normalize_import_name(row.get("Name"))
         if name_key:
             candidate_index[name_key].append(row)
@@ -1180,6 +1207,7 @@ def build_import_preview(parsed_items):
     }
     preview = []
     for item in parsed_items:
+        is_unknown = is_unknown_dog_name(item.get("name"))
         match_result = matches_by_slot.get(item["slot"])
         ambiguous_match = match_result if (match_result or {}).get("ambiguous") else None
         match = None if ambiguous_match else match_result
@@ -1192,7 +1220,11 @@ def build_import_preview(parsed_items):
                 ("Vater", imported_father, item.get("father_slot"), "father_zbnr"),
                 ("Mutter", imported_mother, item.get("mother_slot"), "mother_zbnr"),
             ):
-                if not parent_item or not clean_text(parent_item.get("name")):
+                if (
+                    not parent_item
+                    or not clean_text(parent_item.get("name"))
+                    or is_unknown_dog_name(parent_item.get("name"))
+                ):
                     continue
                 imported_parent_match = matches_by_slot.get(parent_slot) or {}
                 imported_parent_zbnr = clean_text(imported_parent_match.get("zbnr"))
@@ -1208,9 +1240,10 @@ def build_import_preview(parsed_items):
         can_add_parent_links = bool(missing_parent_links or corrected_parent_links)
         preview_item = dict(item)
         preview_item["match"] = match
-        preview_item["status"] = "unclear" if ambiguous_match else "found" if match else "new"
-        preview_item["selected"] = (not bool(match) and not ambiguous_match) or can_add_parent_links
-        preview_item["can_add_parent_links"] = can_add_parent_links
+        preview_item["status"] = "unknown" if is_unknown else "unclear" if ambiguous_match else "found" if match else "new"
+        preview_item["selected"] = False if is_unknown else (not bool(match) and not ambiguous_match) or can_add_parent_links
+        preview_item["can_add_parent_links"] = False if is_unknown else can_add_parent_links
+        preview_item["is_unknown_placeholder"] = is_unknown
         preview_item["missing_parent_links"] = missing_parent_links
         preview_item["corrected_parent_links"] = corrected_parent_links
         preview_item["ambiguous_match"] = ambiguous_match
@@ -1331,6 +1364,8 @@ def prepare_import_records(preview_items, selected_slots, user_df):
     next_number_df = user_df.copy()
 
     for item in sorted(preview_items, key=lambda dog: dog["slot"]):
+        if item.get("is_unknown_placeholder") or is_unknown_dog_name(item.get("name")):
+            continue
         match = item.get("match")
         if match and match.get("zbnr"):
             slot_refs[item["slot"]] = {"zbnr": match["zbnr"], "name": match.get("name") or item.get("name")}
@@ -1369,6 +1404,8 @@ def prepare_import_records(preview_items, selected_slots, user_df):
     now = datetime.now().isoformat(timespec="seconds")
     records = []
     for item in sorted(preview_items, key=lambda dog: dog["slot"]):
+        if item.get("is_unknown_placeholder") or is_unknown_dog_name(item.get("name")):
+            continue
         if item["slot"] not in selected_slots:
             continue
         zbnr = slot_refs[item["slot"]]["zbnr"]
@@ -3198,6 +3235,7 @@ def manage_user_dogs():
     saved_zbnr = request.args.get("saved", "")
     merged_dog = session.pop("merged_user_dog", None)
     merge_error = session.pop("merge_user_dog_error", None)
+    unknown_cleanup_result = session.pop("unknown_cleanup_result", None)
     import_context = pedigree_import_context(default_return_to=url_for("manage_user_dogs"))
     form_values = user_dog_form_defaults()
     prefill_name = clean_text(request.args.get("prefill_name"))
@@ -3233,6 +3271,7 @@ def manage_user_dogs():
         saved_zbnr=saved_zbnr,
         merged_dog=merged_dog,
         merge_error=merge_error,
+        unknown_cleanup_result=unknown_cleanup_result,
         form_values=form_values,
         user_dogs=user_dogs,
         user_dogs_path=user_dog_path_label(),
@@ -3301,6 +3340,145 @@ def user_dog_merge_preview(source_zbnr, target_zbnr):
         "affected": affected,
         "affected_count": len(affected),
     }
+
+
+def unknown_placeholder_summary(user_df=None):
+    user_df = load_user_dogs_df() if user_df is None else user_df
+    placeholders = []
+    placeholder_ids = set()
+    for row in user_df.to_dict(orient="records"):
+        zbnr = pt.normalize_zbnr(row.get("ZBNr_norm") or row.get("ZBNr")) or clean_text(
+            row.get("ZBNr_norm") or row.get("ZBNr")
+        )
+        if zbnr.upper().startswith("USER-") and is_unknown_dog_name(row.get("Name")):
+            placeholder_ids.add(zbnr)
+            placeholders.append(
+                {
+                    "zbnr": zbnr,
+                    "name": clean_text(row.get("Name")) or "Unknown",
+                    "created_at": clean_text(row.get("created_at")),
+                    "references": [],
+                }
+            )
+
+    by_id = {item["zbnr"]: item for item in placeholders}
+    for row in user_df.to_dict(orient="records"):
+        child_zbnr = pt.normalize_zbnr(row.get("ZBNr_norm") or row.get("ZBNr")) or clean_text(
+            row.get("ZBNr_norm") or row.get("ZBNr")
+        )
+        for prefix, role in (("vater", "Vater"), ("mutter", "Mutter")):
+            parent_zbnr = pt.normalize_zbnr(
+                row.get(f"{prefix}_zbnr_norm") or row.get(f"{prefix}_zbnr")
+            ) or clean_text(row.get(f"{prefix}_zbnr_norm") or row.get(f"{prefix}_zbnr"))
+            if parent_zbnr in placeholder_ids:
+                by_id[parent_zbnr]["references"].append(
+                    {
+                        "child_zbnr": child_zbnr,
+                        "child_name": clean_text(row.get("Name")) or child_zbnr,
+                        "role": role,
+                    }
+                )
+
+    placeholders.sort(key=lambda item: item["zbnr"])
+    return {
+        "placeholders": placeholders,
+        "placeholder_count": len(placeholders),
+        "reference_count": sum(len(item["references"]) for item in placeholders),
+    }
+
+
+@app.route("/api/user-dogs/unknown-placeholders")
+def api_unknown_placeholders():
+    return jsonify({"ok": True, **unknown_placeholder_summary()})
+
+
+@app.route("/user-dogs/cleanup-unknown-placeholders", methods=["POST"])
+def cleanup_unknown_placeholders():
+    try:
+        with USER_DOGS_LOCK:
+            with locked_user_dogs_file():
+                user_df = load_user_dogs_df()
+                summary = unknown_placeholder_summary(user_df)
+                placeholder_ids = {
+                    item["zbnr"] for item in summary["placeholders"]
+                }
+                if not placeholder_ids:
+                    session["unknown_cleanup_result"] = {
+                        "placeholder_count": 0,
+                        "reference_count": 0,
+                        "message": "Es wurden keine Unknown-Platzhalter gefunden.",
+                    }
+                    return redirect(url_for("manage_user_dogs"))
+
+                timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+                backup_path = USER_DOGS_CSV.with_name(
+                    f"{USER_DOGS_CSV.stem}.backup-before-unknown-cleanup-{timestamp}{USER_DOGS_CSV.suffix}"
+                )
+                archive_path = USER_DOGS_CSV.with_name(
+                    f"{USER_DOGS_CSV.stem}.unknown-archive-{timestamp}{USER_DOGS_CSV.suffix}"
+                )
+                if USER_DOGS_CSV.exists():
+                    shutil.copy2(USER_DOGS_CSV, backup_path)
+
+                normalized_ids = user_df["ZBNr_norm"].fillna("").map(
+                    lambda value: pt.normalize_zbnr(value) or clean_text(value)
+                )
+                placeholder_mask = normalized_ids.isin(placeholder_ids)
+                archived_df = user_df.loc[placeholder_mask].copy()
+                archived_df.to_csv(archive_path, index=False, encoding="utf-8")
+
+                now = datetime.now().isoformat(timespec="seconds")
+                for prefix, display_column, found_column in (
+                    ("vater", "Vater", "father_found"),
+                    ("mutter", "Mutter", "mother_found"),
+                ):
+                    reference_mask = user_df[f"{prefix}_zbnr_norm"].fillna("").map(
+                        lambda value: (pt.normalize_zbnr(value) or clean_text(value)) in placeholder_ids
+                    ) | user_df[f"{prefix}_zbnr"].fillna("").map(
+                        lambda value: (pt.normalize_zbnr(value) or clean_text(value)) in placeholder_ids
+                    )
+                    user_df.loc[reference_mask, f"{prefix}_name"] = ""
+                    user_df.loc[reference_mask, f"{prefix}_zbnr"] = ""
+                    user_df.loc[reference_mask, f"{prefix}_zbnr_norm"] = ""
+                    user_df.loc[reference_mask, display_column] = ""
+                    user_df.loc[reference_mask, found_column] = "False"
+                    user_df.loc[reference_mask, "updated_at"] = now
+
+                cleaned_df = user_df.loc[~placeholder_mask].copy()
+                remaining_references = 0
+                for column in (
+                    "vater_zbnr", "vater_zbnr_norm", "mutter_zbnr", "mutter_zbnr_norm"
+                ):
+                    remaining_references += cleaned_df[column].fillna("").map(
+                        lambda value: (pt.normalize_zbnr(value) or clean_text(value)) in placeholder_ids
+                    ).sum()
+                if remaining_references:
+                    raise RuntimeError("Nicht alle Unknown-Verknüpfungen konnten aufgelöst werden.")
+
+                write_user_dogs_df(cleaned_df)
+                reload_data()
+    except Exception:
+        app.logger.exception("Unknown-Platzhalter konnten nicht bereinigt werden")
+        session["merge_user_dog_error"] = (
+            "Die Unknown-Platzhalter konnten nicht sicher bereinigt werden; "
+            "die aktive Datei wurde nicht absichtlich verändert."
+        )
+        return redirect(url_for("manage_user_dogs"))
+
+    session["unknown_cleanup_result"] = {
+        "placeholder_count": summary["placeholder_count"],
+        "reference_count": summary["reference_count"],
+        "backup": backup_path.name if USER_DOGS_CSV.exists() else "",
+        "archive": archive_path.name,
+    }
+    log_event(
+        "unknown_placeholders_cleaned",
+        placeholder_count=summary["placeholder_count"],
+        reference_count=summary["reference_count"],
+        backup=backup_path.name,
+        archive=archive_path.name,
+    )
+    return redirect(url_for("manage_user_dogs"))
 
 
 @app.route("/api/user-dogs/merge-preview")
@@ -3706,11 +3884,26 @@ def pairing():
                 else None
             )
 
-            coi = pt.calculate_coi_for_zbnr(
-                pairing_index,
-                planned_zbnr,
-                max_generations=metric_max_gen,
-            )
+            try:
+                coi = pt.calculate_coi_for_zbnr(
+                    pairing_index,
+                    planned_zbnr,
+                    max_generations=metric_max_gen,
+                )
+            except ValueError as exc:
+                if "Zyklische Abstammung" not in str(exc):
+                    raise
+                context["error"] = (
+                    "Die Ahnentafel enthält eine zyklische Elternverknüpfung und kann "
+                    f"nicht berechnet werden. {exc}"
+                )
+                log_event(
+                    "pairing_pedigree_cycle_detected",
+                    dam_zbnr=normalized_row_zbnr(dam),
+                    sire_zbnr=normalized_row_zbnr(sire),
+                    error=truncate_log_value(exc, max_length=500),
+                )
+                return render_template("pairing.html", **context)
             avk = pt.calculate_avk_for_zbnr(
                 pairing_index,
                 planned_zbnr,

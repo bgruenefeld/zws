@@ -307,6 +307,11 @@
         color: #2563eb;
       }
 
+      .status-pill.unknown {
+        background: #f1f3f5;
+        color: #52606d;
+      }
+
       .import-preview {
         border: 1px solid #dfe5ec;
         border-radius: 8px;
@@ -511,6 +516,13 @@
       {% if merge_error %}
         <div class="message error">{{ merge_error }}</div>
       {% endif %}
+      {% if unknown_cleanup_result %}
+        <div class="message success">
+          {{ unknown_cleanup_result.message or (unknown_cleanup_result.placeholder_count ~ " Unknown-Platzhalter und " ~ unknown_cleanup_result.reference_count ~ " Verknüpfungen wurden bereinigt.") }}
+          {% if unknown_cleanup_result.backup %}<br>Sicherung: {{ unknown_cleanup_result.backup }}{% endif %}
+          {% if unknown_cleanup_result.archive %}<br>Archiv: {{ unknown_cleanup_result.archive }}{% endif %}
+        </div>
+      {% endif %}
 
       <section class="panel" aria-labelledby="userDogsTitle">
         <div class="panel-head">
@@ -519,6 +531,7 @@
             <div class="panel-note">{{ user_dogs|length }} Hunde in der Zusatzdatei</div>
           </div>
           <div class="actions">
+            <button class="secondary-button" type="button" id="openUnknownCleanupModal">Unknown-Platzhalter prüfen</button>
             <button class="secondary-button" type="button" id="openImportPedigreeModal">Ahnentafel importieren</button>
             <button class="primary-button" type="button" id="openAddDogModal">Hund hinzufügen</button>
             <a class="secondary-button" href="/search">Zur Hundesuche</a>
@@ -562,6 +575,28 @@
         {% endif %}
       </section>
     </main>
+
+    <div class="modal-backdrop" id="unknownCleanupModal" aria-hidden="true">
+      <div class="modal-dialog merge-dialog" role="dialog" aria-modal="true" aria-labelledby="unknownCleanupTitle">
+        <div class="modal-head">
+          <div>
+            <h2 id="unknownCleanupTitle">Unknown-Platzhalter prüfen</h2>
+            <div class="panel-note">Vorschau der Datensätze, die fälschlich als echte Hunde angelegt wurden.</div>
+          </div>
+          <button type="button" class="modal-close" id="closeUnknownCleanupModal" aria-label="Dialog schließen">×</button>
+        </div>
+        <form method="post" action="{{ url_for('cleanup_unknown_placeholders') }}" id="unknownCleanupForm">
+          <div class="modal-body">
+            <div class="merge-warning">Bei der Bereinigung werden betroffene Elternpositionen auf „unbekannt“ gesetzt. Vorher werden die vollständige CSV gesichert und alle entfernten Platzhalter separat archiviert.</div>
+            <div class="merge-preview" id="unknownCleanupPreview" aria-live="polite">Vorschau wird geladen …</div>
+          </div>
+          <div class="modal-actions">
+            <button class="secondary-button" type="button" id="cancelUnknownCleanupModal">Abbrechen</button>
+            <button class="primary-button" type="submit" id="confirmUnknownCleanup" disabled>Gesichert bereinigen</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <div class="modal-backdrop" id="mergeDogModal" aria-hidden="true">
       <div class="modal-dialog merge-dialog" role="dialog" aria-modal="true" aria-labelledby="mergeDogTitle">
@@ -787,11 +822,15 @@
             {% set new_count = import_preview | selectattr("status", "equalto", "new") | list | length %}
             {% set found_count = import_preview | selectattr("status", "equalto", "found") | list | length %}
             {% set unclear_count = import_preview | selectattr("status", "equalto", "unclear") | list | length %}
+            {% set unknown_count = import_preview | selectattr("status", "equalto", "unknown") | list | length %}
             <div class="import-summary">
               <span class="status-pill new">{{ new_count }} neu</span>
               <span class="status-pill found">{{ found_count }} vorhanden</span>
               {% if unclear_count %}
                 <span class="status-pill">{{ unclear_count }} unklar</span>
+              {% endif %}
+              {% if unknown_count %}
+                <span class="status-pill unknown">{{ unknown_count }} unbekannte Positionen</span>
               {% endif %}
               <span class="panel-note">Bitte prüfe Namen, Jahr, HD/ED und Elternzuordnung vor dem Speichern.</span>
             </div>
@@ -872,6 +911,9 @@
 	                              </label>
 	                            </div>
 	                            <span class="panel-note">Der Name ist ähnlich zu vorhandenen Hunden. Bitte wähle bewusst, damit keine Dublette entsteht.</span>
+	                          {% elif dog.status == "unknown" %}
+	                            <span class="status-pill unknown">unbekannte Position</span><br>
+	                            <span class="panel-note">Wird nicht als Hund gespeichert und erhält keine USER-ID.</span>
 	                          {% else %}
 	                            <span class="status-pill new">neu</span>
 	                          {% endif %}
@@ -997,6 +1039,60 @@
           });
       });
 
+      const unknownCleanupModal = document.getElementById('unknownCleanupModal');
+      const unknownCleanupPreview = document.getElementById('unknownCleanupPreview');
+      const confirmUnknownCleanup = document.getElementById('confirmUnknownCleanup');
+
+      function closeUnknownCleanupModal() {
+        unknownCleanupModal.classList.remove('open');
+        unknownCleanupModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+      }
+
+      function openUnknownCleanupModal() {
+        unknownCleanupPreview.textContent = 'Vorschau wird geladen …';
+        confirmUnknownCleanup.disabled = true;
+        unknownCleanupModal.classList.add('open');
+        unknownCleanupModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+        fetch('/api/user-dogs/unknown-placeholders')
+          .then(response => response.json().then(data => {
+            if (!response.ok) throw new Error(data.error || ('HTTP ' + response.status));
+            return data;
+          }))
+          .then(data => {
+            const placeholders = Array.isArray(data.placeholders) ? data.placeholders : [];
+            if (!placeholders.length) {
+              unknownCleanupPreview.innerHTML = '<strong>Keine Unknown-Platzhalter gefunden.</strong>';
+              return;
+            }
+            unknownCleanupPreview.innerHTML = `
+              <strong>${escapeHtml(data.placeholder_count)} Platzhalter mit ${escapeHtml(data.reference_count)} Elternverknüpfungen gefunden.</strong>
+              <ul>${placeholders.map(item => `
+                <li>
+                  ${escapeHtml(item.name)} (${escapeHtml(item.zbnr)}) – ${escapeHtml((item.references || []).length)} Verknüpfungen
+                  ${(item.references || []).length ? `<ul>${item.references.map(ref => `<li>${escapeHtml(ref.role)} von ${escapeHtml(ref.child_name)} (${escapeHtml(ref.child_zbnr || '—')})</li>`).join('')}</ul>` : ''}
+                </li>
+              `).join('')}</ul>`;
+            confirmUnknownCleanup.disabled = false;
+          })
+          .catch(error => {
+            unknownCleanupPreview.textContent = 'Fehler: ' + error.message;
+          });
+      }
+
+      document.getElementById('openUnknownCleanupModal')?.addEventListener('click', openUnknownCleanupModal);
+      document.getElementById('closeUnknownCleanupModal')?.addEventListener('click', closeUnknownCleanupModal);
+      document.getElementById('cancelUnknownCleanupModal')?.addEventListener('click', closeUnknownCleanupModal);
+      unknownCleanupModal?.addEventListener('click', event => {
+        if (event.target === unknownCleanupModal) closeUnknownCleanupModal();
+      });
+      document.getElementById('unknownCleanupForm')?.addEventListener('submit', event => {
+        if (!window.confirm('Unknown-Platzhalter jetzt gesichert bereinigen? Die betroffenen Elternpositionen werden auf unbekannt gesetzt.')) {
+          event.preventDefault();
+        }
+      });
+
       function openAddDogModal() {
         const modal = document.getElementById('addDogModal');
         if (!modal) return;
@@ -1048,6 +1144,7 @@
           closeAddDogModal();
           closeImportPedigreeModal();
           closeMergeDogModal();
+          closeUnknownCleanupModal();
         }
       });
 
