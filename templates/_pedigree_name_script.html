@@ -1,0 +1,127 @@
+(function () {
+  const apiUrl = '/api/dog-name';
+  const historyUrl = '/api/dog-name-history';
+  let activeZbnr = '';
+  let hasOverride = false;
+
+  function nameEscape(value) {
+    return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function ensureNameModal() {
+    let modal = document.getElementById('pedigreeNameModal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.className = 'pedigree-name-backdrop';
+    modal.id = 'pedigreeNameModal';
+    modal.setAttribute('aria-hidden', 'true');
+    modal.innerHTML = `
+      <div class="pedigree-name-dialog" role="dialog" aria-modal="true" aria-labelledby="pedigreeNameTitle">
+        <div class="pedigree-name-head">
+          <div><h2 id="pedigreeNameTitle">Hundenamen korrigieren</h2><div class="pedigree-name-meta" id="pedigreeNameMeta"></div></div>
+          <button type="button" class="pedigree-name-close" id="pedigreeNameClose" aria-label="Dialog schließen">×</button>
+        </div>
+        <div class="pedigree-name-body">
+          <label>Korrigierter Hundename<input id="pedigreeNameInput" maxlength="200" autocomplete="off"></label>
+          <div class="pedigree-name-original" id="pedigreeNameOriginal"></div>
+          <section class="pedigree-name-history"><div class="pedigree-name-history-title">Historie</div><div id="pedigreeNameHistory">Wird geladen …</div></section>
+          <div class="pedigree-name-actions">
+            <div class="pedigree-name-status" id="pedigreeNameStatus" aria-live="polite"></div>
+            <button type="button" class="pedigree-name-reset" id="pedigreeNameReset" hidden>Korrektur entfernen</button>
+            <button type="button" class="pedigree-name-secondary" id="pedigreeNameCancel">Abbrechen</button>
+            <button type="button" class="pedigree-name-primary" id="pedigreeNameSave">Speichern</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    document.getElementById('pedigreeNameClose').addEventListener('click', closeNameModal);
+    document.getElementById('pedigreeNameCancel').addEventListener('click', closeNameModal);
+    document.getElementById('pedigreeNameSave').addEventListener('click', () => saveName(false));
+    document.getElementById('pedigreeNameReset').addEventListener('click', () => saveName(true));
+    modal.addEventListener('click', event => { if (event.target === modal) closeNameModal(); });
+    return modal;
+  }
+
+  function closeNameModal() {
+    const modal = document.getElementById('pedigreeNameModal');
+    modal?.classList.remove('open');
+    modal?.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('modal-open');
+  }
+
+  function renderHistory(items) {
+    const target = document.getElementById('pedigreeNameHistory');
+    if (!items?.length) { target.innerHTML = '<div class="pedigree-name-history-item">Noch keine Änderungen gespeichert.</div>'; return; }
+    target.innerHTML = items.map(item => `<div class="pedigree-name-history-item">
+      <div class="pedigree-name-history-meta"><span>${nameEscape(new Date(item.changedAt).toLocaleString('de-DE'))}</span><span>${nameEscape(item.changedBy)}</span></div>
+      <div>${nameEscape(item.previousName)} → ${nameEscape(item.newName)}</div>
+    </div>`).join('');
+  }
+
+  function openNameModal(card) {
+    activeZbnr = card.getAttribute('data-zbnr') || '';
+    if (!activeZbnr || activeZbnr.startsWith('__')) return;
+    const modal = ensureNameModal();
+    const status = document.getElementById('pedigreeNameStatus');
+    status.textContent = '';
+    document.getElementById('pedigreeNameMeta').textContent = 'ZBNr ' + activeZbnr;
+    document.getElementById('pedigreeNameOriginal').textContent = 'Daten werden geladen …';
+    document.getElementById('pedigreeNameHistory').textContent = 'Wird geladen …';
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+
+    Promise.all([
+      fetch(apiUrl + '?zbnr=' + encodeURIComponent(activeZbnr)).then(r => r.json().then(d => { if (!r.ok) throw new Error(d.error); return d; })),
+      fetch(historyUrl + '?zbnr=' + encodeURIComponent(activeZbnr)).then(r => r.json())
+    ]).then(([data, history]) => {
+      hasOverride = Boolean(data.hasOverride);
+      document.getElementById('pedigreeNameInput').value = data.currentName || '';
+      document.getElementById('pedigreeNameOriginal').textContent = 'Ursprünglicher Name: ' + (data.originalName || '—');
+      document.getElementById('pedigreeNameReset').hidden = !hasOverride;
+      renderHistory(history.items || []);
+      document.getElementById('pedigreeNameInput').focus();
+    }).catch(error => { status.textContent = 'Fehler: ' + (error.message || error); });
+  }
+
+  function saveName(reset) {
+    const status = document.getElementById('pedigreeNameStatus');
+    const name = document.getElementById('pedigreeNameInput').value.trim();
+    if (!reset && !name) { status.textContent = 'Bitte gib einen Hundenamen ein.'; return; }
+    if (reset && !window.confirm('Namenskorrektur entfernen und ursprünglichen Namen wiederherstellen?')) return;
+    status.textContent = 'Wird gespeichert …';
+    fetch(apiUrl, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ zbnr: activeZbnr, name, reset }) })
+      .then(r => r.json().then(data => { if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status)); return data; }))
+      .then(data => {
+        window.dispatchEvent(new CustomEvent('pedigree-name:changed', { detail: { zbnr: activeZbnr, name: data.name } }));
+        status.textContent = 'Gespeichert. Ansicht wird aktualisiert …';
+        window.setTimeout(() => window.location.reload(), 350);
+      })
+      .catch(error => { status.textContent = 'Fehler: ' + error.message; });
+  }
+
+  function addNameButton(card) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'pedigree-name-button';
+    button.textContent = '✎';
+    button.title = 'Hundenamen korrigieren';
+    button.setAttribute('aria-label', 'Hundenamen korrigieren');
+    button.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); openNameModal(card); });
+    card.appendChild(button);
+  }
+
+  function refreshNameButtons() {
+    document.querySelectorAll('.card[data-zbnr]').forEach(card => {
+      const zbnr = card.getAttribute('data-zbnr') || '';
+      if (!zbnr || zbnr.startsWith('__') || card.classList.contains('missing') || card.querySelector('.pedigree-name-button')) return;
+      addNameButton(card);
+    });
+  }
+
+  const observer = new MutationObserver(() => window.requestAnimationFrame(refreshNameButtons));
+  observer.observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeNameModal(); });
+  refreshNameButtons();
+})();

@@ -228,6 +228,24 @@ def init_personalization_db():
                 changed_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS dog_name_overrides (
+                zbnr TEXT PRIMARY KEY,
+                original_name TEXT NOT NULL,
+                corrected_name TEXT NOT NULL,
+                updated_by TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS dog_name_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                zbnr TEXT NOT NULL,
+                previous_name TEXT NOT NULL,
+                new_name TEXT NOT NULL,
+                changed_by TEXT NOT NULL,
+                action TEXT NOT NULL,
+                changed_at TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS saved_pairings (
                 user_id TEXT NOT NULL,
                 pairing_id TEXT NOT NULL,
@@ -552,10 +570,35 @@ def load_data():
             merged_df = pd.read_csv(BASE_CSV, dtype=str)
 
     merged_df = append_user_dogs(merged_df)
+    name_overrides = load_dog_name_override_map()
+    if name_overrides and "ZBNr_norm" in merged_df.columns:
+        normalized_zbnrs = merged_df["ZBNr_norm"].fillna("").astype(str).map(
+            lambda value: pt.normalize_zbnr(value) or value.strip()
+        )
+        corrected_names = normalized_zbnrs.map(name_overrides)
+        override_mask = corrected_names.notna()
+        merged_df.loc[override_mask, "Name"] = corrected_names.loc[override_mask]
     merged_df = attach_epi_scores(merged_df)
     index, duplicates = pt.build_zbnr_index(merged_df)
 
     return merged_df, index
+
+
+def load_dog_name_override_map():
+    if not APP_DATABASE.exists():
+        return {}
+    connection = sqlite3.connect(APP_DATABASE, timeout=15)
+    try:
+        rows = connection.execute(
+            "SELECT zbnr, corrected_name FROM dog_name_overrides"
+        ).fetchall()
+        return {
+            str(zbnr).strip(): str(corrected_name).strip()
+            for zbnr, corrected_name in rows
+            if str(zbnr or "").strip() and str(corrected_name or "").strip()
+        }
+    finally:
+        connection.close()
 
 
 def reload_data():
@@ -3117,6 +3160,185 @@ def api_dog_health():
             "dogName": dog_name,
             "values": {"hd": hd, "edRechts": ed_rechts, "edLinks": ed_links},
             "updatedAt": now,
+        }
+    )
+
+
+@app.route("/api/dog-name", methods=["GET", "PUT"])
+def api_dog_name():
+    db = get_db()
+    if request.method == "GET":
+        zbnr = normalized_health_zbnr(request.args.get("zbnr"))
+        if not zbnr:
+            return jsonify({"error": "zbnr fehlt"}), 400
+        dog = ZBNR_INDEX.get(zbnr)
+        if dog is None:
+            return jsonify({"error": "Hund nicht gefunden"}), 404
+        override = db.execute(
+            """
+            SELECT original_name, corrected_name, updated_by, updated_at
+            FROM dog_name_overrides WHERE zbnr = ?
+            """,
+            (zbnr,),
+        ).fetchone()
+        current_name = clean_text(dog.get("Name")) or zbnr
+        return jsonify(
+            {
+                "ok": True,
+                "zbnr": zbnr,
+                "currentName": current_name,
+                "originalName": override["original_name"] if override else current_name,
+                "hasOverride": bool(override),
+                "updatedBy": override["updated_by"] if override else "",
+                "updatedAt": override["updated_at"] if override else "",
+            }
+        )
+
+    body = read_json_body()
+    zbnr = normalized_health_zbnr(body.get("zbnr"))
+    if not zbnr:
+        return jsonify({"error": "zbnr fehlt"}), 400
+    dog = ZBNR_INDEX.get(zbnr)
+    if dog is None:
+        return jsonify({"error": "Hund nicht gefunden"}), 404
+
+    existing = db.execute(
+        "SELECT original_name, corrected_name FROM dog_name_overrides WHERE zbnr = ?",
+        (zbnr,),
+    ).fetchone()
+    current_name = clean_text(existing["corrected_name"] if existing else dog.get("Name"))
+    original_name = clean_text(existing["original_name"] if existing else dog.get("Name"))
+    changed_by = current_user_id()
+    changed_at = utc_now_iso()
+    reset = bool(body.get("reset"))
+
+    if reset:
+        if not existing:
+            return jsonify({"ok": True, "zbnr": zbnr, "name": current_name, "hasOverride": False})
+        with db:
+            db.execute("DELETE FROM dog_name_overrides WHERE zbnr = ?", (zbnr,))
+            db.execute(
+                """
+                INSERT INTO dog_name_history
+                    (zbnr, previous_name, new_name, changed_by, action, changed_at)
+                VALUES (?, ?, ?, ?, 'reset', ?)
+                """,
+                (zbnr, current_name, original_name, changed_by, changed_at),
+            )
+            update_dog_name_snapshots(db, zbnr, original_name, changed_at)
+        reload_data()
+        log_event("dog_name_reset", zbnr=zbnr, previous_name=current_name, name=original_name)
+        return jsonify({"ok": True, "zbnr": zbnr, "name": original_name, "hasOverride": False})
+
+    corrected_name = clean_text(body.get("name"))
+    if not corrected_name:
+        return jsonify({"error": "Bitte gib einen Hundenamen ein."}), 400
+    if len(corrected_name) > 200:
+        return jsonify({"error": "Der Hundename darf höchstens 200 Zeichen enthalten."}), 400
+    if corrected_name == current_name:
+        return jsonify({"ok": True, "zbnr": zbnr, "name": current_name, "hasOverride": bool(existing)})
+
+    with db:
+        db.execute(
+            """
+            INSERT INTO dog_name_overrides
+                (zbnr, original_name, corrected_name, updated_by, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(zbnr) DO UPDATE SET
+                corrected_name = excluded.corrected_name,
+                updated_by = excluded.updated_by,
+                updated_at = excluded.updated_at
+            """,
+            (zbnr, original_name, corrected_name, changed_by, changed_at),
+        )
+        db.execute(
+            """
+            INSERT INTO dog_name_history
+                (zbnr, previous_name, new_name, changed_by, action, changed_at)
+            VALUES (?, ?, ?, ?, 'update', ?)
+            """,
+            (zbnr, current_name, corrected_name, changed_by, changed_at),
+        )
+        update_dog_name_snapshots(db, zbnr, corrected_name, changed_at)
+    reload_data()
+    log_event("dog_name_saved", zbnr=zbnr, previous_name=current_name, name=corrected_name)
+    return jsonify({"ok": True, "zbnr": zbnr, "name": corrected_name, "hasOverride": True})
+
+
+def update_dog_name_snapshots(db, zbnr, name, changed_at):
+    db.execute("UPDATE dog_notes SET dog_name = ? WHERE zbnr = ?", (name, zbnr))
+    db.execute("UPDATE dog_health_overrides SET dog_name = ? WHERE zbnr = ?", (name, zbnr))
+
+    watchlist_rows = db.execute(
+        "SELECT user_id, zbnr, dog_json FROM watchlist WHERE zbnr = ?",
+        (zbnr,),
+    ).fetchall()
+    for row in watchlist_rows:
+        try:
+            dog = json.loads(row["dog_json"])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(dog, dict):
+            dog["name"] = name
+            db.execute(
+                "UPDATE watchlist SET dog_json = ?, updated_at = ? WHERE user_id = ? AND zbnr = ?",
+                (json.dumps(dog, ensure_ascii=False), changed_at, row["user_id"], row["zbnr"]),
+            )
+
+    pairing_rows = db.execute(
+        "SELECT user_id, pairing_id, pairing_json FROM saved_pairings"
+    ).fetchall()
+    for row in pairing_rows:
+        try:
+            item = json.loads(row["pairing_json"])
+        except json.JSONDecodeError:
+            continue
+        changed = False
+        result = item.get("result") if isinstance(item, dict) else None
+        if isinstance(result, dict):
+            for role in ("dam", "sire"):
+                parent = result.get(role)
+                parent_zbnr = normalized_health_zbnr((parent or {}).get("zbnr")) if isinstance(parent, dict) else ""
+                if parent_zbnr == zbnr:
+                    parent["name"] = name
+                    changed = True
+        if changed:
+            item["_nameUpdatedAt"] = changed_at
+            db.execute(
+                """
+                UPDATE saved_pairings SET pairing_json = ?, updated_at = ?
+                WHERE user_id = ? AND pairing_id = ?
+                """,
+                (json.dumps(item, ensure_ascii=False), changed_at, row["user_id"], row["pairing_id"]),
+            )
+
+
+@app.route("/api/dog-name-history")
+def api_dog_name_history():
+    zbnr = normalized_health_zbnr(request.args.get("zbnr"))
+    if not zbnr:
+        return jsonify({"error": "zbnr fehlt"}), 400
+    rows = get_db().execute(
+        """
+        SELECT previous_name, new_name, changed_by, action, changed_at
+        FROM dog_name_history
+        WHERE zbnr = ? ORDER BY id DESC LIMIT 50
+        """,
+        (zbnr,),
+    ).fetchall()
+    return jsonify(
+        {
+            "ok": True,
+            "items": [
+                {
+                    "previousName": row["previous_name"],
+                    "newName": row["new_name"],
+                    "changedBy": row["changed_by"],
+                    "action": row["action"],
+                    "changedAt": row["changed_at"],
+                }
+                for row in rows
+            ],
         }
     )
 

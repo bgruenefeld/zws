@@ -1,0 +1,82 @@
+      .pedigree-name-button {
+        align-items: center;
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid #cfd8e3;
+        border-radius: 999px;
+        color: #52606d;
+        cursor: pointer;
+        display: inline-flex;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 900;
+        height: 21px;
+        justify-content: center;
+        line-height: 1;
+        opacity: 0;
+        padding: 0;
+        position: absolute;
+        right: 56px;
+        top: 6px;
+        transition: opacity 0.12s ease, transform 0.12s ease, background 0.12s ease;
+        width: 21px;
+        z-index: 4;
+      }
+
+      .card[data-zbnr]:hover .pedigree-name-button,
+      .pedigree-name-button:focus-visible {
+        opacity: 1;
+      }
+
+      .pedigree-name-button:hover {
+        background: #f1f3f5;
+        border-color: #9fb2c6;
+        transform: translateY(-1px);
+      }
+
+      .pedigree-name-backdrop {
+        align-items: center;
+        background: rgba(15, 23, 42, 0.48);
+        display: none;
+        inset: 0;
+        justify-content: center;
+        padding: 20px;
+        position: fixed;
+        z-index: 1230;
+      }
+
+      .pedigree-name-backdrop.open { display: flex; }
+
+      .pedigree-name-dialog {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+        max-width: 620px;
+        overflow: hidden;
+        width: min(100%, 620px);
+      }
+
+      .pedigree-name-head {
+        align-items: flex-start;
+        border-bottom: 1px solid #e1e7ee;
+        display: flex;
+        justify-content: space-between;
+        padding: 16px 18px;
+      }
+
+      .pedigree-name-head h2 { color: #12233a; font-size: 18px; margin: 0 0 4px; }
+      .pedigree-name-meta, .pedigree-name-original { color: #667085; font-size: 13px; }
+      .pedigree-name-body { display: grid; gap: 14px; padding: 18px; }
+      .pedigree-name-body label { color: #344054; display: grid; font-size: 13px; font-weight: 800; gap: 6px; }
+      .pedigree-name-body input { border: 1px solid #cfd8e3; border-radius: 6px; font: inherit; padding: 9px 10px; width: 100%; }
+      .pedigree-name-history { border-top: 1px solid #edf1f5; padding-top: 12px; }
+      .pedigree-name-history-title { color: #344054; font-size: 13px; font-weight: 850; margin-bottom: 7px; }
+      .pedigree-name-history-item { border-bottom: 1px solid #edf1f5; color: #52606d; font-size: 12px; padding: 7px 0; }
+      .pedigree-name-history-meta { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-bottom: 3px; }
+      .pedigree-name-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+      .pedigree-name-status { color: #52606d; font-size: 12px; margin-right: auto; }
+      .pedigree-name-actions button, .pedigree-name-close { border-radius: 6px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 800; min-height: 34px; padding: 8px 12px; }
+      .pedigree-name-close { background: #f8fafc; border: 1px solid #cfd8e3; color: #1f3a52; font-size: 16px; padding: 0; width: 34px; }
+      .pedigree-name-primary { background: #2563eb; border: 1px solid #2563eb; color: #fff; }
+      .pedigree-name-secondary { background: #fff; border: 1px solid #cfd8e3; color: #344054; }
+      .pedigree-name-reset { background: #fff; border: 1px solid #e2a8a8; color: #a32020; }
+      .pedigree-name-reset[hidden] { display: none; }

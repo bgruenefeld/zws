@@ -9,6 +9,7 @@
       {% include "_watchlist_css.html" %}
       {% include "_pedigree_notes_css.html" %}
       {% include "_pedigree_health_css.html" %}
+      {% include "_pedigree_name_css.html" %}
       {% include "_pedigree_import_css.html" %}
       {% include "_avk_analysis_css.html" %}
       :root {
@@ -2400,6 +2401,7 @@
       {% include "_watchlist_script.html" %}
       {% include "_pedigree_notes_script.html" %}
       {% include "_pedigree_health_script.html" %}
+      {% include "_pedigree_name_script.html" %}
       {% include "_relatives_modal_script.html" %}
       {% include "_pedigree_import_script.html" %}
       {% include "_missing_pedigree_script.html" %}
@@ -2654,8 +2656,8 @@
           const id = String(item?.id || '').trim();
           if (!id) return;
           const existing = byId.get(id);
-          const localTime = Date.parse(item?.savedAt || '') || 0;
-          const serverTime = Date.parse(existing?.savedAt || '') || 0;
+          const localTime = Math.max(Date.parse(item?.savedAt || '') || 0, Date.parse(item?._nameUpdatedAt || '') || 0);
+          const serverTime = Math.max(Date.parse(existing?.savedAt || '') || 0, Date.parse(existing?._nameUpdatedAt || '') || 0);
           if (!existing || localTime >= serverTime) byId.set(id, item);
         });
         return Array.from(byId.values());
