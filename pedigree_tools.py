@@ -47,6 +47,17 @@ def make_json_serializable(value: Any):
     return str(value)
 
 
+def kennel_club_health_url(zbnr: Any, name: Any) -> str:
+    """Erzeugt für britische KC-Zuchtbuchnummern den Health-Finder-Link."""
+    zbnr_text = clean(zbnr)
+    if not zbnr_text.upper().startswith("KC"):
+        return ""
+    return (
+        "https://www.royalkennelclub.com/search/health-test-results-finder/"
+        f"?Filter={quote(clean(name), safe='')}"
+    )
+
+
 def to_float_or_none(value: Any) -> float | None:
     """
     Konvertiert einen Wert robust nach float oder None.
@@ -830,14 +841,30 @@ def render_card(entry: dict[str, Any], generation: int = 0, max_generations: int
 
     info_parts = []
 
+    kennel_club_url = kennel_club_health_url(zbnr, name)
+    escaped_zbnr = html.escape(zbnr)
+    if kennel_club_url:
+        zbnr_html = (
+            f'<a class="kc-zbnr-link" href="{html.escape(kennel_club_url, quote=True)}" '
+            'target="_blank" rel="noopener noreferrer" '
+            f'title="Kennel-Club-Daten für {html.escape(name, quote=True)} öffnen">'
+            f'{escaped_zbnr}</a>'
+        )
+    else:
+        zbnr_html = escaped_zbnr
+
     if zbnr:
-        info_parts.append(f"ZBNr {html.escape(zbnr)}")
+        info_parts.append(f"ZBNr {zbnr_html}")
     if birth:
         info_parts.append(html.escape(birth))
     if sex:
         info_parts.append(html.escape(sex))
 
     info_line = " · ".join(info_parts)
+    info_text = " · ".join(
+        part for part in [f"ZBNr {zbnr}" if zbnr else "", str(birth) if birth else "", str(sex) if sex else ""]
+        if part
+    )
 
     health_parts = []
 
@@ -862,7 +889,7 @@ def render_card(entry: dict[str, Any], generation: int = 0, max_generations: int
 
     zws_line = " · ".join(zws_parts)
 
-    detail_lines = [name, f"Score {epi_score}" if epi_score else "", info_line, health_line, zws_line]
+    detail_lines = [name, f"Score {epi_score}" if epi_score else "", info_text, health_line, zws_line]
     title = html.escape(" | ".join(line for line in detail_lines if line) + warning_title, quote=True)
     k9_link_html = ""
     if missing_direct_ancestor:
@@ -899,10 +926,17 @@ def render_card(entry: dict[str, Any], generation: int = 0, max_generations: int
         </button>
         """
 
-    name_html = f'<div class="name">{html.escape(name)}{drilldown_html}{epi_score_html}{k9_link_html}</div>'
+    name_html = (
+        '<div class="name">'
+        f'<button type="button" class="pedigree-dog-name" title="Geschwister und Nachkommen anzeigen">{html.escape(name)}</button>'
+        f'{drilldown_html}{epi_score_html}{k9_link_html}'
+        '</div>'
+    )
 
     if generation >= 5:
         compact_parts = []
+        if zbnr:
+            compact_parts.append(f"ZBNr {zbnr_html}")
         if birth:
             compact_parts.append(html.escape(birth))
         if ed_r or ed_l:
@@ -922,6 +956,8 @@ def render_card(entry: dict[str, Any], generation: int = 0, max_generations: int
 
     if generation >= 4:
         compact_info_parts = []
+        if zbnr:
+            compact_info_parts.append(f"ZBNr {zbnr_html}")
         if birth:
             compact_info_parts.append(html.escape(birth))
         if sex:
@@ -1211,6 +1247,42 @@ def render_pedigree_html(
 
         .k9-link:hover {{
             text-decoration: underline;
+        }}
+
+        .kc-zbnr-link {{
+            color: #1d4ed8;
+            font-weight: 750;
+            text-decoration: underline;
+            text-decoration-thickness: 1px;
+            text-underline-offset: 2px;
+        }}
+
+        .kc-zbnr-link:hover,
+        .kc-zbnr-link:focus-visible {{
+            color: #1e40af;
+            outline: none;
+        }}
+
+        .pedigree-dog-name {{
+            background: none;
+            border: 0;
+            color: inherit;
+            cursor: pointer;
+            font: inherit;
+            font-weight: inherit;
+            margin: 0;
+            padding: 0;
+            text-align: left;
+        }}
+
+        .pedigree-dog-name:hover,
+        .pedigree-dog-name:focus-visible {{
+            background: #eef2f6;
+            border-radius: 3px;
+            color: #1f3a52;
+            outline: none;
+            text-decoration: underline;
+            text-underline-offset: 2px;
         }}
 
         .subline {{

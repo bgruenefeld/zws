@@ -2533,7 +2533,9 @@
             return;
           }
 
-          const card = event.target.closest('.card[data-zbnr]');
+          const dogName = event.target.closest('.pedigree-dog-name');
+          if (!dogName || !panel.contains(dogName)) return;
+          const card = dogName.closest('.card[data-zbnr]');
           if (!card || !panel.contains(card)) return;
 
           const zbnr = card.getAttribute('data-zbnr');

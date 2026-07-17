@@ -1523,13 +1523,7 @@ def clean_text(value):
 
 
 def kennel_club_health_url(zbnr, name):
-    zbnr_text = clean_text(zbnr)
-    if not zbnr_text.upper().startswith("KC"):
-        return ""
-    return (
-        "https://www.royalkennelclub.com/search/health-test-results-finder/"
-        f"?Filter={quote_plus(clean_text(name))}"
-    )
+    return pt.kennel_club_health_url(zbnr, name)
 
 
 def dog_summary(row):
