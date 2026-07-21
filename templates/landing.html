@@ -743,9 +743,12 @@
 
     <script>
       (function () {
+        const watchlistStorageKey = window.ZWS_WATCHLIST_STORAGE_KEY
+          || `zwsDogWatchlist.v2.${encodeURIComponent(window.ZWS_CURRENT_USER || 'anonymous')}`;
+
         function readWatchlistCount() {
           try {
-            const parsed = JSON.parse(localStorage.getItem('zwsDogWatchlist') || '[]');
+            const parsed = JSON.parse(localStorage.getItem(watchlistStorageKey) || '[]');
             return Array.isArray(parsed) ? parsed.filter(dog => dog && dog.zbnr).length : 0;
           } catch {
             return 0;
@@ -762,12 +765,12 @@
           .then(response => response.json())
           .then(data => {
             if (!Array.isArray(data.items)) return;
-            setCount(Math.max(readWatchlistCount(), data.items.filter(dog => dog && dog.zbnr).length));
+            setCount(data.items.filter(dog => dog && dog.zbnr).length);
           })
           .catch(() => {});
 
         window.addEventListener('storage', event => {
-          if (event.key === 'zwsDogWatchlist') setCount(readWatchlistCount());
+          if (event.key === watchlistStorageKey) setCount(readWatchlistCount());
         });
         window.addEventListener('watchlist:changed', () => setCount(readWatchlistCount()));
       })();

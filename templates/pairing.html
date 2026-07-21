@@ -2354,7 +2354,8 @@
     {% endif %}
 
     <script>
-      const savedPairingsKey = 'zws.savedPairings.v1';
+      const savedPairingsKey = window.ZWS_SAVED_PAIRINGS_STORAGE_KEY
+        || `zws.savedPairings.v2.${encodeURIComponent(window.ZWS_CURRENT_USER || 'anonymous')}`;
       const savedPairingsApiUrl = '/api/saved-pairings';
       let savedPairingsSyncTimer = null;
       const selectedSavedPairingIds = new Set();

@@ -31,7 +31,15 @@
 </nav>
 <script>
   (function () {
-    const storageKey = 'zwsDogWatchlist';
+    const currentUser = {{ session.get("username", "anonymous") | tojson }} || 'anonymous';
+    const userScope = encodeURIComponent(currentUser);
+
+    window.ZWS_CURRENT_USER = currentUser;
+    window.ZWS_WATCHLIST_STORAGE_KEY = `zwsDogWatchlist.v2.${userScope}`;
+    window.ZWS_SAVED_PAIRINGS_STORAGE_KEY = `zws.savedPairings.v2.${userScope}`;
+    window.ZWS_PEDIGREE_NOTES_STORAGE_KEY = `zwsDogPedigreeNotes.v2.${userScope}`;
+
+    const storageKey = window.ZWS_WATCHLIST_STORAGE_KEY;
 
     function readNavWatchlistCount() {
       try {
@@ -53,10 +61,9 @@
         .then(r => r.json())
         .then(data => {
           if (!Array.isArray(data.items)) return;
-          const localCount = readNavWatchlistCount();
           const serverCount = data.items.filter(dog => dog && dog.zbnr).length;
           const badge = document.getElementById('navWatchlistCount');
-          if (badge && serverCount > localCount) badge.textContent = String(serverCount);
+          if (badge) badge.textContent = String(serverCount);
         })
         .catch(() => {});
     }

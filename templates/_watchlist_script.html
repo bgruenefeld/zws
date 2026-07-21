@@ -1,5 +1,6 @@
 (function () {
-  const storageKey = window.WATCHLIST_STORAGE_KEY || 'zwsDogWatchlist';
+  const storageKey = window.ZWS_WATCHLIST_STORAGE_KEY
+    || `zwsDogWatchlist.v2.${encodeURIComponent(window.ZWS_CURRENT_USER || 'anonymous')}`;
   const apiUrl = '/api/watchlist';
   let watchlistSyncTimer = null;
 

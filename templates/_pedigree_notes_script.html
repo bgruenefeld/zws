@@ -1,5 +1,6 @@
 (function () {
-  const storageKey = 'zwsDogPedigreeNotes.v1';
+  const storageKey = window.ZWS_PEDIGREE_NOTES_STORAGE_KEY
+    || `zwsDogPedigreeNotes.v2.${encodeURIComponent(window.ZWS_CURRENT_USER || 'anonymous')}`;
   const apiUrl = '/api/dog-notes';
   let activeZbnr = '';
   let activeDogName = '';

@@ -1826,7 +1826,8 @@
       let currentSort = { column: null, direction: 'asc' };
       let selectedMetricsZbnr = null;
       let selectedDogForWatchlist = null;
-      const WATCHLIST_STORAGE_KEY = 'zwsDogWatchlist';
+      const WATCHLIST_STORAGE_KEY = window.ZWS_WATCHLIST_STORAGE_KEY
+        || `zwsDogWatchlist.v2.${encodeURIComponent(window.ZWS_CURRENT_USER || 'anonymous')}`;
       const WATCHLIST_API_URL = '/api/watchlist';
       let watchlistSyncTimer = null;
 
